@@ -45,6 +45,8 @@ jobs:
           mkdir -p dist
           cp build.log dist/build.log
           if [ "${{ steps.build.outputs.status }}" = "0" ]; then
+            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.0_Android16.apk
+            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.0_Android16.bin
             cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_MQTT_Android16.apk
           fi
           git config user.name "github-actions[bot]"
@@ -57,10 +59,12 @@ jobs:
         if: steps.build.outputs.status != '0'
         run: exit 1
 
-      - name: Upload APK artifact
+      - name: Upload build artifacts
         if: steps.build.outputs.status == '0'
         uses: actions/upload-artifact@v4
         with:
-          name: HomeSmoke_MQTT_Android16
-          path: dist/HomeSmoke_MQTT_Android16.apk
+          name: HomeSmoke_FULL_2.0_Android16
+          path: |
+            dist/HomeSmoke_FULL_2.0_Android16.apk
+            dist/HomeSmoke_FULL_2.0_Android16.bin
           if-no-files-found: error
