@@ -12,6 +12,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.net.ssl.SSLSocketFactory;
 
 final class MqttClient {
+    interface MessageListener { void onMessage(String topic, String payload); }
+
     private final String host, username, password;
     private final int port;
     private final boolean tls;
@@ -20,11 +22,14 @@ final class MqttClient {
     private InputStream in;
     private OutputStream out;
     private volatile boolean connected;
+    private volatile MessageListener listener;
     private Thread reader, keepAlive;
 
     MqttClient(String host,int port,boolean tls,String username,String password){
         this.host=host;this.port=port;this.tls=tls;this.username=username==null?"":username;this.password=password==null?"":password;
     }
+
+    void setMessageListener(MessageListener listener){ this.listener=listener; }
 
     synchronized void connect() throws IOException {
         close();
@@ -51,13 +56,54 @@ final class MqttClient {
         if(!isConnected())throw new IOException("не подключен");
         if(topic==null||topic.trim().isEmpty())topic="homesmoke/status";
         ByteArrayOutputStream b=new ByteArrayOutputStream(); writeUtf(b,topic);
-        int id=packetId.getAndUpdate(v->v>=65535?1:v+1); b.write((id>>>8)&255); b.write(id&255);
+        int id=nextPacketId(); b.write((id>>>8)&255); b.write(id&255);
         b.write(payload.getBytes(StandardCharsets.UTF_8)); sendPacket(0x32|(retain?1:0),b.toByteArray());
     }
 
-    private void startReader(){
-        reader=new Thread(()->{try{while(connected){int h=in.read();if(h<0)throw new EOFException();int n=readRemaining(in);readFully(in,n);}}catch(Exception e){close();}},"HomeSmoke-MQTT-reader");reader.start();
+    synchronized void subscribe(String topic)throws IOException{
+        if(!isConnected())throw new IOException("не подключен");
+        if(topic==null||topic.trim().isEmpty())throw new IOException("пустой topic");
+        ByteArrayOutputStream b=new ByteArrayOutputStream();
+        int id=nextPacketId(); b.write((id>>>8)&255); b.write(id&255);
+        writeUtf(b,topic.trim()); b.write(1); // request QoS 1
+        sendPacket(0x82,b.toByteArray());
     }
+
+    private int nextPacketId(){ return packetId.getAndUpdate(v->v>=65535?1:v+1); }
+
+    private void startReader(){
+        reader=new Thread(()->{
+            try{
+                while(connected){
+                    int h=in.read(); if(h<0)throw new EOFException();
+                    int n=readRemaining(in); byte[] body=readFully(in,n);
+                    if((h&0xF0)==0x30) handlePublish(h,body);
+                }
+            }catch(Exception e){close();}
+        },"HomeSmoke-MQTT-reader");reader.start();
+    }
+
+    private void handlePublish(int header,byte[] body)throws IOException{
+        if(body.length<2)return;
+        int topicLen=((body[0]&255)<<8)|(body[1]&255);
+        if(topicLen<0||2+topicLen>body.length)return;
+        String topic=new String(body,2,topicLen,StandardCharsets.UTF_8);
+        int p=2+topicLen;
+        int qos=(header>>1)&3;
+        int incomingId=0;
+        if(qos>0){
+            if(p+2>body.length)return;
+            incomingId=((body[p]&255)<<8)|(body[p+1]&255); p+=2;
+        }
+        String payload=new String(body,p,body.length-p,StandardCharsets.UTF_8);
+        MessageListener l=listener;
+        if(l!=null)try{l.onMessage(topic,payload);}catch(Exception ignored){}
+        if(qos==1){
+            byte[] ack={(byte)((incomingId>>>8)&255),(byte)(incomingId&255)};
+            sendPacket(0x40,ack);
+        }
+    }
+
     private void startKeepAlive(){
         keepAlive=new Thread(()->{while(connected){try{Thread.sleep(20000);synchronized(MqttClient.this){if(connected)sendPacket(0xC0,new byte[0]);}}catch(Exception e){close();break;}}},"HomeSmoke-MQTT-keepalive");keepAlive.start();
     }
