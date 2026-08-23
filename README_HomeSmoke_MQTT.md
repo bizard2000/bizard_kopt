@@ -11,4 +11,4 @@ Restored from the AIA source:
 - probe K/T visibility and keep-screen-on settings;
 - file logging and MQTT publishing added in the native rebuild.
 
-Build trigger: full HomeSmoke 2.0.0.
+Build trigger: full HomeSmoke 2.0.0 PR artifact.
