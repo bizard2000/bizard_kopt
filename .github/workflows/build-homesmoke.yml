@@ -1,6 +1,8 @@
 name: Build HomeSmoke MQTT APK
 
 on:
+  push:
+    branches: [ homesmoke-native ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
