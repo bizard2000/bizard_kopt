@@ -9,6 +9,8 @@ Restored from the AIA source:
 - original PID coefficient commands `p...`, `i...`, `d...`, `z...` with x100 scaling;
 - monitor/settings/PID screens and separate send button for every PID coefficient;
 - probe K/T visibility and keep-screen-on settings;
+- right-side sliding menu behavior restored from SidebarV2;
+- Android 16 system-bar insets fixed;
 - file logging and MQTT publishing added in the native rebuild.
 
-Build trigger: full HomeSmoke 2.0.0 PR artifact.
+Build trigger: HomeSmoke 2.0.2.
