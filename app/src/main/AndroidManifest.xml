@@ -10,7 +10,7 @@
 
     <application
         android:allowBackup="true"
-        android:label="HomeSmoke MQTT"
+        android:label="Домашняя коптильня"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
         <activity
