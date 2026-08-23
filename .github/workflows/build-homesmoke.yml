@@ -1,10 +1,16 @@
 name: Build HomeSmoke MQTT APK
 
 on:
+  pull_request_target:
+    branches: [ main ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'homesmoke-native')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout HomeSmoke branch
@@ -23,23 +29,33 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Apply Android 16 UI, input-dialog and sliding-sidebar fixes
+      - name: Apply Android 16 UI fixes
         run: python3 ci/patch_android16_ui.py
 
-      - name: Build debug APK
-        run: gradle :app:assembleDebug --stacktrace
+      - name: Apply exact Homesmoke.aia protocol mapping
+        run: python3 ci/patch_protocol_mapping.py
 
-      - name: Prepare APK and BIN
+      - name: Build debug APK
+        run: gradle :app:assembleDebug --stacktrace 2>&1 | tee build.log
+
+      - name: Publish APK and BIN into HomeSmoke branch
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.0.2_Android16.apk
-          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.0.2_Android16.bin
+          cp build.log dist/build.log
+          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.0.3_Android16.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.0.3_Android16.bin
+          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_MQTT_Android16.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist
+          git commit -m "CI: publish HomeSmoke 2.0.3 build [skip ci]" || true
+          git push origin homesmoke-native
 
       - name: Upload APK and BIN
         uses: actions/upload-artifact@v4
         with:
-          name: HomeSmoke_FULL_2.0.2_Android16
+          name: HomeSmoke_FULL_2.0.3_Android16
           path: |
-            dist/HomeSmoke_FULL_2.0.2_Android16.apk
-            dist/HomeSmoke_FULL_2.0.2_Android16.bin
+            dist/HomeSmoke_FULL_2.0.3_Android16.apk
+            dist/HomeSmoke_FULL_2.0.3_Android16.bin
           if-no-files-found: error
