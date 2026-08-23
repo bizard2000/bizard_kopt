@@ -1,4 +1,4 @@
-name: Build HomeSmoke MQTT APK
+name: Build HomeSmoke and Remote APKs
 
 on:
   push:
@@ -28,19 +28,22 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Apply Android 16 UI, input-dialog and sliding-sidebar fixes
+      - name: Apply Android 16 UI fixes to main HomeSmoke
         run: python3 ci/patch_android16_ui.py
 
       - name: Apply exact Homesmoke.aia protocol mapping
         run: python3 ci/patch_protocol_mapping.py
 
-      - name: Build APK and capture log
+      - name: Add MQTT remote-control gateway
+        run: python3 ci/patch_remote_gateway.py
+
+      - name: Build both APKs and capture log
         id: build
         shell: bash
         run: |
           set +e
           set -o pipefail
-          gradle :app:assembleDebug --stacktrace 2>&1 | tee build.log
+          gradle :app:assembleDebug :remote:assembleDebug --stacktrace 2>&1 | tee build.log
           status=${PIPESTATUS[0]}
           echo "status=$status" >> "$GITHUB_OUTPUT"
           exit 0
@@ -51,26 +54,39 @@ jobs:
           mkdir -p dist
           cp build.log dist/build.log
           if [ "${{ steps.build.outputs.status }}" = "0" ]; then
-            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.0.3_Android16.apk
-            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.0.3_Android16.bin
+            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.1.0_Android16.apk
+            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.1.0_Android16.bin
             cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_MQTT_Android16.apk
+            cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_1.0.0_Android5plus.apk
+            cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_1.0.0_Android5plus.bin
+            cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote.apk
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add dist
-          git commit -m "CI: publish HomeSmoke 2.0.3 build result [skip ci]" || true
+          git commit -m "CI: publish HomeSmoke 2.1.0 and Remote 1.0.0 [skip ci]" || true
           git push origin homesmoke-native
 
       - name: Fail workflow if build failed
         if: steps.build.outputs.status != '0'
         run: exit 1
 
-      - name: Upload build artifacts
+      - name: Upload HomeSmoke 2.1.0
         if: steps.build.outputs.status == '0'
         uses: actions/upload-artifact@v4
         with:
-          name: HomeSmoke_FULL_2.0.3_Android16
+          name: HomeSmoke_FULL_2.1.0_Android16
           path: |
-            dist/HomeSmoke_FULL_2.0.3_Android16.apk
-            dist/HomeSmoke_FULL_2.0.3_Android16.bin
+            dist/HomeSmoke_FULL_2.1.0_Android16.apk
+            dist/HomeSmoke_FULL_2.1.0_Android16.bin
+          if-no-files-found: error
+
+      - name: Upload HomeSmoke Remote 1.0.0
+        if: steps.build.outputs.status == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: HomeSmoke_Remote_1.0.0_Android5plus
+          path: |
+            dist/HomeSmoke_Remote_1.0.0_Android5plus.apk
+            dist/HomeSmoke_Remote_1.0.0_Android5plus.bin
           if-no-files-found: error
