@@ -28,6 +28,9 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Apply Android 16 UI and original mode-behavior fixes
+        run: python3 ci/patch_android16_ui.py
+
       - name: Build APK and capture log
         id: build
         shell: bash
@@ -45,14 +48,14 @@ jobs:
           mkdir -p dist
           cp build.log dist/build.log
           if [ "${{ steps.build.outputs.status }}" = "0" ]; then
-            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.0_Android16.apk
-            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.0_Android16.bin
+            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.0.1_Android16.apk
+            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.0.1_Android16.bin
             cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_MQTT_Android16.apk
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add dist
-          git commit -m "CI: publish HomeSmoke build result [skip ci]" || true
+          git commit -m "CI: publish HomeSmoke 2.0.1 build result [skip ci]" || true
           git push origin homesmoke-native
 
       - name: Fail workflow if build failed
@@ -63,8 +66,8 @@ jobs:
         if: steps.build.outputs.status == '0'
         uses: actions/upload-artifact@v4
         with:
-          name: HomeSmoke_FULL_2.0_Android16
+          name: HomeSmoke_FULL_2.0.1_Android16
           path: |
-            dist/HomeSmoke_FULL_2.0_Android16.apk
-            dist/HomeSmoke_FULL_2.0_Android16.bin
+            dist/HomeSmoke_FULL_2.0.1_Android16.apk
+            dist/HomeSmoke_FULL_2.0.1_Android16.bin
           if-no-files-found: error
