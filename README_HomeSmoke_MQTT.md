@@ -11,6 +11,7 @@ Restored from the AIA source:
 - probe K/T visibility and keep-screen-on settings;
 - right-side sliding menu behavior restored from SidebarV2;
 - Android 16 system-bar insets fixed;
+- exact Screen1.bky field mapping restored for monitor, logging and MQTT;
 - file logging and MQTT publishing added in the native rebuild.
 
-Build trigger: HomeSmoke 2.0.2.
+Build trigger: HomeSmoke 2.0.3 exact AIA field mapping.
