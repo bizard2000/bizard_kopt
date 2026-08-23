@@ -12,9 +12,9 @@ Starting a Gradle Daemon (subsequent builds will be faster)
 > Task :app:preBuild UP-TO-DATE
 > Task :app:preDebugBuild UP-TO-DATE
 > Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
-> Task :app:generateDebugResValues
-> Task :app:javaPreCompileDebug
 > Task :app:checkDebugAarMetadata
+> Task :app:javaPreCompileDebug
+> Task :app:generateDebugResValues
 > Task :app:mapDebugSourceSetPaths
 > Task :app:generateDebugResources
 > Task :app:packageDebugResources
@@ -25,8 +25,8 @@ Starting a Gradle Daemon (subsequent builds will be faster)
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
 > Task :app:mergeDebugShaders
-> Task :app:processDebugManifestForPackage
 > Task :app:compileDebugShaders NO-SOURCE
+> Task :app:processDebugManifestForPackage
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
 > Task :app:compressDebugAssets
@@ -44,8 +44,8 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :app:mergeDebugJniLibFolders
 > Task :app:mergeExtDexDebug
 > Task :app:mergeDebugNativeLibs NO-SOURCE
-> Task :app:mergeLibDexDebug
 > Task :app:stripDebugDebugSymbols NO-SOURCE
+> Task :app:mergeLibDexDebug
 > Task :app:mergeDebugJavaResource
 > Task :app:mergeProjectDexDebug
 > Task :app:validateSigningDebug
@@ -54,7 +54,7 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1787480648605.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1787480753579.json
 
-BUILD SUCCESSFUL in 43s
+BUILD SUCCESSFUL in 36s
 32 actionable tasks: 32 executed
