@@ -1,10 +1,16 @@
-name: Build HomeSmoke MQTT APK
+name: Verify HomeSmoke Android 4.x Legacy
 
 on:
+  pull_request_target:
+    branches: [ main ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'homesmoke-native')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout HomeSmoke branch
@@ -32,17 +38,29 @@ jobs:
       - name: Add MQTT remote-control gateway
         run: python3 ci/patch_remote_gateway.py
 
-      - name: Build HomeSmoke and Remote
-        run: gradle :app:assembleDebug :remote:assembleDebug --stacktrace
+      - name: Create Android 4.x legacy HomeSmoke
+        run: python3 ci/make_legacy_main.py
 
-      - name: Upload HomeSmoke APK
+      - name: Build legacy APK
+        run: gradle :legacy:assembleDebug --stacktrace 2>&1 | tee legacy-build.log
+
+      - name: Publish legacy APK and BIN into HomeSmoke branch
+        run: |
+          mkdir -p dist
+          cp legacy-build.log dist/legacy-build.log
+          cp legacy/build/outputs/apk/debug/legacy-debug.apk dist/HomeSmoke_FULL_2.1.0_Android4plus.apk
+          cp legacy/build/outputs/apk/debug/legacy-debug.apk dist/HomeSmoke_FULL_2.1.0_Android4plus.bin
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist
+          git commit -m "CI: publish HomeSmoke Android 4+ legacy [skip ci]" || true
+          git push origin homesmoke-native
+
+      - name: Upload legacy APK
         uses: actions/upload-artifact@v4
         with:
-          name: HomeSmoke_FULL_2.1.0_Android16
-          path: app/build/outputs/apk/debug/app-debug.apk
-
-      - name: Upload HomeSmoke Remote APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: HomeSmoke_Remote_1.0.0_Android5plus
-          path: remote/build/outputs/apk/debug/remote-debug.apk
+          name: HomeSmoke_FULL_2.1.0_Android4plus
+          path: |
+            dist/HomeSmoke_FULL_2.1.0_Android4plus.apk
+            dist/HomeSmoke_FULL_2.1.0_Android4plus.bin
+          if-no-files-found: error
