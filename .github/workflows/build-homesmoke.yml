@@ -37,13 +37,16 @@ jobs:
       - name: Add MQTT remote-control gateway
         run: python3 ci/patch_remote_gateway.py
 
-      - name: Build both APKs and capture log
+      - name: Create Android 4.x legacy HomeSmoke module
+        run: python3 ci/make_legacy_main.py
+
+      - name: Build modern, legacy and Remote APKs
         id: build
         shell: bash
         run: |
           set +e
           set -o pipefail
-          gradle :app:assembleDebug :remote:assembleDebug --stacktrace 2>&1 | tee build.log
+          gradle :app:assembleDebug :legacy:assembleDebug :remote:assembleDebug --stacktrace 2>&1 | tee build.log
           status=${PIPESTATUS[0]}
           echo "status=$status" >> "$GITHUB_OUTPUT"
           exit 0
@@ -57,6 +60,8 @@ jobs:
             cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.1.0_Android16.apk
             cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.1.0_Android16.bin
             cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_MQTT_Android16.apk
+            cp legacy/build/outputs/apk/debug/legacy-debug.apk dist/HomeSmoke_FULL_2.1.0_Android4plus.apk
+            cp legacy/build/outputs/apk/debug/legacy-debug.apk dist/HomeSmoke_FULL_2.1.0_Android4plus.bin
             cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_1.0.0_Android5plus.apk
             cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_1.0.0_Android5plus.bin
             cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote.apk
@@ -64,14 +69,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add dist
-          git commit -m "CI: publish HomeSmoke 2.1.0 and Remote 1.0.0 [skip ci]" || true
+          git commit -m "CI: publish HomeSmoke Android 4+ legacy build [skip ci]" || true
           git push origin homesmoke-native
 
       - name: Fail workflow if build failed
         if: steps.build.outputs.status != '0'
         run: exit 1
 
-      - name: Upload HomeSmoke 2.1.0
+      - name: Upload HomeSmoke 2.1.0 modern
         if: steps.build.outputs.status == '0'
         uses: actions/upload-artifact@v4
         with:
@@ -79,6 +84,16 @@ jobs:
           path: |
             dist/HomeSmoke_FULL_2.1.0_Android16.apk
             dist/HomeSmoke_FULL_2.1.0_Android16.bin
+          if-no-files-found: error
+
+      - name: Upload HomeSmoke 2.1.0 Android 4+
+        if: steps.build.outputs.status == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: HomeSmoke_FULL_2.1.0_Android4plus
+          path: |
+            dist/HomeSmoke_FULL_2.1.0_Android4plus.apk
+            dist/HomeSmoke_FULL_2.1.0_Android4plus.bin
           if-no-files-found: error
 
       - name: Upload HomeSmoke Remote 1.0.0
