@@ -14,8 +14,8 @@ g = gradle.read_text(encoding='utf-8')
 g = re.sub(r"applicationId\s+'[^']+'", "applicationId 'com.bizard.homesmokemqtt.legacy'", g, count=1)
 g = re.sub(r'minSdk\s+\d+', 'minSdk 14', g, count=1)
 g = re.sub(r'targetSdk\s+\d+', 'targetSdk 19', g, count=1)
-g = re.sub(r'versionCode\s+\d+', 'versionCode 2', g, count=1)
-g = re.sub(r"versionName\s+'[^']+'", "versionName '2.2.0-legacy4'", g, count=1)
+g = re.sub(r'versionCode\s+\d+', 'versionCode 3', g, count=1)
+g = re.sub(r"versionName\s+'[^']+'", "versionName '2.3.0-legacy4'", g, count=1)
 gradle.write_text(g, encoding='utf-8')
 
 # --- Manifest: only permissions/attributes understood and needed on Android 4.x ---
@@ -38,7 +38,7 @@ styles.write_text('''<?xml version="1.0" encoding="utf-8"?>
 ''', encoding='utf-8')
 
 # --- MainActivity: remove Android 5+/6+/12+ framework dependencies while
-# preserving Bluetooth, PID, sidebar, exact AIA mapping, MQTT gateway and Android-hosted Auto. ---
+# preserving Bluetooth, PID, sidebar, exact AIA mapping, MQTT gateway and programmable Android Auto. ---
 main = dst / 'src/main/java/com/bizard/homesmokemqtt/MainActivity.java'
 s = main.read_text(encoding='utf-8')
 
@@ -116,4 +116,4 @@ for forbidden in ['WindowInsets', 'setElevation(', 'requestApplyInsets(', 'setSt
     if forbidden in s:
         raise SystemExit('Legacy MainActivity still contains forbidden API: ' + forbidden)
 
-print('HomeSmoke Legacy module prepared: minSdk 14 / Android 4.0+ / Android Auto engine included')
+print('HomeSmoke Legacy module prepared: minSdk 14 / Android 4.0+ / programmable Android Auto included')
