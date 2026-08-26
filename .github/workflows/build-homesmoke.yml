@@ -1,10 +1,16 @@
-name: Build HomeSmoke APKs
+name: Verify HomeSmoke 2.2.0 Android Auto
 
 on:
+  pull_request_target:
+    branches: [ main ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'homesmoke-native')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout HomeSmoke branch
@@ -26,32 +32,48 @@ jobs:
       - name: Apply Android 16 UI fixes
         run: python3 ci/patch_android16_ui.py
 
-      - name: Apply exact Homesmoke.aia protocol mapping
+      - name: Apply exact AIA/Arduino protocol mapping
         run: python3 ci/patch_protocol_mapping.py
 
       - name: Add MQTT remote-control gateway
         run: python3 ci/patch_remote_gateway.py
 
+      - name: Move automatic program to Android
+        run: python3 ci/patch_android_auto.py
+
       - name: Create Android 4.x legacy HomeSmoke
         run: python3 ci/make_legacy_main.py
 
-      - name: Build all APKs
-        run: gradle :app:assembleDebug :legacy:assembleDebug :remote:assembleDebug --stacktrace
+      - name: Build modern and Android 4+ APKs
+        run: gradle :app:assembleDebug :legacy:assembleDebug --stacktrace 2>&1 | tee build.log
 
-      - name: Upload HomeSmoke modern APK
+      - name: Publish verified APKs
+        run: |
+          mkdir -p dist
+          cp build.log dist/build.log
+          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.2.0_Android16.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.2.0_Android16.bin
+          cp legacy/build/outputs/apk/debug/legacy-debug.apk dist/HomeSmoke_FULL_2.2.0_Android4plus.apk
+          cp legacy/build/outputs/apk/debug/legacy-debug.apk dist/HomeSmoke_FULL_2.2.0_Android4plus.bin
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist
+          git commit -m "CI: publish HomeSmoke 2.2.0 Android Auto [skip ci]" || true
+          git pull --rebase origin homesmoke-native || true
+          git push origin homesmoke-native
+
+      - name: Upload modern APK
         uses: actions/upload-artifact@v4
         with:
-          name: HomeSmoke_FULL_2.1.0_Android16
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: HomeSmoke_FULL_2.2.0_Android16
+          path: |
+            dist/HomeSmoke_FULL_2.2.0_Android16.apk
+            dist/HomeSmoke_FULL_2.2.0_Android16.bin
 
-      - name: Upload HomeSmoke Android 4+ APK
+      - name: Upload Android 4+ APK
         uses: actions/upload-artifact@v4
         with:
-          name: HomeSmoke_FULL_2.1.0_Android4plus
-          path: legacy/build/outputs/apk/debug/legacy-debug.apk
-
-      - name: Upload HomeSmoke Remote APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: HomeSmoke_Remote_1.0.0_Android5plus
-          path: remote/build/outputs/apk/debug/remote-debug.apk
+          name: HomeSmoke_FULL_2.2.0_Android4plus
+          path: |
+            dist/HomeSmoke_FULL_2.2.0_Android4plus.apk
+            dist/HomeSmoke_FULL_2.2.0_Android4plus.bin
