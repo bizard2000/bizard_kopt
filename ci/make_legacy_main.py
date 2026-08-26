@@ -14,8 +14,8 @@ g = gradle.read_text(encoding='utf-8')
 g = re.sub(r"applicationId\s+'[^']+'", "applicationId 'com.bizard.homesmokemqtt.legacy'", g, count=1)
 g = re.sub(r'minSdk\s+\d+', 'minSdk 14', g, count=1)
 g = re.sub(r'targetSdk\s+\d+', 'targetSdk 19', g, count=1)
-g = re.sub(r'versionCode\s+\d+', 'versionCode 4', g, count=1)
-g = re.sub(r"versionName\s+'[^']+'", "versionName '2.4.0-legacy4'", g, count=1)
+g = re.sub(r'versionCode\s+\d+', 'versionCode 5', g, count=1)
+g = re.sub(r"versionName\s+'[^']+'", "versionName '2.5.0-legacy4'", g, count=1)
 gradle.write_text(g, encoding='utf-8')
 
 # --- Manifest: only permissions/attributes understood and needed on Android 4.x ---
@@ -116,4 +116,4 @@ for forbidden in ['WindowInsets', 'setElevation(', 'requestApplyInsets(', 'setSt
     if forbidden in s:
         raise SystemExit('Legacy MainActivity still contains forbidden API: ' + forbidden)
 
-print('HomeSmoke Legacy module prepared: minSdk 14 / Android 4.0+ / programmable Auto with probe conditions included')
+print('HomeSmoke Legacy module prepared: minSdk 14 / Android 4.0+ / Auto program library with probe conditions included')
