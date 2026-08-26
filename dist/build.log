@@ -13,8 +13,8 @@ Starting a Gradle Daemon (subsequent builds will be faster)
 > Task :app:preDebugBuild UP-TO-DATE
 > Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
 > Task :app:checkDebugAarMetadata
-> Task :app:generateDebugResValues
 > Task :app:javaPreCompileDebug
+> Task :app:generateDebugResValues
 > Task :app:mapDebugSourceSetPaths
 > Task :app:generateDebugResources
 > Task :app:packageDebugResources
@@ -25,29 +25,30 @@ Starting a Gradle Daemon (subsequent builds will be faster)
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
 > Task :app:mergeDebugShaders
+> Task :app:processDebugManifestForPackage
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
 > Task :app:compressDebugAssets
-> Task :app:desugarDebugFileDependencies
-> Task :app:processDebugJavaRes NO-SOURCE
-> Task :app:checkDebugDuplicateClasses
-> Task :app:processDebugManifestForPackage
-> Task :app:mergeExtDexDebug
-> Task :app:mergeDebugJavaResource
-> Task :app:mergeLibDexDebug
-> Task :app:mergeDebugJniLibFolders
-> Task :app:mergeDebugNativeLibs NO-SOURCE
-> Task :app:stripDebugDebugSymbols NO-SOURCE
 > Task :app:processDebugResources
-> Task :app:validateSigningDebug
+> Task :app:desugarDebugFileDependencies
 
 > Task :app:compileDebugJavaWithJavac
 Note: /home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/MainActivity.java uses or overrides a deprecated API.
 Note: Recompile with -Xlint:deprecation for details.
 
 > Task :app:dexBuilderDebug
+> Task :app:processDebugJavaRes NO-SOURCE
 > Task :app:mergeDebugGlobalSynthetics
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugJniLibFolders
+> Task :app:mergeExtDexDebug
+> Task :app:mergeDebugNativeLibs NO-SOURCE
+> Task :app:mergeLibDexDebug
+> Task :app:stripDebugDebugSymbols NO-SOURCE
+> Task :app:mergeDebugJavaResource
+> Task :app:mergeProjectDexDebug
+> Task :app:validateSigningDebug
 > Task :app:writeDebugAppMetadata
 > Task :app:writeDebugSigningConfigVersions
 > Task :legacy:preBuild UP-TO-DATE
@@ -62,17 +63,16 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :legacy:packageDebugResources
 > Task :legacy:createDebugCompatibleScreenManifests
 > Task :legacy:extractDeepLinksDebug
-> Task :legacy:parseDebugLocalResources
 > Task :legacy:processDebugMainManifest
-> Task :app:mergeProjectDexDebug
+> Task :legacy:parseDebugLocalResources
 > Task :legacy:processDebugManifest
 > Task :legacy:mergeDebugShaders
+> Task :legacy:processDebugManifestForPackage
 > Task :legacy:compileDebugShaders NO-SOURCE
 > Task :legacy:generateDebugAssets UP-TO-DATE
 > Task :legacy:mergeDebugAssets
 > Task :legacy:compressDebugAssets
 > Task :legacy:processDebugJavaRes NO-SOURCE
-> Task :legacy:processDebugManifestForPackage
 > Task :legacy:mergeDebugJavaResource
 > Task :legacy:checkDebugDuplicateClasses
 > Task :legacy:desugarDebugFileDependencies
@@ -87,49 +87,49 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :remote:preDebugBuild UP-TO-DATE
 > Task :remote:mergeDebugNativeDebugMetadata NO-SOURCE
 > Task :remote:javaPreCompileDebug
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
 > Task :remote:checkDebugAarMetadata
 > Task :remote:generateDebugResValues
 > Task :remote:mapDebugSourceSetPaths
 > Task :remote:generateDebugResources
 > Task :remote:mergeDebugResources
 > Task :remote:packageDebugResources
-> Task :remote:parseDebugLocalResources
-> Task :app:packageDebug
-> Task :app:createDebugApkListingFileRedirect
-> Task :app:assembleDebug
-> Task :remote:createDebugCompatibleScreenManifests
-> Task :remote:extractDeepLinksDebug
 > Task :legacy:processDebugResources
-> Task :remote:processDebugMainManifest
+> Task :remote:parseDebugLocalResources
 
 > Task :legacy:compileDebugJavaWithJavac
 Note: /home/runner/work/bizard_kopt/bizard_kopt/legacy/src/main/java/com/bizard/homesmokemqtt/MainActivity.java uses or overrides a deprecated API.
 Note: Recompile with -Xlint:deprecation for details.
 
 > Task :legacy:dexBuilderDebug
+> Task :remote:createDebugCompatibleScreenManifests
+> Task :remote:extractDeepLinksDebug
+> Task :remote:processDebugMainManifest
 > Task :remote:processDebugManifest
-> Task :remote:mergeDebugShaders
 > Task :remote:processDebugManifestForPackage
+> Task :legacy:mergeDexDebug
+> Task :remote:mergeDebugShaders
 > Task :remote:compileDebugShaders NO-SOURCE
 > Task :remote:generateDebugAssets UP-TO-DATE
-> Task :legacy:mergeDexDebug
 > Task :remote:mergeDebugAssets
 > Task :remote:compressDebugAssets
 > Task :remote:desugarDebugFileDependencies
 > Task :remote:processDebugJavaRes NO-SOURCE
 > Task :remote:mergeDebugJavaResource
-> Task :remote:checkDebugDuplicateClasses
-> Task :remote:mergeExtDexDebug
-> Task :remote:mergeLibDexDebug
-> Task :remote:mergeDebugJniLibFolders
-> Task :remote:mergeDebugNativeLibs NO-SOURCE
-> Task :remote:stripDebugDebugSymbols NO-SOURCE
-> Task :remote:validateSigningDebug
-> Task :remote:writeDebugAppMetadata
-> Task :remote:writeDebugSigningConfigVersions
 > Task :legacy:packageDebug
 > Task :legacy:createDebugApkListingFileRedirect
 > Task :legacy:assembleDebug
+> Task :remote:checkDebugDuplicateClasses
+> Task :remote:mergeDebugJniLibFolders
+> Task :remote:mergeExtDexDebug
+> Task :remote:mergeDebugNativeLibs NO-SOURCE
+> Task :remote:stripDebugDebugSymbols NO-SOURCE
+> Task :remote:validateSigningDebug
+> Task :remote:mergeLibDexDebug
+> Task :remote:writeDebugAppMetadata
+> Task :remote:writeDebugSigningConfigVersions
 > Task :remote:processDebugResources
 
 > Task :remote:compileDebugJavaWithJavac
@@ -142,7 +142,7 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :remote:packageDebug
 > Task :remote:createDebugApkListingFileRedirect
 > Task :remote:assembleDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1787648996756.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1787730705613.json
 
-BUILD SUCCESSFUL in 46s
+BUILD SUCCESSFUL in 45s
 94 actionable tasks: 94 executed
