@@ -35,7 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
-/** Long-running HomeSmoke owner: Bluetooth, Auto, MQTT and acknowledgements are independent from Activity UI. */
+/** Long-running owner of Bluetooth, Android Auto, MQTT and telemetry-confirmed command ACKs. */
 public class HomeSmokeService extends Service {
     public interface Listener { void onState(State state); }
     public static final class State {
@@ -52,7 +52,7 @@ public class HomeSmokeService extends Service {
     private static final UUID SPP_UUID=UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
     private static final String TERMINATOR="\\0";
     private static final int NOTIFY_ID=260;
-    private static final String CHANNEL="homesmoke_auto";
+    private static final String CHANNEL="homesmoke_control";
     private static final long HEARTBEAT_MS=2000L,COMMAND_MAX_AGE_MS=120000L;
 
     public final class LocalBinder extends Binder { public HomeSmokeService getService(){return HomeSmokeService.this;} }
@@ -68,7 +68,7 @@ public class HomeSmokeService extends Service {
     private volatile BluetoothSocket btSocket;
     private volatile Thread btThread;
     private volatile MqttClient mqtt;
-    private volatile boolean mqttWanted=false,mqttConnecting=false,hasClient=false;
+    private volatile boolean mqttWanted=false,mqttConnecting=false,hasClient=false,foreground=false;
     private int mqttBackoffSec=5;
     private Listener listener;
     private Telemetry latest;
@@ -94,13 +94,20 @@ public class HomeSmokeService extends Service {
     public String mqttPassword(){return secrets.get();}
 
     public void connectBluetooth(String address){
-        closeBluetooth(false);lastError="";emit();btThread=new Thread(()->{
-            try{if(Build.VERSION.SDK_INT>=31&&checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED)throw new SecurityException("Нет разрешения Bluetooth");BluetoothAdapter adapter=BluetoothAdapter.getDefaultAdapter();if(adapter==null)throw new IOException("Bluetooth не поддерживается");BluetoothDevice d=adapter.getRemoteDevice(address);BluetoothSocket s=d.createRfcommSocketToServiceRecord(SPP_UUID);btSocket=s;s.connect();try{bluetoothName=d.getName()==null?address:d.getName();}catch(Exception e){bluetoothName=address;}main.post(()->{lastError="";emit();});readLoop(s.getInputStream());}
-            catch(Exception e){main.post(()->{lastError="Bluetooth: "+safe(e);emit();});}
-            finally{closeBluetoothInternal();if(autoEngine.getState()==AutoEngine.State.RUNNING)abortAuto("Bluetooth соединение потеряно");ackManager.failAll("bluetooth_disconnected",this::publishCommandAck);main.post(this::emit);}
+        startService(new Intent(this,HomeSmokeService.class));closeBluetooth(false);lastError="";emit();
+        btThread=new Thread(()->{
+            try{
+                if(Build.VERSION.SDK_INT>=31&&checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT)!=PackageManager.PERMISSION_GRANTED)throw new SecurityException("Нет разрешения Bluetooth");
+                BluetoothAdapter adapter=BluetoothAdapter.getDefaultAdapter();if(adapter==null)throw new IOException("Bluetooth не поддерживается");BluetoothDevice d=adapter.getRemoteDevice(address);BluetoothSocket s=d.createRfcommSocketToServiceRecord(SPP_UUID);btSocket=s;s.connect();try{bluetoothName=d.getName()==null?address:d.getName();}catch(Exception e){bluetoothName=address;}
+                main.post(()->{lastError="";updateForeground();emit();});readLoop(s.getInputStream());
+            }catch(Exception e){main.post(()->{lastError="Bluetooth: "+safe(e);emit();});}
+            finally{
+                closeBluetoothInternal();if(autoEngine.getState()==AutoEngine.State.RUNNING)abortAuto("Bluetooth соединение потеряно");ackManager.failAll("bluetooth_disconnected",this::publishCommandAck);
+                main.post(()->{updateForeground();emit();maybeStopSelf();});
+            }
         },"HomeSmoke-Bluetooth");btThread.start();
     }
-    public void disconnectBluetooth(){if(isAutoRunning())stopAuto("Bluetooth отключён пользователем");closeBluetooth(true);}
+    public void disconnectBluetooth(){if(isAutoRunning())stopAuto("Bluetooth отключён пользователем");closeBluetooth(true);updateForeground();maybeStopSelf();}
 
     public boolean selectManual(){if(isAutoRunning())stopAuto("Переход в ручной режим");return sendRaw("a0");}
     public boolean selectPid(){if(isAutoRunning())stopAuto("Переход в PID режим");return sendRaw("a1");}
@@ -108,7 +115,7 @@ public class HomeSmokeService extends Service {
         main.removeCallbacks(heartbeat);boolean ok=true;
         if(isAutoRunning()){AutoEngine.Update u=autoEngine.stop("СТОП");ok=sendCommands(u.commands);history.finish("STOP");}
         else{ok=sendRaw("a3");sendRaw("x0");}
-        autoStatus="ТЭН выключен";leaveForeground();emit();maybeStopSelf();return ok;
+        autoStatus="ТЭН выключен";updateForeground();emit();maybeStopSelf();return ok;
     }
     public boolean setManualPower(double value){return ProtocolRules.isPercentOrChamberSetpoint(value)&&sendRaw("v"+integer(value));}
     public boolean setChamberSetpoint(double value){return ProtocolRules.isPercentOrChamberSetpoint(value)&&sendRaw("k"+integer(value));}
@@ -116,38 +123,47 @@ public class HomeSmokeService extends Service {
 
     public boolean startAuto(AutoProgram program){
         if(!isBluetoothConnected()){lastError="Для Auto нужен Bluetooth";emit();return false;}
-        try{startService(new Intent(this,HomeSmokeService.class));AutoEngine.Update u=autoEngine.start(program,SystemClock.elapsedRealtime());if(!sendCommands(u.commands)){autoEngine.stop("Ошибка запуска");sendRaw("a3");sendRaw("x0");return false;}history.start(program);history.event("STAGE",autoEngine.getStageIndex()+1,u.message);autoStatus=u.message;enterForeground();main.removeCallbacks(heartbeat);main.postDelayed(heartbeat,HEARTBEAT_MS);emit();return true;}
-        catch(Exception e){lastError=safe(e);emit();return false;}
+        try{
+            startService(new Intent(this,HomeSmokeService.class));AutoEngine.Update u=autoEngine.start(program,SystemClock.elapsedRealtime());
+            if(!sendCommands(u.commands)){autoEngine.stop("Ошибка запуска");sendRaw("a3");sendRaw("x0");return false;}
+            history.start(program);history.event("STAGE",autoEngine.getStageIndex()+1,u.message);autoStatus=u.message;updateForeground();main.removeCallbacks(heartbeat);main.postDelayed(heartbeat,HEARTBEAT_MS);emit();return true;
+        }catch(Exception e){lastError=safe(e);emit();return false;}
     }
-    public void stopAuto(String reason){main.removeCallbacks(heartbeat);AutoEngine.Update u=autoEngine.stop(reason);sendCommands(u.commands);autoStatus=reason;history.finish(reason);leaveForeground();emit();maybeStopSelf();}
+    public void stopAuto(String reason){main.removeCallbacks(heartbeat);AutoEngine.Update u=autoEngine.stop(reason);sendCommands(u.commands);autoStatus=reason;history.finish(reason);updateForeground();emit();maybeStopSelf();}
 
-    public void configureMqtt(String host,String port,String status,String command,String ack,String user,String pass,boolean tls,boolean autoConnect){
-        prefs.edit().putString("broker",trim(host)).putString("port",trim(port)).putString("topic",trim(status)).putString("cmd_topic",trim(command)).putString("ack_topic",trim(ack)).putString("user",user==null?"":user).putBoolean("tls",tls).putBoolean("mqtt_auto",autoConnect).apply();secrets.put(pass==null?"":pass);
-    }
+    public void configureMqtt(String host,String port,String status,String command,String ack,String user,String pass,boolean tls,boolean autoConnect){prefs.edit().putString("broker",trim(host)).putString("port",trim(port)).putString("topic",trim(status)).putString("cmd_topic",trim(command)).putString("ack_topic",trim(ack)).putString("user",user==null?"":user).putBoolean("tls",tls).putBoolean("mqtt_auto",autoConnect).apply();secrets.put(pass==null?"":pass);}
     public void startMqtt(){startService(new Intent(this,HomeSmokeService.class));mqttWanted=true;mqttBackoffSec=5;connectMqtt();}
-    public void stopMqtt(){mqttWanted=false;main.removeCallbacks(mqttReconnect);MqttClient m=mqtt;mqtt=null;if(m!=null){try{m.publish(onlineTopic(),onlinePayload(false),true,0);}catch(Exception ignored){}m.close();}mqttConnecting=false;mqttState="MQTT отключен";emit();maybeStopSelf();}
+    public void stopMqtt(){mqttWanted=false;main.removeCallbacks(mqttReconnect);MqttClient m=mqtt;mqtt=null;if(m!=null){try{m.publish(onlineTopic(),onlinePayload(false),true,0);}catch(Exception ignored){}m.close();}mqttConnecting=false;mqttState="MQTT отключен";updateForeground();emit();maybeStopSelf();}
 
     private void connectMqtt(){
         if(mqttConnecting||isMqttConnected())return;String host=prefs.getString("broker","").trim();if(host.isEmpty()){mqttState="MQTT: broker не задан";emit();return;}int port;try{port=Integer.parseInt(prefs.getString("port","1883").trim());}catch(Exception e){mqttState="MQTT: неверный port";emit();return;}
-        mqttConnecting=true;mqttState="MQTT: подключение…";emit();final int p=port;new Thread(()->{MqttClient c=new MqttClient(host,p,prefs.getBoolean("tls",false),prefs.getString("user",""),secrets.get());c.setClientId("HomeSmoke_"+deviceId());c.setWill(onlineTopic(),onlinePayload(false),true);c.setMessageListener(this::handleMqttMessage);
-            try{c.connect();c.subscribe(commandTopic());mqtt=c;mqttConnecting=false;mqttBackoffSec=5;mqttState="MQTT подключен";c.publish(onlineTopic(),onlinePayload(true),true,0);main.post(this::emit);}
+        mqttConnecting=true;mqttState="MQTT: подключение…";emit();final int p=port;
+        new Thread(()->{MqttClient c=new MqttClient(host,p,prefs.getBoolean("tls",false),prefs.getString("user",""),secrets.get());c.setClientId("HomeSmoke_"+deviceId());c.setWill(onlineTopic(),onlinePayload(false),true);c.setMessageListener(this::handleMqttMessage);
+            try{c.connect();c.subscribe(commandTopic());mqtt=c;mqttConnecting=false;mqttBackoffSec=5;mqttState="MQTT подключен";c.publish(onlineTopic(),onlinePayload(true),true,0);main.post(()->{updateForeground();emit();});}
             catch(Exception e){c.close();mqttConnecting=false;mqttState="MQTT ошибка: "+safe(e);main.post(()->{emit();scheduleMqttReconnect();});}
         },"HomeSmoke-MQTT-connect").start();
     }
     private void scheduleMqttReconnect(){if(!mqttWanted)return;main.removeCallbacks(mqttReconnect);main.postDelayed(mqttReconnect,mqttBackoffSec*1000L);mqttBackoffSec=Math.min(60,mqttBackoffSec*2);}
 
     private void handleMqttMessage(String topic,String payload){
-        if(!commandTopic().equals(topic))return;try{JSONObject o=new JSONObject(payload);String cmd=o.optString("cmd","");String requestId=o.optString("id","legacy-"+System.currentTimeMillis());long ts=o.optLong("ts",System.currentTimeMillis());if(Math.abs(System.currentTimeMillis()-ts)>COMMAND_MAX_AGE_MS){publishAck(requestId,cmd,false,"stale_command",Double.NaN);return;}
-            if("set_temp".equals(cmd)){double v=o.getDouble("value");if(!ProtocolRules.isPercentOrChamberSetpoint(v)){publishAck(requestId,cmd,false,"integer_setpoint_0_100_required",v);return;}if(isAutoRunning()){publishAck(requestId,cmd,false,"android_auto_running",v);return;}if(!isBluetoothConnected()){publishAck(requestId,cmd,false,"bluetooth_not_connected",v);return;}if(latest==null||latest.mode!=1){publishAck(requestId,cmd,false,"pid_mode_required",v);return;}if(sendRaw("k"+integer(v))){ackManager.track(requestId,v,SystemClock.elapsedRealtime());publishAck(requestId,cmd,true,"accepted_waiting_controller",v);}else publishAck(requestId,cmd,false,"bluetooth_send_error",v);}
-            else if("stop".equals(cmd)){stopHeating();publishAck(requestId,cmd,true,"stop_sent",Double.NaN);}else publishAck(requestId,cmd,false,"unsupported_command",Double.NaN);
+        if(!commandTopic().equals(topic))return;
+        try{
+            JSONObject o=new JSONObject(payload);String cmd=o.optString("cmd","");String requestId=o.optString("id","legacy-"+System.currentTimeMillis());long ts=o.optLong("ts",System.currentTimeMillis());
+            if(Math.abs(System.currentTimeMillis()-ts)>COMMAND_MAX_AGE_MS){publishAck(requestId,cmd,false,"stale_command",Double.NaN);return;}
+            if("set_temp".equals(cmd)){
+                double v=o.getDouble("value");if(!ProtocolRules.isPercentOrChamberSetpoint(v)){publishAck(requestId,cmd,false,"integer_setpoint_0_100_required",v);return;}
+                if(isAutoRunning()){publishAck(requestId,cmd,false,"android_auto_running",v);return;}if(!isBluetoothConnected()){publishAck(requestId,cmd,false,"bluetooth_not_connected",v);return;}if(latest==null||latest.mode!=1){publishAck(requestId,cmd,false,"pid_mode_required",v);return;}
+                if(sendRaw("k"+integer(v))){ackManager.track(requestId,v,SystemClock.elapsedRealtime());publishAck(requestId,cmd,true,"accepted_waiting_controller",v);}else publishAck(requestId,cmd,false,"bluetooth_send_error",v);
+            }else if("stop".equals(cmd)){stopHeating();publishAck(requestId,cmd,true,"stop_sent",Double.NaN);}else publishAck(requestId,cmd,false,"unsupported_command",Double.NaN);
         }catch(Exception e){publishAck("unknown","unknown",false,"bad_command",Double.NaN);}
     }
 
     private void readLoop(InputStream in)throws IOException{byte[] b=new byte[512];while(!Thread.currentThread().isInterrupted()){int n=in.read(b);if(n<0)throw new EOFException();if(n==0)continue;synchronized(rx){rx.append(new String(b,0,n,StandardCharsets.UTF_8));extractFrames();}}}
     private void extractFrames(){while(true){int end=rx.indexOf("end");if(end<0){if(rx.length()>8192)rx.delete(0,rx.length()-4096);return;}String frame=rx.substring(0,end+3);rx.delete(0,end+3);while(rx.length()>0&&(rx.charAt(0)=='\r'||rx.charAt(0)=='\n'))rx.deleteCharAt(0);processFrame(frame);}}
     private void processFrame(String frame){
-        try{Telemetry t=TelemetryParser.parse(frame,System.currentTimeMillis());latest=t;lastError="";long now=SystemClock.elapsedRealtime();ackManager.onTelemetry(t,now,this::publishCommandAck);
-            if(autoEngine.getState()==AutoEngine.State.RUNNING){int oldStage=autoEngine.getStageIndex();AutoEngine.Update u=autoEngine.onTelemetry(t,now);autoStatus=u.message;if(!u.commands.isEmpty())sendCommands(u.commands);if(autoEngine.getStageIndex()!=oldStage&&autoEngine.getState()==AutoEngine.State.RUNNING)history.event("STAGE",autoEngine.getStageIndex()+1,u.message);history.telemetry(t,autoEngine.getStageIndex()+1,autoStatus);if(autoEngine.getState()!=AutoEngine.State.RUNNING){main.removeCallbacks(heartbeat);history.finish(autoStatus);leaveForeground();maybeStopSelf();}}
+        try{
+            Telemetry t=TelemetryParser.parse(frame,System.currentTimeMillis());latest=t;lastError="";long now=SystemClock.elapsedRealtime();ackManager.onTelemetry(t,now,this::publishCommandAck);
+            if(autoEngine.getState()==AutoEngine.State.RUNNING){int oldStage=autoEngine.getStageIndex();AutoEngine.Update u=autoEngine.onTelemetry(t,now);autoStatus=u.message;if(!u.commands.isEmpty())sendCommands(u.commands);if(autoEngine.getStageIndex()!=oldStage&&autoEngine.getState()==AutoEngine.State.RUNNING)history.event("STAGE",autoEngine.getStageIndex()+1,u.message);history.telemetry(t,autoEngine.getStageIndex()+1,autoStatus);if(autoEngine.getState()!=AutoEngine.State.RUNNING){main.removeCallbacks(heartbeat);history.finish(autoStatus);updateForeground();maybeStopSelf();}}
             publishTelemetry(t);main.post(this::emit);
         }catch(Exception e){lastError="Пакет Arduino: "+safe(e);main.post(this::emit);}
     }
@@ -159,15 +175,20 @@ public class HomeSmokeService extends Service {
     private void publishCommandAck(String requestId,double value,boolean ok,String reason){publishAck(requestId,"set_temp",ok,reason,value);}
     private void publishAck(String id,String cmd,boolean ok,String state,double value){MqttClient m=mqtt;if(m==null||!m.isConnected())return;try{JSONObject o=new JSONObject();o.put("v",2);o.put("id",id);o.put("device_id",deviceId());o.put("ts",System.currentTimeMillis());o.put("cmd",cmd);o.put("ok",ok);o.put("state",state);o.put("message",state);if(!Double.isNaN(value))o.put("value",value);m.publish(ackTopic(),o.toString(),false,0);}catch(Exception ignored){}}
 
-    private void abortAuto(String reason){main.removeCallbacks(heartbeat);AutoEngine.Update u=autoEngine.stop(reason);sendCommands(u.commands);autoStatus=reason;history.finish(reason);leaveForeground();main.post(()->{emit();maybeStopSelf();});}
+    private void abortAuto(String reason){main.removeCallbacks(heartbeat);AutoEngine.Update u=autoEngine.stop(reason);sendCommands(u.commands);autoStatus=reason;history.finish(reason);updateForeground();main.post(()->{emit();maybeStopSelf();});}
     private void closeBluetooth(boolean update){closeBluetoothInternal();bluetoothName="";ackManager.failAll("bluetooth_disconnected",this::publishCommandAck);if(update)emit();}
     private void closeBluetoothInternal(){BluetoothSocket s=btSocket;btSocket=null;if(s!=null)try{s.close();}catch(Exception ignored){}Thread t=btThread;btThread=null;if(t!=null&&t!=Thread.currentThread())t.interrupt();}
 
-    private void enterForeground(){if(Build.VERSION.SDK_INT>=26){NotificationChannel c=new NotificationChannel(CHANNEL,"HomeSmoke Auto",NotificationManager.IMPORTANCE_LOW);((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(c);}startForeground(NOTIFY_ID,buildNotification());}
-    private Notification buildNotification(){Intent i=new Intent(this,MainActivity.class);PendingIntent pi=PendingIntent.getActivity(this,0,i,Build.VERSION.SDK_INT>=23?PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT:PendingIntent.FLAG_UPDATE_CURRENT);Notification.Builder b=Build.VERSION.SDK_INT>=26?new Notification.Builder(this,CHANNEL):new Notification.Builder(this);b.setSmallIcon(android.R.drawable.ic_lock_idle_alarm).setContentTitle("HomeSmoke Auto").setContentText(autoStatus).setOngoing(true).setContentIntent(pi);return b.build();}
-    private void refreshNotification(){if(isAutoRunning())((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(NOTIFY_ID,buildNotification());}
-    private void leaveForeground(){if(Build.VERSION.SDK_INT>=24)stopForeground(STOP_FOREGROUND_REMOVE);else stopForeground(true);}
-    private void maybeStopSelf(){if(!hasClient&&!isAutoRunning()&&!mqttWanted)stopSelf();}
+    private void updateForeground(){
+        boolean need=isBluetoothConnected()||isAutoRunning();
+        if(need){if(!foreground)enterForeground();else refreshNotification();}
+        else if(foreground)leaveForeground();
+    }
+    private void enterForeground(){if(Build.VERSION.SDK_INT>=26){NotificationChannel c=new NotificationChannel(CHANNEL,"HomeSmoke управление",NotificationManager.IMPORTANCE_LOW);((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).createNotificationChannel(c);}startForeground(NOTIFY_ID,buildNotification());foreground=true;}
+    private Notification buildNotification(){Intent i=new Intent(this,MainActivity.class);PendingIntent pi=PendingIntent.getActivity(this,0,i,Build.VERSION.SDK_INT>=23?PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT:PendingIntent.FLAG_UPDATE_CURRENT);Notification.Builder b=Build.VERSION.SDK_INT>=26?new Notification.Builder(this,CHANNEL):new Notification.Builder(this);String text=isAutoRunning()?autoStatus:(isBluetoothConnected()?"Bluetooth: "+(bluetoothName.isEmpty()?"подключён":bluetoothName):mqttState);b.setSmallIcon(android.R.drawable.ic_lock_idle_alarm).setContentTitle("HomeSmoke").setContentText(text).setOngoing(true).setContentIntent(pi);return b.build();}
+    private void refreshNotification(){if(foreground)((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(NOTIFY_ID,buildNotification());}
+    private void leaveForeground(){if(Build.VERSION.SDK_INT>=24)stopForeground(STOP_FOREGROUND_REMOVE);else stopForeground(true);foreground=false;}
+    private void maybeStopSelf(){if(!hasClient&&!isAutoRunning()&&!mqttWanted&&!isBluetoothConnected())stopSelf();}
 
     private State snapshot(){return new State(isBluetoothConnected(),isMqttConnected(),bluetoothName,mqttState,autoStatus,lastError,latest,autoEngine.getState(),autoEngine.getStageIndex(),autoEngine.getAccumulatedHoldMs(),autoEngine.isChamberReady());}
     private void emit(){refreshNotification();Listener l=listener;if(l!=null)l.onState(snapshot());}
