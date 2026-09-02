@@ -310,7 +310,7 @@ public class MainActivity extends Activity {
 
         LinearLayout intro=card();
         intro.addView(sectionTitle("MQTT подключение"));
-        TextView versionText=text("HomeSmoke Remote 2.0.5 · Android 5+",13,false,MUTED);
+        TextView versionText=text("HomeSmoke Remote 2.0.6 · Android 5+",13,false,MUTED);
         versionText.setPadding(0,dp(3),0,0);
         intro.addView(versionText);
         p.addView(intro,margin(8,10,8,5));
@@ -557,7 +557,7 @@ public class MainActivity extends Activity {
         deviceBadge.setTextColor(Color.WHITE);
         deviceBadge.setBackground(round(color,14));
         deviceDot.setTextColor(color);
-        deviceState.setText(online?"Онлайн":(lastTelemetryAt>0?"Устарели":"Нет данных"));
+        deviceState.setText(online?"Онлайн":(lastTelemetryAt>0?"Данные устарели":"Нет данных"));
         deviceState.setTextColor(online?GREEN:(lastTelemetryAt>0?RED:MUTED));
         deviceDetail.setText(txt==null?"":txt);
         setButton.setEnabled(online);
@@ -573,7 +573,7 @@ public class MainActivity extends Activity {
         boolean mq=mqtt!=null&&mqtt.isConnected();
         boolean online=isTelemetryFresh();
         if(mq&&online){systemState.setText("ГОТОВО");systemState.setBackground(round(GREEN,12));}
-        else if(mq&&lastTelemetryAt>0){systemState.setText("УСТАРЕЛИ");systemState.setBackground(round(ORANGE,12));}
+        else if(mq&&lastTelemetryAt>0){systemState.setText("СТАРЫЕ ДАННЫЕ");systemState.setBackground(round(ORANGE,12));}
         else if(mq){systemState.setText("НЕТ ДАННЫХ");systemState.setBackground(round(ORANGE,12));}
         else{systemState.setText("ОФЛАЙН");systemState.setBackground(round(OFF,12));}
     }
@@ -612,6 +612,7 @@ public class MainActivity extends Activity {
             else deltaToTarget.setText("Выше уставки "+oneDecimal(-d)+" °C");
         }
 
+        if(!isTelemetryFresh()){tempTrend.setText("Тренд недоступен · нет свежих данных");return;}
         if(tempSamples.size()<2){tempTrend.setText("Тренд накапливается");return;}
         TempSample newest=tempSamples.get(tempSamples.size()-1);
         TempSample base=null;
@@ -639,9 +640,13 @@ public class MainActivity extends Activity {
     private void updateLastDataCaption(){
         if(lastUpdate==null)return;
         if(lastTelemetryAt<=0){lastUpdate.setText("Данных ещё нет");return;}
-        String time=new SimpleDateFormat("dd.MM · HH:mm:ss",Locale.getDefault()).format(new Date(lastTelemetryAt));
-        if(isTelemetryFresh())lastUpdate.setText("Обновлено сейчас · "+time);
-        else lastUpdate.setText("Последние данные · "+relativeAge(lastTelemetryAt)+" · "+time);
+        if(isTelemetryFresh()){
+            String time=new SimpleDateFormat("HH:mm:ss",Locale.getDefault()).format(new Date(lastTelemetryAt));
+            lastUpdate.setText("Обновлено сейчас · "+time);
+        }else{
+            String time=new SimpleDateFormat("dd.MM HH:mm",Locale.getDefault()).format(new Date(lastTelemetryAt));
+            lastUpdate.setText("Последние данные: "+time+" · "+relativeAge(lastTelemetryAt));
+        }
     }
 
     private boolean isTelemetryFresh(){return isFreshAt(lastTelemetryAt);}
@@ -719,7 +724,7 @@ public class MainActivity extends Activity {
     private void showSettings(){
         setPage(settingsPage);
         title.setText("Настройки MQTT");
-        subtitle.setText("HomeSmoke Remote 2.0.5");
+        subtitle.setText("HomeSmoke Remote 2.0.6");
         back.setVisibility(View.VISIBLE);
         settings.setVisibility(View.GONE);
     }
@@ -931,8 +936,8 @@ public class MainActivity extends Activity {
     private int dp(int v){return Math.round(v*getResources().getDisplayMetrics().density);}
     private static String s(EditText e){return e.getText().toString().trim();}
     private static String topic(String s,String d){s=s==null?"":s.trim();return s.isEmpty()?d:s;}
-    private static String deg(String s){return (s==null||s.trim().isEmpty()?"—":s.trim())+" °C";}
-    private static String modeName(String m){if("0".equals(m))return "Ручной";if("1".equals(m))return "PID";if("2".equals(m))return "AUTO";if("3".equals(m))return "STOP";return m;}
+    private static String deg(String s){String v=s==null?"":s.trim();return Double.isNaN(parseNumber(v))?"— °C":v+" °C";}
+    private static String modeName(String m){if("0".equals(m))return "Ручной";if("1".equals(m))return "PID";if("2".equals(m))return "AUTO";if("3".equals(m))return "STOP";return "—";}
     private static String translateState(String s){if("pid_mode_required".equals(s))return "сначала включите PID режим";if("android_auto_running".equals(s))return "уставкой управляет Auto";if("bluetooth_not_connected".equals(s))return "Bluetooth коптильни отключён";if("controller_ack_timeout".equals(s))return "Arduino не подтвердила уставку";if("stale_command".equals(s))return "команда устарела";return s;}
     private static String safe(Exception e){return e.getMessage()==null?e.getClass().getSimpleName():e.getMessage();}
     private static double parseNumber(String s){try{return Double.parseDouble(s==null?"":s.trim().replace(',','.'));}catch(Exception e){return Double.NaN;}}
