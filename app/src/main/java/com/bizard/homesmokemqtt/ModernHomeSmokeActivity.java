@@ -6,8 +6,8 @@ import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.RippleDrawable;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
@@ -18,15 +18,15 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Set;
 import java.util.WeakHashMap;
 
 /**
  * Modern presentation layer for HomeSmoke 2.6.
  *
- * The existing MainActivity remains the single source of behaviour: Bluetooth, MQTT,
- * PID commands, Auto programs and protocol interaction are untouched. This class only
- * normalizes visual styling after each programmatic screen is built.
+ * MainActivity remains the source of behaviour. This class changes presentation only:
+ * no Bluetooth/MQTT/PID/Auto/protocol behaviour is modified here.
  */
 public class ModernHomeSmokeActivity extends MainActivity {
     private static final int OLD_BLUE = Color.rgb(11, 103, 178);
@@ -50,6 +50,8 @@ public class ModernHomeSmokeActivity extends MainActivity {
     private static final int SUCCESS = Color.rgb(22, 163, 74);
     private static final int WARNING = Color.rgb(245, 158, 11);
     private static final int DANGER = Color.rgb(220, 38, 38);
+    private static final int DANGER_SOFT = Color.rgb(254, 242, 242);
+    private static final int NEUTRAL_SOFT = Color.rgb(241, 245, 249);
 
     private final Set<View> styled = Collections.newSetFromMap(new WeakHashMap<>());
     private ViewTreeObserver.OnGlobalLayoutListener layoutListener;
@@ -119,12 +121,50 @@ public class ModernHomeSmokeActivity extends MainActivity {
             }
         }
 
+        if (isPidEditorCard(layout)) {
+            compactPidEditorCard(layout);
+        }
+
         if (bg instanceof GradientDrawable && layout.getElevation() > 0f && layout.getElevation() <= dp(3)) {
             layout.setBackground(cardDrawable());
             layout.setElevation(dp(1));
             int horizontal = Math.max(layout.getPaddingLeft(), dp(14));
-            layout.setPadding(horizontal, dp(12), horizontal, dp(12));
+            layout.setPadding(horizontal, dp(10), horizontal, dp(10));
         }
+    }
+
+    private boolean isPidEditorCard(LinearLayout layout) {
+        if (layout.getChildCount() < 4) return false;
+        View first = layout.getChildAt(0);
+        if (!(first instanceof TextView)) return false;
+        String label = ((TextView) first).getText() == null ? "" : ((TextView) first).getText().toString().trim();
+        return label.equals("kP") || label.equals("kI") || label.equals("kD") || label.equals("zP");
+    }
+
+    private void compactPidEditorCard(LinearLayout layout) {
+        layout.setOrientation(LinearLayout.HORIZONTAL);
+        layout.setGravity(Gravity.CENTER_VERTICAL);
+        layout.setPadding(dp(12), dp(9), dp(12), dp(9));
+
+        TextView label = (TextView) layout.getChildAt(0);
+        label.setTextSize(16);
+        label.setGravity(Gravity.CENTER_VERTICAL);
+        label.setLayoutParams(new LinearLayout.LayoutParams(dp(46), dp(44)));
+
+        View valueCaption = layout.getChildAt(1);
+        valueCaption.setVisibility(View.GONE);
+
+        View value = layout.getChildAt(2);
+        LinearLayout.LayoutParams vp = new LinearLayout.LayoutParams(0, dp(44), 1f);
+        vp.setMargins(dp(4), 0, dp(8), 0);
+        value.setLayoutParams(vp);
+
+        View action = layout.getChildAt(3);
+        if (action instanceof Button) {
+            ((Button) action).setText("Применить");
+            ((Button) action).setTextSize(12);
+        }
+        action.setLayoutParams(new LinearLayout.LayoutParams(dp(104), dp(44)));
     }
 
     private void styleText(TextView text) {
@@ -137,8 +177,8 @@ public class ModernHomeSmokeActivity extends MainActivity {
         else if (color == OLD_ORANGE) text.setTextColor(WARNING);
 
         String value = text.getText() == null ? "" : text.getText().toString();
-        if ("HomeSmoke 2.6.2".equals(value)) {
-            text.setText("HomeSmoke 2.6.3");
+        if ("HomeSmoke 2.6.2".equals(value) || "HomeSmoke 2.6.3".equals(value)) {
+            text.setText("HomeSmoke 2.6.4");
             text.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         } else if ("История Auto пока пуста".equals(value)) {
             text.setText("История пока пуста\nПосле запуска Auto-программы здесь появятся записи и графики температуры.");
@@ -155,10 +195,15 @@ public class ModernHomeSmokeActivity extends MainActivity {
             ViewGroup.LayoutParams raw = text.getLayoutParams();
             if (raw instanceof ViewGroup.MarginLayoutParams) {
                 ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) raw;
-                lp.topMargin = dp(8);
-                lp.bottomMargin = dp(3);
+                lp.topMargin = dp(5);
+                lp.bottomMargin = dp(2);
                 text.setLayoutParams(lp);
             }
+        }
+
+        if (value.startsWith("Bluetooth:") || value.startsWith("MQTT:") || value.startsWith("Auto:") || value.startsWith("Камера стабилизирована:")) {
+            text.setTextSize(14);
+            text.setPadding(0, dp(2), 0, dp(2));
         }
     }
 
@@ -169,22 +214,24 @@ public class ModernHomeSmokeActivity extends MainActivity {
         field.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
         field.setBackground(fieldDrawable());
         field.setPadding(dp(12), 0, dp(12), 0);
-        field.setMinHeight(dp(48));
+        field.setMinHeight(dp(44));
 
         ViewGroup.LayoutParams lp = field.getLayoutParams();
-        if (lp != null && lp.height > dp(48)) {
-            lp.height = dp(48);
+        if (lp != null && lp.height > dp(44)) {
+            lp.height = dp(44);
             field.setLayoutParams(lp);
         }
     }
 
     private void styleCheckBox(CheckBox box) {
-        box.setBackgroundColor(Color.TRANSPARENT);
+        box.setBackground(new ColorDrawable(Color.TRANSPARENT));
+        box.setBackgroundTintList(ColorStateList.valueOf(Color.TRANSPARENT));
+        box.setElevation(0f);
         box.setTextColor(TEXT);
         box.setTextSize(14);
         box.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        box.setPadding(0, dp(4), dp(4), dp(4));
-        box.setMinHeight(dp(44));
+        box.setPadding(0, dp(3), dp(4), dp(3));
+        box.setMinHeight(dp(40));
         box.setButtonTintList(new ColorStateList(
                 new int[][]{
                         new int[]{android.R.attr.state_checked},
@@ -195,58 +242,76 @@ public class ModernHomeSmokeActivity extends MainActivity {
 
     private void styleButton(Button button) {
         button.setAllCaps(false);
-        button.setBackgroundTintList(null);
         button.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         button.setTextSize(14);
-        button.setMinHeight(dp(46));
+        button.setMinHeight(dp(44));
         button.setPadding(dp(12), 0, dp(12), 0);
 
         String label = button.getText() == null ? "" : button.getText().toString().trim();
+        String upper = label.toUpperCase(Locale.ROOT);
 
-        if (label.startsWith("STOP")) {
+        if (label.equals("Программы")) {
+            button.setText("AUTO");
+            label = "AUTO";
+            upper = "AUTO";
+        } else if (label.equals("Auto")) {
+            button.setText("AUTO");
+            label = "AUTO";
+            upper = "AUTO";
+        }
+
+        if (upper.contains("STOP") && !upper.contains("ПОСЛЕ ЭТАПА")) {
             button.setTextColor(Color.WHITE);
             button.setTextSize(16);
-            button.setMinHeight(dp(54));
-            button.setBackground(rippleSolid(DANGER, 15));
+            button.setMinHeight(dp(52));
+            solidButton(button, DANGER, 15);
             return;
         }
 
-        if (label.equals("Ручной") || label.equals("PID") || label.equals("Auto") || label.equals("Программы")) {
-            button.setTextSize(label.equals("Программы") ? 12 : 13);
-            button.setMinHeight(dp(44));
+        if (label.equals("Ручной") || label.equals("PID") || label.equals("AUTO")) {
+            if (label.equals("Ручной")) button.setText("РУЧНОЙ");
+            button.setTextSize(12);
+            button.setMinHeight(dp(42));
+            button.setSingleLine(true);
+            button.setGravity(Gravity.CENTER);
             return;
         }
 
         if (label.equals("Запустить")) {
-            solidButton(button, SUCCESS);
+            solidButton(button, SUCCESS, 13);
         } else if (label.equals("Копия")) {
-            outlineButton(button, WARNING, WARNING);
+            softButton(button, Color.rgb(255, 247, 237), Color.rgb(194, 65, 12), 13);
         } else if (label.equals("Изменить") || label.startsWith("Экспорт") || label.startsWith("Импорт")) {
-            outlineButton(button, PRIMARY, PRIMARY);
-        } else if (label.contains("Удалить") || label.contains("Остановить программу")) {
-            outlineButton(button, DANGER, DANGER);
+            softButton(button, Color.rgb(239, 246, 255), PRIMARY_DARK, 13);
+        } else if (label.contains("Удалить")) {
+            softButton(button, DANGER_SOFT, DANGER, 13);
+        } else if (label.contains("Остановить программу")) {
+            solidButton(button, DANGER, 13);
         } else if (label.startsWith("Отключить")) {
-            outlineButton(button, Color.rgb(203, 213, 225), MUTED);
-        } else if (button.getCurrentTextColor() == Color.WHITE
-                || label.startsWith("Задать")
+            softButton(button, NEUTRAL_SOFT, MUTED, 13);
+        } else if (label.startsWith("Задать")
                 || label.startsWith("Выбрать")
                 || label.startsWith("Применить")
                 || label.startsWith("Сохранить")
                 || label.startsWith("+ Новая")) {
-            solidButton(button, PRIMARY);
+            solidButton(button, PRIMARY, 13);
         } else {
-            outlineButton(button, BORDER, TEXT);
+            softButton(button, NEUTRAL_SOFT, TEXT, 13);
         }
     }
 
-    private void solidButton(Button button, int color) {
+    private void solidButton(Button button, int color, int radiusDp) {
         button.setTextColor(Color.WHITE);
-        button.setBackground(rippleSolid(color, 14));
+        button.setBackground(round(color, radiusDp));
+        button.setBackgroundTintList(ColorStateList.valueOf(color));
+        button.setElevation(dp(1));
     }
 
-    private void outlineButton(Button button, int stroke, int textColor) {
+    private void softButton(Button button, int fill, int textColor, int radiusDp) {
         button.setTextColor(textColor);
-        button.setBackground(rippleOutline(SURFACE, stroke, 14));
+        button.setBackground(round(fill, radiusDp));
+        button.setBackgroundTintList(ColorStateList.valueOf(fill));
+        button.setElevation(0f);
     }
 
     private Drawable cardDrawable() {
@@ -260,30 +325,16 @@ public class ModernHomeSmokeActivity extends MainActivity {
     private Drawable fieldDrawable() {
         GradientDrawable shape = new GradientDrawable();
         shape.setColor(SURFACE_ALT);
-        shape.setCornerRadius(dp(13));
+        shape.setCornerRadius(dp(12));
         shape.setStroke(dp(1), BORDER);
         return shape;
     }
 
-    private Drawable rippleSolid(int color, int radiusDp) {
-        GradientDrawable shape = new GradientDrawable();
-        shape.setColor(color);
-        shape.setCornerRadius(dp(radiusDp));
-        return new RippleDrawable(
-                ColorStateList.valueOf(withAlpha(Color.WHITE, 42)),
-                shape,
-                null);
-    }
-
-    private Drawable rippleOutline(int fill, int stroke, int radiusDp) {
+    private Drawable round(int fill, int radiusDp) {
         GradientDrawable shape = new GradientDrawable();
         shape.setColor(fill);
         shape.setCornerRadius(dp(radiusDp));
-        shape.setStroke(dp(1), stroke);
-        return new RippleDrawable(
-                ColorStateList.valueOf(withAlpha(PRIMARY, 26)),
-                shape,
-                null);
+        return shape;
     }
 
     private boolean isFieldLabel(String value) {
@@ -307,9 +358,5 @@ public class ModernHomeSmokeActivity extends MainActivity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
-    }
-
-    private static int withAlpha(int color, int alpha) {
-        return Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color));
     }
 }
