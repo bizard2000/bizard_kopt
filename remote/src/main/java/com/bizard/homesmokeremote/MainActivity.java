@@ -1,6 +1,7 @@
 package com.bizard.homesmokeremote;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -23,350 +24,96 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONObject;
-
-import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.UUID;
 
+/** HomeSmoke Remote 2.0 — MQTT-only monitor/control with correlated controller ACK. */
 public class MainActivity extends Activity {
-    private static final int BLUE = Color.rgb(7,92,170);
-    private static final int BG = Color.rgb(232,232,232);
-    private static final int GREEN = Color.rgb(38,145,70);
-    private static final int RED = Color.rgb(170,50,50);
+    private static final int BLUE=Color.rgb(7,92,170),BG=Color.rgb(239,241,244),GREEN=Color.rgb(35,145,70),RED=Color.rgb(180,45,45),ORANGE=Color.rgb(220,125,20);
+    private static final long STALE_MS=10000L;
 
     private SharedPreferences prefs;
+    private SecretStore secrets;
     private MqttClient mqtt;
-    private volatile boolean connecting;
-    private volatile boolean wantConnection;
+    private volatile boolean connecting,wantConnection;
+    private long lastTelemetryAt=0;
+    private String deviceId="—",pendingId="";
 
-    private LinearLayout pageHost, monitorPage, settingsPage;
-    private TextView title, mqttDot, mqttState;
-    private Button backButton, settingsButton, setTempButton;
+    private LinearLayout host,monitorPage,settingsPage;
+    private TextView title,brokerDot,deviceDot,brokerState,deviceState,camera,k,t,setpoint,power,mode,lastCommand,autoProgram,autoStage,autoStatus,lastUpdate,commandState;
+    private Button back,settings,setButton,stopButton;
+    private EditText setInput,broker,port,statusTopic,commandTopic,ackTopic,user,pass;
+    private CheckBox tls,autoConnect;
+    private final Handler handler=new Handler(Looper.getMainLooper());
 
-    private TextView cameraValue, probeKValue, probeTValue, setpointValue;
-    private TextView productSetpointValue, heaterValue, modeValue, statusValue;
-    private TextView lastUpdate, ackState;
-    private EditText setpointInput;
+    private final Runnable health=new Runnable(){@Override public void run(){
+        boolean mq=mqtt!=null&&mqtt.isConnected();
+        setBrokerUi(mq,mq?"MQTT брокер подключён":(connecting?"MQTT: подключение…":"MQTT отключён"));
+        boolean fresh=lastTelemetryAt>0&&System.currentTimeMillis()-lastTelemetryAt<=STALE_MS;
+        setDeviceUi(fresh,fresh?"Коптильня онлайн · "+deviceId:(lastTelemetryAt==0?"Данные от коптильни не получены":"Коптильня не отвечает >10 сек"));
+        if(wantConnection&&!mq&&!connecting&&!broker.getText().toString().trim().isEmpty())connectMqtt(false);
+        handler.postDelayed(this,3000);
+    }};
 
-    private EditText broker, port, statusTopic, commandTopic, ackTopic, user, pass;
-    private CheckBox tls, autoConnect;
-    private TextView settingsState;
+    @Override protected void onCreate(Bundle b){super.onCreate(b);prefs=getSharedPreferences("homesmoke_remote",MODE_PRIVATE);secrets=new SecretStore(this);View root=buildRoot();setContentView(root);applyInsets(root);loadSettings();showMonitor();wantConnection=autoConnect.isChecked()&&!broker.getText().toString().trim().isEmpty();if(wantConnection)connectMqtt(false);handler.postDelayed(health,1500);}
+    @Override protected void onDestroy(){saveSettings();wantConnection=false;handler.removeCallbacks(health);disconnectInternal(false);super.onDestroy();}
 
-    private final Handler handler = new Handler(Looper.getMainLooper());
-    private final Runnable healthTask = new Runnable() {
-        @Override public void run() {
-            boolean connected = mqtt != null && mqtt.isConnected();
-            setConnectionUi(connected, connected ? "MQTT подключен" : (connecting ? "MQTT: подключение…" : "MQTT отключен"));
-            if(wantConnection && !connected && !connecting && broker != null && !broker.getText().toString().trim().isEmpty()) {
-                connectMqtt(false);
-            }
-            handler.postDelayed(this, 5000);
-        }
-    };
+    private View buildRoot(){LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(BG);root.addView(buildBar(),new LinearLayout.LayoutParams(-1,dp(56)));host=new LinearLayout(this);host.setOrientation(LinearLayout.VERTICAL);root.addView(host,new LinearLayout.LayoutParams(-1,0,1));monitorPage=buildMonitor();settingsPage=buildSettings();return root;}
+    private View buildBar(){LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(8),0,dp(8),0);bar.setBackgroundColor(BLUE);back=button("←");back.setTextSize(28);back.setVisibility(View.GONE);back.setTextColor(Color.WHITE);back.setOnClickListener(v->showMonitor());bar.addView(back,new LinearLayout.LayoutParams(dp(46),dp(44)));title=text("HomeSmoke Remote",19,true);title.setTextColor(Color.WHITE);bar.addView(title,new LinearLayout.LayoutParams(0,-1,1));brokerDot=dot();deviceDot=dot();bar.addView(brokerDot);bar.addView(deviceDot);settings=button("⚙");settings.setTextSize(23);settings.setTextColor(Color.WHITE);settings.setOnClickListener(v->showSettings());bar.addView(settings,new LinearLayout.LayoutParams(dp(48),dp(44)));return bar;}
 
-    @Override protected void onCreate(Bundle state) {
-        super.onCreate(state);
-        prefs = getSharedPreferences("homesmoke_remote", MODE_PRIVATE);
-        View root = buildRoot();
-        setContentView(root);
-        applySystemInsets(root);
-        loadSettings();
-        showMonitor();
-        wantConnection = autoConnect.isChecked() && !broker.getText().toString().trim().isEmpty();
-        if(wantConnection) connectMqtt(false);
-        handler.postDelayed(healthTask, 3000);
-    }
+    private LinearLayout buildMonitor(){LinearLayout p=page();LinearLayout healthCard=card();brokerState=text("MQTT отключён",14,true);deviceState=text("Данные от коптильни не получены",14,true);healthCard.addView(brokerState);healthCard.addView(deviceState);p.addView(healthCard,margin(8,8,8,5));
+        LinearLayout cam=card();cam.addView(center("ТЕМПЕРАТУРА КАМЕРЫ",14,true));camera=center("— °C",50,true);cam.addView(camera);setpoint=center("Уставка: — °C",16,false);cam.addView(setpoint);p.addView(cam,margin(8,5,8,5));
+        LinearLayout probes=new LinearLayout(this);LinearLayout kc=card();kc.addView(center("Щуп K",15,false));k=center("— °C",28,true);kc.addView(k);LinearLayout tc=card();tc.addView(center("Щуп T",15,false));t=center("— °C",28,true);tc.addView(t);probes.addView(kc,half(8,4));probes.addView(tc,half(4,8));p.addView(probes);
+        LinearLayout info=card();power=info(info,"Мощность ТЭНа","— %");mode=info(info,"Режим Arduino","—");lastCommand=info(info,"Последняя команда","—");p.addView(info,margin(8,5,8,5));
+        LinearLayout ac=card();ac.addView(text("AUTO",14,true));autoProgram=info(ac,"Программа","—");autoStage=info(ac,"Этап","—");autoStatus=text("Auto выключено",14,false);autoStatus.setPadding(0,dp(7),0,0);ac.addView(autoStatus);p.addView(ac,margin(8,5,8,5));
+        LinearLayout ctrl=card();ctrl.addView(text("УПРАВЛЕНИЕ PID",15,true));setInput=edit("Целая температура 0…100 °C",InputType.TYPE_CLASS_NUMBER);ctrl.addView(setInput);setButton=action("Установить температуру",GREEN);setButton.setOnClickListener(v->sendSetpoint());ctrl.addView(setButton,new LinearLayout.LayoutParams(-1,dp(52)));stopButton=action("СТОП / выключить ТЭН",RED);stopButton.setOnClickListener(v->confirmStop());LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-1,dp(52));sp.setMargins(0,dp(8),0,0);ctrl.addView(stopButton,sp);commandState=text("Команды ещё не отправлялись",13,false);commandState.setPadding(0,dp(9),0,0);ctrl.addView(commandState);p.addView(ctrl,margin(8,5,8,5));
+        lastUpdate=center("Данных ещё нет",12,false);p.addView(lastUpdate,margin(8,2,8,16));return p;}
 
-    private View buildRoot() {
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(BG);
-        root.addView(buildActionBar(), new LinearLayout.LayoutParams(-1, dp(56)));
-        pageHost = new LinearLayout(this);
-        pageHost.setOrientation(LinearLayout.VERTICAL);
-        pageHost.setBackgroundColor(BG);
-        root.addView(pageHost, new LinearLayout.LayoutParams(-1,0,1));
-        monitorPage = buildMonitor();
-        settingsPage = buildSettings();
-        return root;
-    }
+    private LinearLayout buildSettings(){LinearLayout p=page();p.addView(center("Настройки MQTT",22,true));broker=edit("Broker / IP",InputType.TYPE_CLASS_TEXT);port=edit("Port",InputType.TYPE_CLASS_NUMBER);statusTopic=edit("Status topic",InputType.TYPE_CLASS_TEXT);commandTopic=edit("Command topic",InputType.TYPE_CLASS_TEXT);ackTopic=edit("ACK topic",InputType.TYPE_CLASS_TEXT);user=edit("Логин",InputType.TYPE_CLASS_TEXT);pass=edit("Пароль",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);p.addView(broker);p.addView(port);p.addView(statusTopic);p.addView(commandTopic);p.addView(ackTopic);p.addView(user);p.addView(pass);tls=check("TLS");autoConnect=check("Автоподключение и переподключение");p.addView(tls);p.addView(autoConnect);Button c=action("Сохранить и подключить",GREEN);c.setOnClickListener(v->{saveSettings();wantConnection=true;connectMqtt(true);});p.addView(c,margin(8,8,8,4));Button d=button("Отключить MQTT");d.setOnClickListener(v->{wantConnection=false;disconnectInternal(true);});p.addView(d,margin(8,2,8,8));String sec=secrets.isEncrypted()?"Пароль MQTT хранится через Android Keystore.":"Android 5.0/5.1: защищённое хранилище этой реализации недоступно; используйте доверенную сеть/VPN.";TextView n=text(sec+" Команда температуры — только целое 0…100 °C, поскольку именно так её принимает текущий контроллер.",12,false);n.setPadding(dp(8),dp(10),dp(8),dp(10));p.addView(n);return p;}
 
-    private View buildActionBar() {
-        LinearLayout bar = new LinearLayout(this);
-        bar.setOrientation(LinearLayout.HORIZONTAL);
-        bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(dp(8),0,dp(8),0);
-        bar.setBackgroundColor(BLUE);
+    private void loadSettings(){broker.setText(prefs.getString("broker",""));port.setText(prefs.getString("port","1883"));statusTopic.setText(prefs.getString("status_topic","homesmoke/status"));commandTopic.setText(prefs.getString("command_topic","homesmoke/cmd"));ackTopic.setText(prefs.getString("ack_topic","homesmoke/ack"));user.setText(prefs.getString("user",""));pass.setText(secrets.get());tls.setChecked(prefs.getBoolean("tls",false));autoConnect.setChecked(prefs.getBoolean("auto",true));}
+    private void saveSettings(){prefs.edit().putString("broker",s(broker)).putString("port",s(port)).putString("status_topic",s(statusTopic)).putString("command_topic",s(commandTopic)).putString("ack_topic",s(ackTopic)).putString("user",user.getText().toString()).putBoolean("tls",tls.isChecked()).putBoolean("auto",autoConnect.isChecked()).apply();try{secrets.put(pass.getText().toString());}catch(Exception e){toast("Не удалось сохранить пароль защищённо");}}
 
-        backButton = button("←");
-        backButton.setTextSize(28);
-        backButton.setVisibility(View.GONE);
-        backButton.setOnClickListener(v -> showMonitor());
-        bar.addView(backButton, new LinearLayout.LayoutParams(dp(48),dp(44)));
+    private void connectMqtt(boolean force){if(connecting)return;saveSettings();String h=s(broker);if(h.isEmpty()){if(force)toast("Укажите MQTT broker");return;}int po;try{po=Integer.parseInt(s(port));}catch(Exception e){if(force)toast("Неверный port");return;}String st=topic(s(statusTopic),"homesmoke/status"),at=topic(s(ackTopic),"homesmoke/ack");disconnectInternal(false);connecting=true;setBrokerUi(false,"MQTT: подключение…");final MqttClient c=new MqttClient(h,po,tls.isChecked(),user.getText().toString(),secrets.get());mqtt=c;c.setMessageListener(this::message);new Thread(()->{try{c.connect();c.subscribe(st);c.subscribe(at);connecting=false;runOnUiThread(()->setBrokerUi(true,"MQTT брокер подключён: "+h+":"+po));}catch(Exception e){c.close();if(mqtt==c)mqtt=null;connecting=false;runOnUiThread(()->setBrokerUi(false,"MQTT ошибка: "+safe(e)));}},"HomeSmokeRemote-connect").start();}
+    private void message(String topic,String payload){String st=prefs.getString("status_topic","homesmoke/status"),at=prefs.getString("ack_topic","homesmoke/ack");if(topic.equals(st))status(payload);else if(topic.equals(at))ack(payload);}
 
-        title = text("HomeSmoke Remote",20,true);
-        title.setTextColor(Color.WHITE);
-        bar.addView(title,new LinearLayout.LayoutParams(0,-1,1));
+    private void status(String payload){try{JSONObject o=new JSONObject(payload);String cam=o.optString("temp_ds","—"),pk=o.optString("temp_tip_k","—"),pt=o.optString("temp_tip_t","—"),sp=o.optString("temp_k","—"),pw=o.optString("heater_power","—"),md=o.optString("mode","—"),lc=o.optString("last_command",o.optString("status","—"));String ap=o.optString("android_auto_program","—"),as=o.optString("android_auto_status","Auto выключено");int stage=o.optInt("android_auto_stage",0);boolean ar=o.optBoolean("android_auto_running",false);String did=o.optString("device_id",deviceId);long ts=o.optLong("ts",System.currentTimeMillis());lastTelemetryAt=System.currentTimeMillis();deviceId=did;runOnUiThread(()->{camera.setText(deg(cam));k.setText(deg(pk));t.setText(deg(pt));setpoint.setText("Уставка: "+deg(sp));power.setText(pw+" %");mode.setText(modeName(md));lastCommand.setText(lc);autoProgram.setText(ar?ap:"—");autoStage.setText(ar&&stage>0?String.valueOf(stage):"—");autoStatus.setText(as);lastUpdate.setText("Последние данные: "+new SimpleDateFormat("HH:mm:ss",Locale.getDefault()).format(new Date(ts)));setDeviceUi(true,"Коптильня онлайн · "+did);});}catch(Exception ignored){}}
+    private void ack(String payload){try{JSONObject o=new JSONObject(payload);String id=o.optString("id","");boolean ok=o.optBoolean("ok",false);String state=o.optString("state",o.optString("message",""));String value=o.has("value")?o.optString("value",""):"";runOnUiThread(()->{if(!pendingId.isEmpty()&&!id.isEmpty()&&!pendingId.equals(id))return;if("accepted_waiting_controller".equals(state)){commandState.setText("Команда принята HomeSmoke, ожидается Arduino…");return;}pendingId="";if(ok&&"applied".equals(state))commandState.setText("✓ Arduino применила уставку "+value+" °C");else if(ok&&"stop_sent".equals(state))commandState.setText("✓ STOP отправлен контроллеру");else commandState.setText("Команда не выполнена: "+translateState(state));});}catch(Exception ignored){}}
 
-        mqttDot = text("●",18,true);
-        mqttDot.setTextColor(RED);
-        mqttDot.setGravity(Gravity.CENTER);
-        bar.addView(mqttDot,new LinearLayout.LayoutParams(dp(30),-1));
+    private void sendSetpoint(){String raw=s(setInput);if(raw.isEmpty()){toast("Введите температуру");return;}double v;try{v=Double.parseDouble(raw.replace(',','.'));}catch(Exception e){toast("Неверное значение");return;}if(v<0||v>100||Math.abs(v-Math.rint(v))>.000001){toast("Нужно целое число 0…100 °C");return;}MqttClient c=mqtt;if(c==null||!c.isConnected()){toast("MQTT не подключён");return;}try{pendingId=UUID.randomUUID().toString();JSONObject o=new JSONObject();o.put("v",2);o.put("id",pendingId);o.put("cmd","set_temp");o.put("value",(int)Math.rint(v));o.put("ts",System.currentTimeMillis());c.publish(topic(s(commandTopic),"homesmoke/cmd"),o.toString(),false);commandState.setText("Команда отправлена, ожидается HomeSmoke…");}catch(Exception e){pendingId="";toast("Ошибка MQTT: "+safe(e));}}
+    private void confirmStop(){new AlertDialog.Builder(this).setTitle("Удалённый СТОП").setMessage("Выключить ТЭН на коптильне?").setPositiveButton("СТОП",(d,w)->sendStop()).setNegativeButton("Отмена",null).show();}
+    private void sendStop(){MqttClient c=mqtt;if(c==null||!c.isConnected()){toast("MQTT не подключён");return;}try{pendingId=UUID.randomUUID().toString();JSONObject o=new JSONObject();o.put("v",2);o.put("id",pendingId);o.put("cmd","stop");o.put("ts",System.currentTimeMillis());c.publish(topic(s(commandTopic),"homesmoke/cmd"),o.toString(),false);commandState.setText("STOP отправлен, ожидается подтверждение…");}catch(Exception e){pendingId="";toast("Ошибка MQTT: "+safe(e));}}
 
-        settingsButton = button("⚙");
-        settingsButton.setTextSize(24);
-        settingsButton.setOnClickListener(v -> showSettings());
-        bar.addView(settingsButton,new LinearLayout.LayoutParams(dp(48),dp(44)));
-        return bar;
-    }
+    private void setBrokerUi(boolean connected,String txt){brokerDot.setTextColor(connected?GREEN:RED);brokerState.setText(txt);}
+    private void setDeviceUi(boolean online,String txt){deviceDot.setTextColor(online?GREEN:ORANGE);deviceState.setText(txt);setButton.setEnabled(online);stopButton.setEnabled(online);}
+    private void disconnectInternal(boolean ui){MqttClient c=mqtt;mqtt=null;connecting=false;if(c!=null)c.close();if(ui)setBrokerUi(false,"MQTT отключён");}
+    private void showMonitor(){setPage(monitorPage);title.setText("HomeSmoke Remote");back.setVisibility(View.GONE);settings.setVisibility(View.VISIBLE);}
+    private void showSettings(){setPage(settingsPage);title.setText("Настройки MQTT");back.setVisibility(View.VISIBLE);settings.setVisibility(View.GONE);}
+    private void setPage(View p){host.removeAllViews();if(p.getParent() instanceof ViewGroup)((ViewGroup)p.getParent()).removeView(p);ScrollView s=new ScrollView(this);s.setFillViewport(true);s.addView(p,new ScrollView.LayoutParams(-1,-2));host.addView(s,new LinearLayout.LayoutParams(-1,-1));}
 
-    private LinearLayout buildMonitor() {
-        LinearLayout root = page();
-
-        mqttState = center("MQTT отключен",14,true);
-        mqttState.setPadding(dp(8),dp(8),dp(8),dp(8));
-        root.addView(mqttState);
-
-        LinearLayout cameraCard = card();
-        cameraCard.addView(center("Температура в камере",20,false));
-        cameraValue = center("— °C",58,true);
-        cameraValue.setPadding(0,dp(8),0,dp(8));
-        cameraCard.addView(cameraValue);
-        root.addView(cameraCard, margins(8,8,8,6));
-
-        LinearLayout probes = new LinearLayout(this);
-        probes.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout kCard = card();
-        kCard.addView(center("Щуп K",16,false));
-        probeKValue = center("— °C",30,true); kCard.addView(probeKValue);
-        LinearLayout tCard = card();
-        tCard.addView(center("Щуп T",16,false));
-        probeTValue = center("— °C",30,true); tCard.addView(probeTValue);
-        LinearLayout.LayoutParams half = new LinearLayout.LayoutParams(0,-2,1);
-        half.setMargins(dp(8),dp(4),dp(4),dp(4)); probes.addView(kCard,half);
-        half = new LinearLayout.LayoutParams(0,-2,1);
-        half.setMargins(dp(4),dp(4),dp(8),dp(4)); probes.addView(tCard,half);
-        root.addView(probes);
-
-        LinearLayout info = card();
-        setpointValue = infoLine(info,"Уставка камеры","— °C");
-        productSetpointValue = infoLine(info,"Т° продукта / Т° п","— °C");
-        heaterValue = infoLine(info,"Мощность ТЭНа","— %");
-        modeValue = infoLine(info,"Режим","—");
-        statusValue = infoLine(info,"Статус","—");
-        root.addView(info,margins(8,6,8,8));
-
-        LinearLayout control = card();
-        TextView h = center("Изменить температуру камеры",19,true);
-        h.setPadding(0,0,0,dp(8)); control.addView(h);
-        setpointInput = edit("0…100 °C", InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        control.addView(setpointInput,new LinearLayout.LayoutParams(-1,dp(58)));
-        setTempButton = button("Установить температуру");
-        setTempButton.setTextSize(17);
-        setTempButton.setTextColor(Color.WHITE);
-        setTempButton.setBackground(round(GREEN,12));
-        setTempButton.setOnClickListener(v -> sendSetpoint());
-        LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(-1,dp(56)); bp.setMargins(0,dp(10),0,0); control.addView(setTempButton,bp);
-        ackState = center("Команды ещё не отправлялись",13,false);
-        ackState.setPadding(0,dp(10),0,0); control.addView(ackState);
-        root.addView(control,margins(8,6,8,8));
-
-        lastUpdate = center("Данные ещё не получены",12,false);
-        lastUpdate.setPadding(dp(8),dp(6),dp(8),dp(16)); root.addView(lastUpdate);
-        return root;
-    }
-
-    private LinearLayout buildSettings() {
-        LinearLayout root = page();
-        TextView h=center("Настройки MQTT",22,true); h.setPadding(0,dp(8),0,dp(12)); root.addView(h);
-        broker=edit("Broker / IP",InputType.TYPE_CLASS_TEXT);
-        port=edit("Port",InputType.TYPE_CLASS_NUMBER);
-        statusTopic=edit("Status topic",InputType.TYPE_CLASS_TEXT);
-        commandTopic=edit("Command topic",InputType.TYPE_CLASS_TEXT);
-        ackTopic=edit("ACK topic",InputType.TYPE_CLASS_TEXT);
-        user=edit("Логин",InputType.TYPE_CLASS_TEXT);
-        pass=edit("Пароль",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        root.addView(broker); root.addView(port); root.addView(statusTopic); root.addView(commandTopic); root.addView(ackTopic); root.addView(user); root.addView(pass);
-        tls=check("TLS"); autoConnect=check("Автоподключение / переподключение");
-        root.addView(tls); root.addView(autoConnect);
-
-        settingsState=text("",13,false); settingsState.setPadding(dp(8),dp(8),dp(8),dp(8)); root.addView(settingsState);
-        Button connect=button("Сохранить и подключить"); connect.setTextSize(17); connect.setOnClickListener(v->{saveSettings();wantConnection=true;connectMqtt(true);});
-        root.addView(connect,new LinearLayout.LayoutParams(-1,dp(56)));
-        Button disconnect=button("Отключить MQTT"); disconnect.setTextSize(16); disconnect.setOnClickListener(v->{wantConnection=false;disconnectMqtt();});
-        LinearLayout.LayoutParams dpv=new LinearLayout.LayoutParams(-1,dp(54)); dpv.setMargins(0,dp(8),0,0); root.addView(disconnect,dpv);
-
-        TextView note=text("Удалённая уставка отправляется без Retain в Command topic как JSON set_temp. Основной HomeSmoke проверяет диапазон 0–100 °C и передаёт контроллеру команду k<значение>\\0.",13,false);
-        note.setPadding(dp(6),dp(16),dp(6),dp(12)); root.addView(note);
-        return root;
-    }
-
-    private void loadSettings() {
-        broker.setText(prefs.getString("broker",""));
-        port.setText(prefs.getString("port","1883"));
-        statusTopic.setText(prefs.getString("status_topic","homesmoke/status"));
-        commandTopic.setText(prefs.getString("command_topic","homesmoke/cmd"));
-        ackTopic.setText(prefs.getString("ack_topic","homesmoke/ack"));
-        user.setText(prefs.getString("user",""));
-        pass.setText(prefs.getString("pass",""));
-        tls.setChecked(prefs.getBoolean("tls",false));
-        autoConnect.setChecked(prefs.getBoolean("auto",true));
-    }
-
-    private void saveSettings() {
-        prefs.edit()
-                .putString("broker",broker.getText().toString().trim())
-                .putString("port",port.getText().toString().trim())
-                .putString("status_topic",statusTopic.getText().toString().trim())
-                .putString("command_topic",commandTopic.getText().toString().trim())
-                .putString("ack_topic",ackTopic.getText().toString().trim())
-                .putString("user",user.getText().toString())
-                .putString("pass",pass.getText().toString())
-                .putBoolean("tls",tls.isChecked())
-                .putBoolean("auto",autoConnect.isChecked())
-                .apply();
-    }
-
-    private void connectMqtt(boolean force) {
-        if(connecting)return;
-        saveSettings();
-        String host=broker.getText().toString().trim();
-        if(host.isEmpty()){ if(force)toast("Укажите MQTT broker"); return; }
-        int p;
-        try{p=Integer.parseInt(port.getText().toString().trim());}catch(Exception e){if(force)toast("Неверный MQTT port");return;}
-        String st=topicOrDefault(statusTopic.getText().toString(),"homesmoke/status");
-        String at=topicOrDefault(ackTopic.getText().toString(),"homesmoke/ack");
-
-        disconnectMqttInternal(false);
-        connecting=true;
-        setConnectionUi(false,"MQTT: подключение…");
-        final MqttClient c=new MqttClient(host,p,tls.isChecked(),user.getText().toString(),pass.getText().toString());
-        mqtt=c;
-        c.setMessageListener(this::handleMessage);
-        new Thread(()->{
-            try{
-                c.connect(); c.subscribe(st); c.subscribe(at);
-                connecting=false;
-                runOnUiThread(()->setConnectionUi(true,"MQTT подключен: "+host+":"+p));
-            }catch(Exception e){
-                c.close(); if(mqtt==c)mqtt=null; connecting=false;
-                runOnUiThread(()->setConnectionUi(false,"MQTT ошибка: "+e.getMessage()));
-            }
-        },"HomeSmokeRemote-connect").start();
-    }
-
-    private void handleMessage(String topic,String payload) {
-        String st=prefs.getString("status_topic","homesmoke/status");
-        String at=prefs.getString("ack_topic","homesmoke/ack");
-        if(topic.equals(st)) handleStatus(payload);
-        else if(topic.equals(at)) handleAck(payload);
-    }
-
-    private void handleStatus(String payload) {
-        try{
-            JSONObject o=new JSONObject(payload);
-            String camera=o.optString("temp_ds","—");
-            String k=o.optString("temp_tip_k","—");
-            String t=o.optString("temp_tip_t","—");
-            String set=o.optString("temp_k","—");
-            String product=o.optString("temp_p","—");
-            String heater=o.optString("heater_power","—");
-            String mode=o.optString("mode","—");
-            String status=o.optString("status","—");
-            long ts=o.optLong("ts",System.currentTimeMillis());
-            runOnUiThread(()->{
-                cameraValue.setText(deg(camera)); probeKValue.setText(deg(k)); probeTValue.setText(deg(t));
-                setpointValue.setText(deg(set)); productSetpointValue.setText(deg(product)); heaterValue.setText(heater+" %");
-                modeValue.setText(mode); statusValue.setText(status);
-                lastUpdate.setText("Последние данные: "+new SimpleDateFormat("HH:mm:ss",Locale.getDefault()).format(new Date(ts)));
-            });
-        }catch(Exception ignored){}
-    }
-
-    private void handleAck(String payload) {
-        try{
-            JSONObject o=new JSONObject(payload);
-            boolean ok=o.optBoolean("ok",false);
-            String message=o.optString("message","");
-            String value=o.has("value")?o.optString("value",""):"";
-            runOnUiThread(()->ackState.setText(ok?"✓ Контроллеру отправлена уставка "+value+" °C":"Команда не выполнена: "+message));
-        }catch(Exception ignored){}
-    }
-
-    private void sendSetpoint() {
-        String raw=setpointInput.getText().toString().trim().replace(',','.');
-        if(raw.isEmpty()){toast("Введите температуру");return;}
-        double v;
-        try{v=Double.parseDouble(raw);}catch(Exception e){toast("Неверная температура");return;}
-        if(v<0||v>100){toast("Допустимо 0–100 °C");return;}
-        MqttClient c=mqtt;
-        if(c==null||!c.isConnected()){toast("MQTT не подключен");return;}
-        try{
-            String normalized=BigDecimal.valueOf(v).stripTrailingZeros().toPlainString();
-            JSONObject o=new JSONObject();
-            o.put("cmd","set_temp"); o.put("value",Double.parseDouble(normalized)); o.put("ts",System.currentTimeMillis());
-            String ct=topicOrDefault(commandTopic.getText().toString(),"homesmoke/cmd");
-            c.publish(ct,o.toString(),false);
-            ackState.setText("Команда отправлена: "+normalized+" °C, ожидается подтверждение");
-        }catch(Exception e){toast("Ошибка MQTT: "+e.getMessage());}
-    }
-
-    private void setConnectionUi(boolean connected,String text) {
-        if(mqttDot!=null)mqttDot.setTextColor(connected?GREEN:RED);
-        if(mqttState!=null)mqttState.setText(text);
-        if(settingsState!=null)settingsState.setText(text);
-    }
-
-    private void disconnectMqtt(){ disconnectMqttInternal(true); }
-    private void disconnectMqttInternal(boolean ui){
-        MqttClient c=mqtt; mqtt=null; connecting=false; if(c!=null)c.close();
-        if(ui)setConnectionUi(false,"MQTT отключен");
-    }
-
-    private void showMonitor(){
-        pageHost.removeAllViews(); pageHost.addView(scroll(monitorPage),new LinearLayout.LayoutParams(-1,-1));
-        title.setText("HomeSmoke Remote"); backButton.setVisibility(View.GONE); settingsButton.setVisibility(View.VISIBLE);
-    }
-    private void showSettings(){
-        pageHost.removeAllViews(); pageHost.addView(scroll(settingsPage),new LinearLayout.LayoutParams(-1,-1));
-        title.setText("Настройки MQTT"); backButton.setVisibility(View.VISIBLE); settingsButton.setVisibility(View.GONE);
-    }
-
-    @Override public void onBackPressed(){ if(backButton.getVisibility()==View.VISIBLE)showMonitor(); else super.onBackPressed(); }
-    @Override protected void onDestroy(){ saveSettings(); wantConnection=false; handler.removeCallbacks(healthTask); disconnectMqttInternal(false); super.onDestroy(); }
-
-    private void applySystemInsets(View root) {
-        root.setOnApplyWindowInsetsListener((v,insets)->{
-            int l,t,r,b;
-            if(Build.VERSION.SDK_INT>=30){
-                android.graphics.Insets x=insets.getInsets(WindowInsets.Type.systemBars()); l=x.left;t=x.top;r=x.right;b=x.bottom;
-            }else{
-                l=insets.getSystemWindowInsetLeft();t=insets.getSystemWindowInsetTop();r=insets.getSystemWindowInsetRight();b=insets.getSystemWindowInsetBottom();
-            }
-            v.setPadding(l,t,r,b); return insets;
-        });
-        root.requestApplyInsets();
-        getWindow().setStatusBarColor(BLUE); getWindow().setNavigationBarColor(BG);
-    }
-
-    private LinearLayout page(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.VERTICAL);l.setBackgroundColor(BG);l.setPadding(dp(4),dp(4),dp(4),dp(20));return l;}
-    private LinearLayout card(){LinearLayout l=new LinearLayout(this);l.setOrientation(LinearLayout.VERTICAL);l.setPadding(dp(14),dp(14),dp(14),dp(14));l.setBackground(round(Color.WHITE,12));return l;}
-    private TextView infoLine(LinearLayout parent,String label,String initial){
-        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(0,dp(5),0,dp(5));
-        TextView a=text(label,15,false); TextView b=text(initial,17,true); b.setGravity(Gravity.END);
-        row.addView(a,new LinearLayout.LayoutParams(0,-2,1));row.addView(b,new LinearLayout.LayoutParams(-2,-2));parent.addView(row);return b;
-    }
-    private TextView text(String s,int sp,boolean bold){TextView t=new TextView(this);t.setText(s);t.setTextSize(sp);t.setTextColor(Color.BLACK);if(bold)t.setTypeface(Typeface.DEFAULT_BOLD);return t;}
+    private void applyInsets(View root){if(Build.VERSION.SDK_INT<21)return;root.setOnApplyWindowInsetsListener((v,i)->{int l,t,r,b;if(Build.VERSION.SDK_INT>=30){android.graphics.Insets x=i.getInsets(WindowInsets.Type.systemBars());l=x.left;t=x.top;r=x.right;b=x.bottom;}else{l=i.getSystemWindowInsetLeft();t=i.getSystemWindowInsetTop();r=i.getSystemWindowInsetRight();b=i.getSystemWindowInsetBottom();}v.setPadding(l,t,r,b);return i;});root.requestApplyInsets();getWindow().setStatusBarColor(BLUE);getWindow().setNavigationBarColor(BG);}
+    private LinearLayout page(){LinearLayout p=new LinearLayout(this);p.setOrientation(LinearLayout.VERTICAL);p.setPadding(dp(4),dp(4),dp(4),dp(22));p.setBackgroundColor(BG);return p;}
+    private LinearLayout card(){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(dp(14),dp(13),dp(14),dp(13));c.setBackground(round(Color.WHITE,13));return c;}
+    private TextView info(LinearLayout p,String label,String initial){LinearLayout r=new LinearLayout(this);r.setGravity(Gravity.CENTER_VERTICAL);TextView a=text(label,15,false),b=text(initial,17,true);b.setGravity(Gravity.END);r.addView(a,new LinearLayout.LayoutParams(0,-2,1));r.addView(b);p.addView(r);return b;}
+    private TextView text(String s,int sp,boolean bold){TextView t=new TextView(this);t.setText(s);t.setTextSize(sp);t.setTextColor(Color.rgb(25,25,25));if(bold)t.setTypeface(Typeface.DEFAULT_BOLD);return t;}
     private TextView center(String s,int sp,boolean bold){TextView t=text(s,sp,bold);t.setGravity(Gravity.CENTER);return t;}
+    private TextView dot(){TextView t=text("●",17,true);t.setTextColor(RED);t.setGravity(Gravity.CENTER);t.setPadding(dp(3),0,dp(3),0);return t;}
     private Button button(String s){Button b=new Button(this);b.setText(s);b.setAllCaps(false);return b;}
-    private CheckBox check(String s){CheckBox c=new CheckBox(this);c.setText(s);c.setTextSize(17);c.setTextColor(Color.BLACK);c.setPadding(dp(8),dp(5),dp(8),dp(5));return c;}
-    private EditText edit(String hint,int type){EditText e=new EditText(this);e.setHint(hint);e.setTextSize(17);e.setInputType(type);e.setSingleLine(true);e.setBackgroundColor(Color.WHITE);e.setPadding(dp(12),0,dp(12),0);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(56));p.setMargins(dp(6),dp(4),dp(6),dp(4));e.setLayoutParams(p);return e;}
-    private ScrollView scroll(View child){if(child.getParent() instanceof ViewGroup)((ViewGroup)child.getParent()).removeView(child);ScrollView s=new ScrollView(this);s.setFillViewport(true);s.addView(child,new ScrollView.LayoutParams(-1,-2));return s;}
+    private Button action(String s,int color){Button b=button(s);b.setTextColor(Color.WHITE);b.setTextSize(16);b.setBackground(round(color,10));return b;}
+    private CheckBox check(String s){CheckBox c=new CheckBox(this);c.setText(s);c.setTextSize(16);c.setTextColor(Color.BLACK);return c;}
+    private EditText edit(String hint,int type){EditText e=new EditText(this);e.setHint(hint);e.setInputType(type);e.setSingleLine(true);e.setTextSize(16);e.setBackgroundColor(Color.WHITE);e.setPadding(dp(12),0,dp(12),0);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(54));p.setMargins(dp(7),dp(4),dp(7),dp(4));e.setLayoutParams(p);return e;}
     private GradientDrawable round(int color,int radius){GradientDrawable g=new GradientDrawable();g.setColor(color);g.setCornerRadius(dp(radius));return g;}
-    private LinearLayout.LayoutParams margins(int l,int t,int r,int b){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(dp(l),dp(t),dp(r),dp(b));return p;}
+    private LinearLayout.LayoutParams margin(int l,int t,int r,int b){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(dp(l),dp(t),dp(r),dp(b));return p;}
+    private LinearLayout.LayoutParams half(int l,int r){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-2,1);p.setMargins(dp(l),dp(4),dp(r),dp(4));return p;}
     private int dp(int v){return Math.round(v*getResources().getDisplayMetrics().density);}
-    private String deg(String s){return (s==null||s.trim().isEmpty()?"—":s.trim())+" °C";}
-    private String topicOrDefault(String s,String d){s=s==null?"":s.trim();return s.isEmpty()?d:s;}
+    private static String s(EditText e){return e.getText().toString().trim();}
+    private static String topic(String s,String d){s=s==null?"":s.trim();return s.isEmpty()?d:s;}
+    private static String deg(String s){return (s==null||s.trim().isEmpty()?"—":s.trim())+" °C";}
+    private static String modeName(String m){if("0".equals(m))return "Ручной";if("1".equals(m))return "PID";if("3".equals(m))return "СТОП";return m;}
+    private static String translateState(String s){if("pid_mode_required".equals(s))return "сначала включите PID режим";if("android_auto_running".equals(s))return "уставкой управляет Auto";if("bluetooth_not_connected".equals(s))return "Bluetooth коптильни отключён";if("controller_ack_timeout".equals(s))return "Arduino не подтвердила уставку";if("stale_command".equals(s))return "команда устарела";return s;}
+    private static String safe(Exception e){return e.getMessage()==null?e.getClass().getSimpleName():e.getMessage();}
     private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
+    @Override public void onBackPressed(){if(back.getVisibility()==View.VISIBLE)showMonitor();else super.onBackPressed();}
 }
