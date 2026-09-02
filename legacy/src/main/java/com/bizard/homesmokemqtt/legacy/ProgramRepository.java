@@ -1,0 +1,27 @@
+package com.bizard.homesmokemqtt.legacy;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import com.bizard.homesmokecore.AutoProgram;
+import com.bizard.homesmokecore.AutoStage;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+final class ProgramRepository {
+    private static final String KEY="auto_library_json_v2",OLD="auto_library_json_v1";private final SharedPreferences prefs;
+    ProgramRepository(Context c){prefs=c.getSharedPreferences("homesmoke_full",Context.MODE_PRIVATE);}
+    synchronized List<AutoProgram> load(){try{String raw=prefs.getString(KEY,"");if(raw!=null&&raw.trim().length()>0)return decode(raw);List<AutoProgram> x=migrate();save(x);return x;}catch(Exception e){List<AutoProgram>x=new ArrayList<AutoProgram>();x.add(def());return x;}}
+    synchronized void save(List<AutoProgram> x){try{prefs.edit().putString(KEY,encode(x)).apply();}catch(Exception ignored){}}
+    synchronized String exportJson(List<AutoProgram>x)throws Exception{return encode(x);}synchronized List<AutoProgram> importJson(String s)throws Exception{List<AutoProgram>x=decode(s);if(x.size()==0)throw new Exception("empty");save(x);return x;}
+    static AutoProgram def(){AutoProgram p=new AutoProgram();p.name="Моя программа";AutoStage s=p.stages.get(0);s.chamberTarget=40;s.holdMs=900000;s.tolerance=1;s.stableSeconds=20;return p;}
+    private List<AutoProgram> migrate()throws Exception{String raw=prefs.getString(OLD,"");List<AutoProgram> out=new ArrayList<AutoProgram>();if(raw==null||raw.length()==0){out.add(def());return out;}JSONArray a=new JSONArray(raw);for(int i=0;i<a.length();i++){JSONObject o=a.optJSONObject(i);if(o==null)continue;AutoProgram p=new AutoProgram();p.id=UUID.randomUUID().toString();p.name=o.optString("name","Программа "+(i+1));p.stages.clear();JSONArray st=o.optJSONArray("stages");for(int j=0;j<4;j++){JSONObject q=st==null?null:st.optJSONObject(j);AutoStage s=new AutoStage();s.name="Этап "+(j+1);s.enabled=q!=null?q.optBoolean("enabled",j==0):j==0;s.chamberTarget=num(q,"temp",j==0?40:0);s.holdMs=(long)(num(q,"minutes",j==0?15:0)*60000);s.finishCondition=condition(q==null?0:q.optInt("condition",0));s.probeTarget=num(q,"probe",0);s.stopAfter=q!=null&&q.optBoolean("stop",false);s.tolerance=1;s.stableSeconds=20;s.probeActivation=AutoStage.ProbeActivation.AFTER_CHAMBER_READY;p.stages.add(s);}out.add(p);}if(out.size()==0)out.add(def());return out;}
+    private static AutoStage.FinishCondition condition(int i){switch(i){case 1:return AutoStage.FinishCondition.PROBE_K;case 2:return AutoStage.FinishCondition.PROBE_T;case 3:return AutoStage.FinishCondition.TIME_OR_K;case 4:return AutoStage.FinishCondition.TIME_OR_T;case 5:return AutoStage.FinishCondition.TIME_AND_K;case 6:return AutoStage.FinishCondition.TIME_AND_T;default:return AutoStage.FinishCondition.TIME;}}
+    private static double num(JSONObject o,String k,double d){if(o==null)return d;try{return Double.parseDouble(o.optString(k,String.valueOf(d)).replace(',','.'));}catch(Exception e){return d;}}
+    private static String encode(List<AutoProgram>x)throws Exception{JSONArray a=new JSONArray();for(AutoProgram p:x)a.put(enc(p));return a.toString();}
+    private static List<AutoProgram> decode(String raw)throws Exception{JSONArray a=new JSONArray(raw);List<AutoProgram> out=new ArrayList<AutoProgram>();for(int i=0;i<a.length();i++){JSONObject o=a.optJSONObject(i);if(o!=null)out.add(dec(o));}return out;}
+    private static JSONObject enc(AutoProgram p)throws Exception{JSONObject o=new JSONObject();o.put("v",2);o.put("id",p.id);o.put("name",p.name);o.put("description",p.description);o.put("modifiedAt",p.modifiedAt);JSONArray a=new JSONArray();for(AutoStage s:p.stages){JSONObject q=new JSONObject();q.put("name",s.name);q.put("enabled",s.enabled);q.put("chamberTarget",s.chamberTarget);q.put("tolerance",s.tolerance);q.put("stableSeconds",s.stableSeconds);q.put("holdMs",s.holdMs);q.put("finishCondition",s.finishCondition.name());q.put("probeTarget",s.probeTarget);q.put("probeActivation",s.probeActivation.name());q.put("stopAfter",s.stopAfter);a.put(q);}o.put("stages",a);return o;}
+    private static AutoProgram dec(JSONObject o)throws Exception{AutoProgram p=new AutoProgram();p.id=o.optString("id",UUID.randomUUID().toString());p.name=o.optString("name","Программа");p.description=o.optString("description","");p.stages.clear();JSONArray a=o.optJSONArray("stages");for(int i=0;i<4;i++){JSONObject q=a==null?null:a.optJSONObject(i);AutoStage s=new AutoStage();s.name=q==null?"Этап "+(i+1):q.optString("name","Этап "+(i+1));s.enabled=q!=null?q.optBoolean("enabled",i==0):i==0;s.chamberTarget=q==null?(i==0?40:0):q.optDouble("chamberTarget",0);s.tolerance=q==null?1:q.optDouble("tolerance",1);s.stableSeconds=q==null?20:q.optInt("stableSeconds",20);s.holdMs=q==null?(i==0?900000:0):q.optLong("holdMs",0);try{s.finishCondition=AutoStage.FinishCondition.valueOf(q.optString("finishCondition","TIME"));}catch(Exception e){s.finishCondition=AutoStage.FinishCondition.TIME;}s.probeTarget=q==null?0:q.optDouble("probeTarget",0);try{s.probeActivation=AutoStage.ProbeActivation.valueOf(q.optString("probeActivation","AFTER_CHAMBER_READY"));}catch(Exception e){s.probeActivation=AutoStage.ProbeActivation.AFTER_CHAMBER_READY;}s.stopAfter=q!=null&&q.optBoolean("stopAfter",false);p.stages.add(s);}return p;}
+}
