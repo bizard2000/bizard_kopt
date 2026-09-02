@@ -38,7 +38,7 @@ jobs:
           set -o pipefail
           gradle :core:test --stacktrace 2>&1 | tee core-test.log
 
-      - name: Build HomeSmoke 2.6.2 Android 6+
+      - name: Build HomeSmoke 2.6.3 Android 6+
         shell: bash
         run: |
           set -o pipefail
@@ -65,24 +65,24 @@ jobs:
           rm -f dist/HomeSmoke_FULL_2.6.*_Android6plus.apk dist/HomeSmoke_FULL_2.6.*_Android6plus.bin
           rm -f dist/HomeSmoke_Remote_2.0.*_Android5plus.apk dist/HomeSmoke_Remote_2.0.*_Android5plus.bin
           rm -f dist/*Android4plus.apk dist/*Android4plus.bin
-          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.2_Android6plus.apk
-          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.2_Android6plus.bin
+          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.3_Android6plus.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.3_Android6plus.bin
           cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_2.0.0_Android5plus.apk
           cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_2.0.0_Android5plus.bin
           git config user.name "github-actions[bot]"
           git config user.email "4189826+github-actions[bot]@users.noreply.github.com"
           git add -A dist
-          git commit -m "CI: publish HomeSmoke 2.6.2 and Remote 2.0 [skip ci]" || true
+          git commit -m "CI: publish HomeSmoke 2.6.3 and Remote 2.0 [skip ci]" || true
           git pull --rebase origin homesmoke-native
           git push origin homesmoke-native
 
-      - name: Upload HomeSmoke 2.6.2 modern
+      - name: Upload HomeSmoke 2.6.3 modern
         uses: actions/upload-artifact@v4
         with:
-          name: HomeSmoke_FULL_2.6.2_Android6plus
+          name: HomeSmoke_FULL_2.6.3_Android6plus
           path: |
-            dist/HomeSmoke_FULL_2.6.2_Android6plus.apk
-            dist/HomeSmoke_FULL_2.6.2_Android6plus.bin
+            dist/HomeSmoke_FULL_2.6.3_Android6plus.apk
+            dist/HomeSmoke_FULL_2.6.3_Android6plus.bin
           if-no-files-found: error
 
       - name: Upload HomeSmoke Remote 2.0
