@@ -15,6 +15,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.util.Collections;
@@ -52,6 +53,10 @@ public class ModernHomeSmokeActivity extends MainActivity {
     private static final int DANGER = Color.rgb(220, 38, 38);
     private static final int DANGER_SOFT = Color.rgb(254, 242, 242);
     private static final int NEUTRAL_SOFT = Color.rgb(241, 245, 249);
+    private static final int EDIT_SOFT = Color.rgb(219, 234, 254);
+    private static final int EDIT_TEXT = Color.rgb(30, 64, 175);
+    private static final int COPY_SOFT = Color.rgb(254, 243, 199);
+    private static final int COPY_TEXT = Color.rgb(146, 64, 14);
 
     private final Set<View> styled = Collections.newSetFromMap(new WeakHashMap<>());
     private ViewTreeObserver.OnGlobalLayoutListener layoutListener;
@@ -81,14 +86,16 @@ public class ModernHomeSmokeActivity extends MainActivity {
     private void styleTree(View view) {
         if (view == null) return;
 
-        // Geometry-affecting styling is applied only once. On some Android builds a
-        // CompoundButton can later restore its theme background when drawable state
-        // changes. For CheckBox only, keep a tiny idempotent visual guard that never
-        // changes size/padding/translation and therefore cannot cause the old jitter.
+        // Geometry-affecting styling is applied only once. Later passes may repair
+        // only visual state that Android/theme code can overwrite. These repairs do
+        // not touch size, margins, padding, scale or translation, so they cannot
+        // reintroduce the one-pixel oscillation seen on some devices.
         if (styled.add(view)) {
             styleView(view);
         } else if (view instanceof CheckBox) {
             refreshCheckBoxAppearance((CheckBox) view);
+        } else if (view instanceof Button) {
+            refreshDynamicButtonAppearance((Button) view);
         }
 
         if (view instanceof ViewGroup) {
@@ -111,6 +118,11 @@ public class ModernHomeSmokeActivity extends MainActivity {
         if (view instanceof EditText) {
             styleEditText((EditText) view);
             return;
+        }
+        if (view instanceof ScrollView) {
+            ScrollView scroll = (ScrollView) view;
+            scroll.setSaveEnabled(false);
+            scroll.post(() -> scroll.scrollTo(0, 0));
         }
         if (view instanceof TextView) {
             styleText((TextView) view);
@@ -236,8 +248,6 @@ public class ModernHomeSmokeActivity extends MainActivity {
     }
 
     private void styleCheckBox(CheckBox box) {
-        // Keep native checked/unchecked semantics but permanently opt the control
-        // out of the theme's full-width action-button background.
         box.animate().cancel();
         box.setStateListAnimator(null);
         box.setTranslationX(0f);
@@ -261,25 +271,15 @@ public class ModernHomeSmokeActivity extends MainActivity {
     }
 
     private void refreshCheckBoxAppearance(CheckBox box) {
-        // Do not touch layout properties here. Only repair visual attributes if the
-        // platform/theme changed them after the initial styling pass.
         Drawable background = box.getBackground();
         if (!(background instanceof ColorDrawable)
                 || ((ColorDrawable) background).getColor() != Color.TRANSPARENT) {
             box.setBackground(new ColorDrawable(Color.TRANSPARENT));
         }
-        if (box.getBackgroundTintList() != null) {
-            box.setBackgroundTintList(null);
-        }
-        if (box.getStateListAnimator() != null) {
-            box.setStateListAnimator(null);
-        }
-        if (box.getElevation() != 0f) {
-            box.setElevation(0f);
-        }
-        if (box.getCurrentTextColor() != TEXT) {
-            box.setTextColor(ColorStateList.valueOf(TEXT));
-        }
+        if (box.getBackgroundTintList() != null) box.setBackgroundTintList(null);
+        if (box.getStateListAnimator() != null) box.setStateListAnimator(null);
+        if (box.getElevation() != 0f) box.setElevation(0f);
+        if (box.getCurrentTextColor() != TEXT) box.setTextColor(ColorStateList.valueOf(TEXT));
     }
 
     private ColorStateList checkTint() {
@@ -304,18 +304,8 @@ public class ModernHomeSmokeActivity extends MainActivity {
         button.setMinHeight(dp(44));
         button.setPadding(dp(12), 0, dp(12), 0);
 
-        String label = button.getText() == null ? "" : button.getText().toString().trim();
+        String label = normalizeDynamicLabel(button);
         String upper = label.toUpperCase(Locale.ROOT);
-
-        if (label.equals("Программы")) {
-            button.setText("AUTO");
-            label = "AUTO";
-            upper = "AUTO";
-        } else if (label.equals("Auto")) {
-            button.setText("AUTO");
-            label = "AUTO";
-            upper = "AUTO";
-        }
 
         if (upper.contains("STOP") && !upper.contains("ПОСЛЕ ЭТАПА")) {
             button.setTextColor(Color.WHITE);
@@ -325,7 +315,7 @@ public class ModernHomeSmokeActivity extends MainActivity {
             return;
         }
 
-        if (label.equals("Ручной") || label.equals("PID") || label.equals("AUTO")) {
+        if (label.equals("Ручной") || label.equals("РУЧНОЙ") || label.equals("PID") || label.equals("AUTO")) {
             if (label.equals("Ручной")) button.setText("РУЧНОЙ");
             button.setTextSize(12);
             button.setMinHeight(dp(42));
@@ -337,9 +327,9 @@ public class ModernHomeSmokeActivity extends MainActivity {
         if (label.equals("Запустить")) {
             solidButton(button, SUCCESS, 13);
         } else if (label.equals("Копия")) {
-            softButton(button, Color.rgb(255, 247, 237), Color.rgb(194, 65, 12), 13);
+            softButton(button, COPY_SOFT, COPY_TEXT, 13);
         } else if (label.equals("Изменить") || label.startsWith("Экспорт") || label.startsWith("Импорт")) {
-            softButton(button, Color.rgb(239, 246, 255), PRIMARY_DARK, 13);
+            softButton(button, EDIT_SOFT, EDIT_TEXT, 13);
         } else if (label.contains("Удалить")) {
             softButton(button, DANGER_SOFT, DANGER, 13);
         } else if (label.contains("Остановить программу")) {
@@ -357,17 +347,39 @@ public class ModernHomeSmokeActivity extends MainActivity {
         }
     }
 
+    private String normalizeDynamicLabel(Button button) {
+        String label = button.getText() == null ? "" : button.getText().toString().trim();
+        if (label.equals("Программы") || label.equals("Auto")) {
+            button.setText("AUTO");
+            return "AUTO";
+        }
+        return label;
+    }
+
+    private void refreshDynamicButtonAppearance(Button button) {
+        String label = normalizeDynamicLabel(button);
+        int target = Integer.MIN_VALUE;
+        if (label.equals("Изменить") || label.startsWith("Экспорт") || label.startsWith("Импорт")) {
+            target = EDIT_TEXT;
+        } else if (label.equals("Копия")) {
+            target = COPY_TEXT;
+        }
+        if (target != Integer.MIN_VALUE && button.getCurrentTextColor() != target) {
+            button.setTextColor(target);
+        }
+    }
+
     private void solidButton(Button button, int color, int radiusDp) {
         button.setTextColor(Color.WHITE);
         button.setBackground(round(color, radiusDp));
-        button.setBackgroundTintList(ColorStateList.valueOf(color));
+        button.setBackgroundTintList(null);
         button.setElevation(dp(1));
     }
 
     private void softButton(Button button, int fill, int textColor, int radiusDp) {
         button.setTextColor(textColor);
         button.setBackground(round(fill, radiusDp));
-        button.setBackgroundTintList(ColorStateList.valueOf(fill));
+        button.setBackgroundTintList(null);
         button.setElevation(0f);
     }
 
