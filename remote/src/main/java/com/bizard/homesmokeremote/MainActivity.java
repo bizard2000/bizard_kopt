@@ -26,6 +26,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONObject;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -45,6 +46,10 @@ public class MainActivity extends Activity {
     private static final int RED=Color.rgb(229,40,40);
     private static final int ORANGE=Color.rgb(231,138,7);
     private static final int OFF=Color.rgb(116,129,145);
+    private static final int INFO_BG=Color.rgb(240,247,255);
+    private static final int SUCCESS_BG=Color.rgb(237,249,242);
+    private static final int WARN_BG=Color.rgb(255,247,232);
+    private static final int ERROR_BG=Color.rgb(255,239,239);
     private static final long STALE_MS=10000L;
 
     private SharedPreferences prefs;
@@ -55,7 +60,9 @@ public class MainActivity extends Activity {
     private String deviceId="—",pendingId="";
 
     private LinearLayout host,monitorPage,settingsPage;
-    private TextView title,subtitle,mqttBadge,deviceBadge,brokerState,deviceState,camera,k,t,setpoint,power,mode,lastCommand,autoProgram,autoStage,autoStatus,lastUpdate,commandState;
+    private TextView title,subtitle,mqttBadge,deviceBadge;
+    private TextView mqttDot,deviceDot,brokerState,deviceState,brokerDetail,deviceDetail,systemState;
+    private TextView camera,k,t,setpoint,power,mode,lastCommand,autoProgram,autoStage,autoStatus,autoChip,lastUpdate,commandState;
     private Button back,settings,setButton,stopButton,disconnectButton;
     private EditText setInput,broker,port,statusTopic,commandTopic,ackTopic,user,pass;
     private CheckBox tls,autoConnect;
@@ -149,9 +156,18 @@ public class MainActivity extends Activity {
         LinearLayout p=page();
 
         LinearLayout healthCard=card();
-        healthCard.addView(sectionTitle("Состояние связи"));
-        brokerState=statusRow(healthCard,"MQTT","MQTT отключён",RED);
-        deviceState=statusRow(healthCard,"Коптильня","Данные не получены",ORANGE);
+        LinearLayout healthHeader=new LinearLayout(this);
+        healthHeader.setGravity(Gravity.CENTER_VERTICAL);
+        healthHeader.addView(sectionTitle("Связь"),new LinearLayout.LayoutParams(0,-2,1));
+        systemState=statusChip("ОФЛАЙН",OFF);
+        healthHeader.addView(systemState);
+        healthCard.addView(healthHeader);
+        brokerState=statusRow(healthCard,"MQTT","Отключён",RED,true);
+        deviceState=statusRow(healthCard,"Коптильня","Нет данных",ORANGE,false);
+        brokerDetail=smallDetail("MQTT отключён");
+        deviceDetail=smallDetail("Телеметрия ещё не поступала");
+        healthCard.addView(brokerDetail);
+        healthCard.addView(deviceDetail);
         p.addView(healthCard,margin(8,10,8,5));
 
         LinearLayout cam=card();
@@ -183,16 +199,25 @@ public class MainActivity extends Activity {
         heater.addView(power);
         LinearLayout modeCard=metricCard("Режим");
         mode=center("—",23,true,TEXT);
+        mode.setSingleLine(true);
+        mode.setEllipsize(TextUtils.TruncateAt.END);
         modeCard.addView(mode);
         stats.addView(heater,half(8,4));
         stats.addView(modeCard,half(4,8));
         p.addView(stats);
 
         LinearLayout ac=card();
-        ac.addView(sectionTitle("Auto"));
+        LinearLayout autoHeader=new LinearLayout(this);
+        autoHeader.setGravity(Gravity.CENTER_VERTICAL);
+        autoHeader.addView(sectionTitle("Auto"),new LinearLayout.LayoutParams(0,-2,1));
+        autoChip=statusChip("ВЫКЛ",OFF);
+        autoHeader.addView(autoChip);
+        ac.addView(autoHeader);
         autoProgram=info(ac,"Программа","—");
         autoStage=info(ac,"Этап","—");
-        autoStatus=text("Auto выключено",14,false,MUTED);
+        ((View)autoProgram.getParent()).setVisibility(View.GONE);
+        ((View)autoStage.getParent()).setVisibility(View.GONE);
+        autoStatus=text("Программа не запущена",14,false,MUTED);
         autoStatus.setPadding(0,dp(9),0,0);
         ac.addView(autoStatus);
         p.addView(ac,margin(8,5,8,5));
@@ -220,12 +245,20 @@ public class MainActivity extends Activity {
         ctrl.addView(stopButton,sp);
 
         commandState=text("Команды ещё не отправлялись",13,false,MUTED);
-        commandState.setPadding(0,dp(10),0,0);
-        ctrl.addView(commandState);
+        commandState.setPadding(dp(10),dp(9),dp(10),dp(9));
+        commandState.setBackground(roundStroke(INFO_BG,12,BORDER,1));
+        LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);
+        cp.setMargins(0,dp(10),0,0);
+        ctrl.addView(commandState,cp);
         p.addView(ctrl,margin(8,5,8,5));
 
         LinearLayout commandCard=card();
-        lastCommand=info(commandCard,"Последняя команда","—");
+        commandCard.addView(label("Последняя команда"));
+        lastCommand=text("—",16,true,TEXT);
+        lastCommand.setPadding(0,dp(7),0,0);
+        lastCommand.setMaxLines(2);
+        lastCommand.setEllipsize(TextUtils.TruncateAt.END);
+        commandCard.addView(lastCommand);
         p.addView(commandCard,margin(8,5,8,4));
 
         lastUpdate=center("Данных ещё нет",12,false,MUTED);
@@ -238,7 +271,7 @@ public class MainActivity extends Activity {
 
         LinearLayout intro=card();
         intro.addView(sectionTitle("MQTT подключение"));
-        TextView versionText=text("HomeSmoke Remote 2.0.2 · Android 5+",13,false,MUTED);
+        TextView versionText=text("HomeSmoke Remote 2.0.3 · Android 5+",13,false,MUTED);
         versionText.setPadding(0,dp(3),0,0);
         intro.addView(versionText);
         p.addView(intro,margin(8,10,8,5));
@@ -341,11 +374,9 @@ public class MainActivity extends Activity {
                 t.setText(deg(pt));
                 setpoint.setText("Уставка "+deg(sp));
                 power.setText(pw+" %");
-                mode.setText(modeName(md));
+                updateModeUi(md);
                 lastCommand.setText(lc);
-                autoProgram.setText(ar?ap:"—");
-                autoStage.setText(ar&&stage>0?String.valueOf(stage):"—");
-                autoStatus.setText(as);
+                updateAutoUi(ar,ap,stage,as);
                 lastUpdate.setText("Обновлено "+new SimpleDateFormat("HH:mm:ss",Locale.getDefault()).format(new Date(ts)));
                 setDeviceUi(true,"Коптильня онлайн · "+did);
             });
@@ -361,11 +392,11 @@ public class MainActivity extends Activity {
             String value=o.has("value")?o.optString("value",""):"";
             runOnUiThread(()->{
                 if(!pendingId.isEmpty()&&!id.isEmpty()&&!pendingId.equals(id))return;
-                if("accepted_waiting_controller".equals(state)){commandState.setText("Команда принята HomeSmoke, ожидается Arduino…");return;}
+                if("accepted_waiting_controller".equals(state)){setCommandUi("Ожидание Arduino · команда принята HomeSmoke",1);return;}
                 pendingId="";
-                if(ok&&"applied".equals(state))commandState.setText("✓ Arduino применила уставку "+value+" °C");
-                else if(ok&&"stop_sent".equals(state))commandState.setText("✓ STOP отправлен контроллеру");
-                else commandState.setText("Команда не выполнена: "+translateState(state));
+                if(ok&&"applied".equals(state))setCommandUi("✓ Arduino применила уставку "+value+" °C",2);
+                else if(ok&&"stop_sent".equals(state))setCommandUi("✓ STOP отправлен контроллеру",2);
+                else setCommandUi("Не выполнено · "+translateState(state),3);
             });
         }catch(Exception ignored){}
     }
@@ -383,7 +414,7 @@ public class MainActivity extends Activity {
             JSONObject o=new JSONObject();
             o.put("v",2);o.put("id",pendingId);o.put("cmd","set_temp");o.put("value",(int)Math.rint(v));o.put("ts",System.currentTimeMillis());
             c.publish(topic(s(commandTopic),"homesmoke/cmd"),o.toString(),false);
-            commandState.setText("Команда отправлена, ожидается HomeSmoke…");
+            setCommandUi("Отправлено · ожидается HomeSmoke",1);
         }catch(Exception e){pendingId="";toast("Ошибка MQTT: "+safe(e));}
     }
 
@@ -399,25 +430,84 @@ public class MainActivity extends Activity {
             JSONObject o=new JSONObject();
             o.put("v",2);o.put("id",pendingId);o.put("cmd","stop");o.put("ts",System.currentTimeMillis());
             c.publish(topic(s(commandTopic),"homesmoke/cmd"),o.toString(),false);
-            commandState.setText("STOP отправлен, ожидается подтверждение…");
+            setCommandUi("STOP отправлен · ожидается подтверждение",1);
         }catch(Exception e){pendingId="";toast("Ошибка MQTT: "+safe(e));}
     }
 
+    private void updateModeUi(String raw){
+        mode.setText(modeName(raw));
+        int color=TEXT;
+        if("0".equals(raw))color=ORANGE;
+        else if("1".equals(raw))color=GREEN;
+        else if("2".equals(raw))color=BLUE;
+        else if("3".equals(raw))color=RED;
+        mode.setTextColor(color);
+    }
+
+    private void updateAutoUi(boolean running,String program,int stage,String status){
+        View pr=(View)autoProgram.getParent(),sr=(View)autoStage.getParent();
+        pr.setVisibility(running?View.VISIBLE:View.GONE);
+        sr.setVisibility(running?View.VISIBLE:View.GONE);
+        if(running){
+            autoChip.setText("АКТИВНО");
+            autoChip.setBackground(round(BLUE,12));
+            autoProgram.setText(program);
+            autoStage.setText(stage>0?String.valueOf(stage):"—");
+            autoStatus.setText(status==null||status.trim().isEmpty()?"Auto работает":status);
+            autoStatus.setTextColor(BLUE_DARK);
+        }else{
+            autoChip.setText("ВЫКЛ");
+            autoChip.setBackground(round(OFF,12));
+            autoStatus.setText("Программа не запущена");
+            autoStatus.setTextColor(MUTED);
+        }
+    }
+
+    private void setCommandUi(String txt,int state){
+        commandState.setText(txt);
+        int bg=INFO_BG,border=BORDER,color=MUTED;
+        if(state==1){bg=WARN_BG;border=ORANGE;color=Color.rgb(151,88,0);}
+        else if(state==2){bg=SUCCESS_BG;border=GREEN;color=Color.rgb(18,111,58);}
+        else if(state==3){bg=ERROR_BG;border=RED;color=Color.rgb(170,30,30);}
+        commandState.setTextColor(color);
+        commandState.setBackground(roundStroke(bg,12,border,1));
+    }
+
     private void setBrokerUi(boolean connected,String txt){
+        int color=connected?GREEN:(connecting?ORANGE:OFF);
+        if(txt!=null&&txt.startsWith("MQTT ошибка"))color=RED;
         mqttBadge.setTextColor(Color.WHITE);
-        mqttBadge.setBackground(round(connected?GREEN:(connecting?ORANGE:OFF),14));
-        brokerState.setText(txt);
+        mqttBadge.setBackground(round(color,14));
+        mqttDot.setTextColor(color);
+        brokerState.setText(connected?"Подключён":(connecting?"Подключение…":(color==RED?"Ошибка":"Отключён")));
+        brokerState.setTextColor(connected?GREEN:(color==RED?RED:MUTED));
+        brokerDetail.setText(txt==null?"":txt);
         if(disconnectButton!=null){disconnectButton.setEnabled(connected||connecting);disconnectButton.setAlpha((connected||connecting)?1f:.45f);}
+        refreshOverallState();
     }
 
     private void setDeviceUi(boolean online,String txt){
+        int color=online?GREEN:(lastTelemetryAt>0?RED:ORANGE);
         deviceBadge.setTextColor(Color.WHITE);
-        deviceBadge.setBackground(round(online?GREEN:ORANGE,14));
-        deviceState.setText(txt);
+        deviceBadge.setBackground(round(color,14));
+        deviceDot.setTextColor(color);
+        deviceState.setText(online?"Онлайн":(lastTelemetryAt>0?"Не отвечает":"Нет данных"));
+        deviceState.setTextColor(online?GREEN:(lastTelemetryAt>0?RED:MUTED));
+        deviceDetail.setText(txt==null?"":txt);
         setButton.setEnabled(online);
         stopButton.setEnabled(online);
-        setButton.setAlpha(online?1f:.42f);
-        stopButton.setAlpha(online?1f:.42f);
+        setButton.setAlpha(online?1f:.46f);
+        stopButton.setAlpha(online?1f:.46f);
+        refreshOverallState();
+    }
+
+    private void refreshOverallState(){
+        if(systemState==null)return;
+        boolean mq=mqtt!=null&&mqtt.isConnected();
+        boolean online=lastTelemetryAt>0&&System.currentTimeMillis()-lastTelemetryAt<=STALE_MS;
+        if(mq&&online){systemState.setText("ГОТОВО");systemState.setBackground(round(GREEN,12));}
+        else if(mq){systemState.setText("НЕТ ДАННЫХ");systemState.setBackground(round(ORANGE,12));}
+        else{systemState.setText("ОФЛАЙН");systemState.setBackground(round(OFF,12));}
     }
 
     private void disconnectInternal(boolean ui){
@@ -437,7 +527,7 @@ public class MainActivity extends Activity {
     private void showSettings(){
         setPage(settingsPage);
         title.setText("Настройки MQTT");
-        subtitle.setText("HomeSmoke Remote 2.0.2");
+        subtitle.setText("HomeSmoke Remote 2.0.3");
         back.setVisibility(View.VISIBLE);
         settings.setVisibility(View.GONE);
     }
@@ -494,23 +584,40 @@ public class MainActivity extends Activity {
         return c;
     }
 
-    private TextView statusRow(LinearLayout parent,String label,String initial,int dotColor){
+    private TextView statusRow(LinearLayout parent,String label,String initial,int dotColor,boolean mqttRow){
         LinearLayout row=new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(0,dp(8),0,dp(2));
         TextView dot=text("●",13,true,dotColor);
         dot.setPadding(0,0,dp(7),0);
+        if(mqttRow)mqttDot=dot;else deviceDot=dot;
         TextView a=text(label,14,true,TEXT);
         a.setPadding(0,0,dp(8),0);
-        TextView b=text(initial,14,false,MUTED);
+        TextView b=text(initial,14,true,MUTED);
         b.setGravity(Gravity.END);
-        b.setMaxLines(2);
+        b.setSingleLine(true);
         b.setEllipsize(TextUtils.TruncateAt.END);
         row.addView(dot);
         row.addView(a);
         row.addView(b,new LinearLayout.LayoutParams(0,-2,1));
         parent.addView(row);
         return b;
+    }
+
+    private TextView smallDetail(String s){
+        TextView t=text(s,12,false,MUTED);
+        t.setPadding(dp(20),0,0,dp(2));
+        t.setMaxLines(2);
+        t.setEllipsize(TextUtils.TruncateAt.END);
+        return t;
+    }
+
+    private TextView statusChip(String s,int color){
+        TextView t=center(s,10,true,Color.WHITE);
+        t.setSingleLine(true);
+        t.setPadding(dp(9),dp(5),dp(9),dp(5));
+        t.setBackground(round(color,12));
+        return t;
     }
 
     private TextView info(LinearLayout p,String label,String initial){
@@ -633,7 +740,7 @@ public class MainActivity extends Activity {
     private static String s(EditText e){return e.getText().toString().trim();}
     private static String topic(String s,String d){s=s==null?"":s.trim();return s.isEmpty()?d:s;}
     private static String deg(String s){return (s==null||s.trim().isEmpty()?"—":s.trim())+" °C";}
-    private static String modeName(String m){if("0".equals(m))return "Ручной";if("1".equals(m))return "PID";if("3".equals(m))return "STOP";return m;}
+    private static String modeName(String m){if("0".equals(m))return "Ручной";if("1".equals(m))return "PID";if("2".equals(m))return "AUTO";if("3".equals(m))return "STOP";return m;}
     private static String translateState(String s){if("pid_mode_required".equals(s))return "сначала включите PID режим";if("android_auto_running".equals(s))return "уставкой управляет Auto";if("bluetooth_not_connected".equals(s))return "Bluetooth коптильни отключён";if("controller_ack_timeout".equals(s))return "Arduino не подтвердила уставку";if("stale_command".equals(s))return "команда устарела";return s;}
     private static String safe(Exception e){return e.getMessage()==null?e.getClass().getSimpleName():e.getMessage();}
     private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
