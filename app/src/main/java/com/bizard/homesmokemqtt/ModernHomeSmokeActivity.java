@@ -80,7 +80,16 @@ public class ModernHomeSmokeActivity extends MainActivity {
 
     private void styleTree(View view) {
         if (view == null) return;
-        if (styled.add(view)) styleView(view);
+        boolean firstPass = styled.add(view);
+        if (firstPass) {
+            styleView(view);
+        } else if (view instanceof CheckBox) {
+            // CompoundButton state changes can cause the platform theme to re-apply
+            // background/tint attributes. Reassert the plain settings-row appearance.
+            styleCheckBox((CheckBox) view);
+        } else if (view instanceof Button) {
+            refreshDynamicButton((Button) view);
+        }
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
             for (int i = 0; i < group.getChildCount(); i++) {
@@ -177,8 +186,10 @@ public class ModernHomeSmokeActivity extends MainActivity {
         else if (color == OLD_ORANGE) text.setTextColor(WARNING);
 
         String value = text.getText() == null ? "" : text.getText().toString();
-        if ("HomeSmoke 2.6.2".equals(value) || "HomeSmoke 2.6.3".equals(value)) {
-            text.setText("HomeSmoke 2.6.4");
+        if ("HomeSmoke 2.6.2".equals(value)
+                || "HomeSmoke 2.6.3".equals(value)
+                || "HomeSmoke 2.6.4".equals(value)) {
+            text.setText("HomeSmoke 2.6.5");
             text.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         } else if ("История Auto пока пуста".equals(value)) {
             text.setText("История пока пуста\nПосле запуска Auto-программы здесь появятся записи и графики температуры.");
@@ -224,20 +235,51 @@ public class ModernHomeSmokeActivity extends MainActivity {
     }
 
     private void styleCheckBox(CheckBox box) {
-        box.setBackground(new ColorDrawable(Color.TRANSPARENT));
-        box.setBackgroundTintList(ColorStateList.valueOf(Color.TRANSPARENT));
+        // A CheckBox is a CompoundButton, not an action button. Android theme tints were
+        // producing a large filled button behind these controls on some devices.
+        box.setBackground(null);
+        box.setBackgroundTintList(null);
+        box.setStateListAnimator(null);
         box.setElevation(0f);
-        box.setTextColor(TEXT);
+        box.setTextColor(ColorStateList.valueOf(TEXT));
         box.setTextSize(14);
         box.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-        box.setPadding(0, dp(3), dp(4), dp(3));
+        box.setGravity(Gravity.CENTER_VERTICAL);
+        box.setPadding(0, dp(2), dp(4), dp(2));
+        box.setMinWidth(0);
+        box.setMinimumWidth(0);
         box.setMinHeight(dp(40));
+        box.setMinimumHeight(dp(40));
+        box.setSingleLine(false);
         box.setButtonTintList(new ColorStateList(
                 new int[][]{
                         new int[]{android.R.attr.state_checked},
                         new int[]{}
                 },
                 new int[]{PRIMARY, Color.rgb(148, 163, 184)}));
+    }
+
+    private void refreshDynamicButton(Button button) {
+        String label = button.getText() == null ? "" : button.getText().toString().trim();
+        String upper = label.toUpperCase(Locale.ROOT);
+
+        if (label.equals("Программы") || label.equals("Auto")) {
+            button.setText("AUTO");
+            button.setTextSize(12);
+            button.setSingleLine(true);
+            button.setGravity(Gravity.CENTER);
+            return;
+        }
+        if (label.equals("Ручной")) {
+            button.setText("РУЧНОЙ");
+            button.setTextSize(12);
+            button.setSingleLine(true);
+            button.setGravity(Gravity.CENTER);
+            return;
+        }
+        if (upper.contains("STOP") && !upper.contains("ПОСЛЕ ЭТАПА")) {
+            solidButton(button, DANGER, 15);
+        }
     }
 
     private void styleButton(Button button) {
