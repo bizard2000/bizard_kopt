@@ -1,9 +1,13 @@
-name: Build HomeSmoke 2.5.0 and Remote APKs
+name: Build HomeSmoke 2.6 stabilization
 
 on:
   push:
     branches: [ homesmoke-native ]
   workflow_dispatch:
+
+concurrency:
+  group: homesmoke-native-build
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -28,31 +32,10 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Apply Android 16 UI fixes
-        run: python3 ci/patch_android16_ui.py
+      - name: Test shared protocol and Auto core
+        run: gradle :core:test --stacktrace
 
-      - name: Apply exact Homesmoke AIA/Arduino protocol mapping
-        run: python3 ci/patch_protocol_mapping.py
-
-      - name: Add MQTT remote-control gateway
-        run: python3 ci/patch_remote_gateway.py
-
-      - name: Move automatic program to Android
-        run: python3 ci/patch_android_auto.py
-
-      - name: Add programmable 4-stage Auto editor
-        run: python3 ci/patch_programmable_auto.py
-
-      - name: Add K/T probe transition conditions
-        run: python3 ci/patch_auto_probe_conditions.py
-
-      - name: Add Auto program library
-        run: python3 ci/patch_auto_program_library.py
-
-      - name: Create Android 4.x legacy HomeSmoke module
-        run: python3 ci/make_legacy_main.py
-
-      - name: Build modern, legacy and Remote APKs
+      - name: Build modern HomeSmoke, existing Legacy and Remote
         id: build
         shell: bash
         run: |
@@ -69,19 +52,15 @@ jobs:
           mkdir -p dist
           cp build.log dist/build.log
           if [ "${{ steps.build.outputs.status }}" = "0" ]; then
-            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.5.0_Android16.apk
-            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.5.0_Android16.bin
-            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_MQTT_Android16.apk
+            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.0_Android6plus.apk
+            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.0_Android6plus.bin
             cp legacy/build/outputs/apk/debug/legacy-debug.apk dist/HomeSmoke_FULL_2.5.0_Android4plus.apk
-            cp legacy/build/outputs/apk/debug/legacy-debug.apk dist/HomeSmoke_FULL_2.5.0_Android4plus.bin
             cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_1.0.0_Android5plus.apk
-            cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_1.0.0_Android5plus.bin
-            cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote.apk
           fi
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "4189826+github-actions[bot]@users.noreply.github.com"
           git add dist
-          git commit -m "CI: publish HomeSmoke 2.5.0 Auto program library [skip ci]" || true
+          git commit -m "CI: publish HomeSmoke 2.6 stabilization [skip ci]" || true
           git pull --rebase origin homesmoke-native || true
           git push origin homesmoke-native
 
@@ -89,32 +68,28 @@ jobs:
         if: steps.build.outputs.status != '0'
         run: exit 1
 
-      - name: Upload HomeSmoke 2.5.0 modern
+      - name: Upload HomeSmoke 2.6 modern
         if: steps.build.outputs.status == '0'
         uses: actions/upload-artifact@v4
         with:
-          name: HomeSmoke_FULL_2.5.0_Android16
+          name: HomeSmoke_FULL_2.6.0_Android6plus
           path: |
-            dist/HomeSmoke_FULL_2.5.0_Android16.apk
-            dist/HomeSmoke_FULL_2.5.0_Android16.bin
+            dist/HomeSmoke_FULL_2.6.0_Android6plus.apk
+            dist/HomeSmoke_FULL_2.6.0_Android6plus.bin
           if-no-files-found: error
 
-      - name: Upload HomeSmoke 2.5.0 Android 4+
+      - name: Upload existing Android 4 legacy
         if: steps.build.outputs.status == '0'
         uses: actions/upload-artifact@v4
         with:
           name: HomeSmoke_FULL_2.5.0_Android4plus
-          path: |
-            dist/HomeSmoke_FULL_2.5.0_Android4plus.apk
-            dist/HomeSmoke_FULL_2.5.0_Android4plus.bin
+          path: dist/HomeSmoke_FULL_2.5.0_Android4plus.apk
           if-no-files-found: error
 
-      - name: Upload HomeSmoke Remote 1.0.0
+      - name: Upload Remote
         if: steps.build.outputs.status == '0'
         uses: actions/upload-artifact@v4
         with:
           name: HomeSmoke_Remote_1.0.0_Android5plus
-          path: |
-            dist/HomeSmoke_Remote_1.0.0_Android5plus.apk
-            dist/HomeSmoke_Remote_1.0.0_Android5plus.bin
+          path: dist/HomeSmoke_Remote_1.0.0_Android5plus.apk
           if-no-files-found: error
