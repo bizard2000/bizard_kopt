@@ -20,9 +20,9 @@
 > Task :app:mergeDebugShaders
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:processDebugManifestForPackage
 > Task :app:mergeDebugAssets
 > Task :app:compressDebugAssets
-> Task :app:processDebugManifestForPackage
 > Task :app:processDebugResources
 > Task :app:desugarDebugFileDependencies
 
@@ -32,11 +32,11 @@ Note: Recompile with -Xlint:deprecation for details.
 
 > Task :app:dexBuilderDebug
 > Task :app:processDebugJavaRes NO-SOURCE
+> Task :app:checkDebugDuplicateClasses
 > Task :app:mergeDebugGlobalSynthetics
 > Task :app:mergeDebugJniLibFolders
-> Task :app:checkDebugDuplicateClasses
-> Task :app:mergeDebugNativeLibs NO-SOURCE
 > Task :app:mergeExtDexDebug
+> Task :app:mergeDebugNativeLibs NO-SOURCE
 > Task :app:stripDebugDebugSymbols NO-SOURCE
 > Task :app:mergeDebugJavaResource
 > Task :app:mergeLibDexDebug
@@ -47,24 +47,24 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :legacy:preBuild UP-TO-DATE
 > Task :legacy:preDebugBuild UP-TO-DATE
 > Task :legacy:mergeDebugNativeDebugMetadata NO-SOURCE
-> Task :legacy:javaPreCompileDebug
 > Task :legacy:checkDebugAarMetadata
+> Task :legacy:javaPreCompileDebug
 > Task :legacy:generateDebugResValues
 > Task :legacy:mapDebugSourceSetPaths
 > Task :legacy:generateDebugResources
 > Task :legacy:mergeDebugResources
 > Task :legacy:packageDebugResources
 > Task :legacy:createDebugCompatibleScreenManifests
-> Task :legacy:extractDeepLinksDebug
 > Task :legacy:parseDebugLocalResources
+> Task :legacy:extractDeepLinksDebug
 > Task :legacy:processDebugMainManifest
 > Task :legacy:processDebugManifest
-> Task :legacy:mergeDebugShaders
-> Task :legacy:compileDebugShaders NO-SOURCE
 > Task :legacy:processDebugManifestForPackage
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
+> Task :legacy:mergeDebugShaders
+> Task :legacy:compileDebugShaders NO-SOURCE
 > Task :legacy:generateDebugAssets UP-TO-DATE
 > Task :legacy:mergeDebugAssets
 > Task :legacy:compressDebugAssets
@@ -97,11 +97,10 @@ Note: Recompile with -Xlint:deprecation for details.
 
 > Task :legacy:dexBuilderDebug
 > Task :remote:createDebugCompatibleScreenManifests
-> Task :remote:parseDebugLocalResources
 > Task :remote:extractDeepLinksDebug
+> Task :remote:parseDebugLocalResources
 > Task :remote:processDebugMainManifest
 > Task :remote:processDebugManifest
-> Task :remote:processDebugManifestForPackage
 > Task :remote:mergeDebugShaders
 > Task :remote:compileDebugShaders NO-SOURCE
 > Task :remote:generateDebugAssets UP-TO-DATE
@@ -111,18 +110,19 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :remote:processDebugJavaRes NO-SOURCE
 > Task :legacy:mergeDexDebug
 > Task :remote:mergeDebugJavaResource
+> Task :remote:processDebugManifestForPackage
 > Task :remote:checkDebugDuplicateClasses
-> Task :remote:mergeExtDexDebug
 > Task :remote:mergeDebugJniLibFolders
-> Task :remote:mergeLibDexDebug
+> Task :remote:mergeExtDexDebug
 > Task :remote:mergeDebugNativeLibs NO-SOURCE
+> Task :legacy:packageDebug
+> Task :remote:mergeLibDexDebug
+> Task :legacy:createDebugApkListingFileRedirect
+> Task :legacy:assembleDebug
 > Task :remote:stripDebugDebugSymbols NO-SOURCE
 > Task :remote:validateSigningDebug
 > Task :remote:writeDebugAppMetadata
 > Task :remote:writeDebugSigningConfigVersions
-> Task :legacy:packageDebug
-> Task :legacy:createDebugApkListingFileRedirect
-> Task :legacy:assembleDebug
 > Task :remote:processDebugResources
 
 > Task :remote:compileDebugJavaWithJavac
@@ -135,7 +135,7 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :remote:packageDebug
 > Task :remote:createDebugApkListingFileRedirect
 > Task :remote:assembleDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1788321426864.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1788321642967.json
 
-BUILD SUCCESSFUL in 14s
+BUILD SUCCESSFUL in 13s
 96 actionable tasks: 95 executed, 1 up-to-date
