@@ -113,7 +113,7 @@ public class MainActivity extends Activity {
         back=iconButton("‹");
         back.setTextSize(38);
         back.setVisibility(View.GONE);
-        back.setOnClickListener(v->showMonitor());
+        back.setOnClickListener(view->showMonitor());
         bar.addView(back,new LinearLayout.LayoutParams(dp(44),dp(48)));
 
         LinearLayout titles=new LinearLayout(this);
@@ -134,7 +134,7 @@ public class MainActivity extends Activity {
 
         settings=iconButton("⚙");
         settings.setTextSize(22);
-        settings.setOnClickListener(v->showSettings());
+        settings.setOnClickListener(view->showSettings());
         bar.addView(settings,new LinearLayout.LayoutParams(dp(46),dp(46)));
         return bar;
     }
@@ -203,12 +203,12 @@ public class MainActivity extends Activity {
         ip.setMargins(0,0,dp(8),0);
         setRow.addView(setInput,ip);
         setButton=action("Применить",BLUE);
-        setButton.setOnClickListener(v->sendSetpoint());
+        setButton.setOnClickListener(view->sendSetpoint());
         setRow.addView(setButton,new LinearLayout.LayoutParams(dp(145),dp(52)));
         ctrl.addView(setRow);
 
         stopButton=action("STOP · выключить нагрев",RED);
-        stopButton.setOnClickListener(v->confirmStop());
+        stopButton.setOnClickListener(view->confirmStop());
         LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-1,dp(54));
         sp.setMargins(0,dp(10),0,0);
         ctrl.addView(stopButton,sp);
@@ -232,9 +232,9 @@ public class MainActivity extends Activity {
 
         LinearLayout intro=card();
         intro.addView(sectionTitle("MQTT подключение"));
-        TextView v=text("HomeSmoke Remote 2.0.1 · Android 5+",13,false,MUTED);
-        v.setPadding(0,dp(3),0,0);
-        intro.addView(v);
+        TextView versionText=text("HomeSmoke Remote 2.0.1 · Android 5+",13,false,MUTED);
+        versionText.setPadding(0,dp(3),0,0);
+        intro.addView(versionText);
         p.addView(intro,margin(12,12,12,6));
 
         LinearLayout form=card();
@@ -252,11 +252,11 @@ public class MainActivity extends Activity {
         p.addView(form,margin(12,6,12,6));
 
         Button c=action("Сохранить и подключить",GREEN);
-        c.setOnClickListener(v->{saveSettings();wantConnection=true;connectMqtt(true);});
+        c.setOnClickListener(view->{saveSettings();wantConnection=true;connectMqtt(true);});
         p.addView(c,buttonMargin(12,8,12,4));
 
         disconnectButton=action("Отключить MQTT",OFF);
-        disconnectButton.setOnClickListener(v->{wantConnection=false;disconnectInternal(true);});
+        disconnectButton.setOnClickListener(view->{wantConnection=false;disconnectInternal(true);});
         p.addView(disconnectButton,buttonMargin(12,4,12,8));
 
         String sec=secrets.isEncrypted()?"Пароль MQTT хранится через Android Keystore.":"Android 5.0/5.1: защищённое хранилище этой реализации недоступно; используйте доверенную сеть/VPN.";
@@ -449,11 +449,11 @@ public class MainActivity extends Activity {
 
     private void applyInsets(View root){
         if(Build.VERSION.SDK_INT<21)return;
-        root.setOnApplyWindowInsetsListener((v,i)->{
+        root.setOnApplyWindowInsetsListener((view,i)->{
             int l,t,r,b;
             if(Build.VERSION.SDK_INT>=30){android.graphics.Insets x=i.getInsets(WindowInsets.Type.systemBars());l=x.left;t=x.top;r=x.right;b=x.bottom;}
             else{l=i.getSystemWindowInsetLeft();t=i.getSystemWindowInsetTop();r=i.getSystemWindowInsetRight();b=i.getSystemWindowInsetBottom();}
-            v.setPadding(l,t,r,b);return i;
+            view.setPadding(l,t,r,b);return i;
         });
         root.requestApplyInsets();
         getWindow().setStatusBarColor(NAVY);
