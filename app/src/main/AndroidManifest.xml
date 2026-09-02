@@ -12,6 +12,7 @@
     <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
 
     <application
+        android:name=".HomeSmokeApplication"
         android:allowBackup="false"
         android:label="Домашняя коптильня"
         android:theme="@style/AppTheme"
