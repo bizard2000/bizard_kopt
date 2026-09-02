@@ -22,7 +22,6 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.WeakHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -145,7 +144,6 @@ final class UiPolish {
         e.setTextColor(TEXT);
         e.setHintTextColor(Color.rgb(132,139,147));
         e.setTextSize(16);
-        e.setSingleLine(e.getInputType() != android.text.InputType.TYPE_CLASS_TEXT || e.getMaxLines() <= 1);
         e.setBackground(round(FIELD, dp(activity, 11), dp(activity, 1), BORDER));
         e.setPadding(dp(activity, 14), dp(activity, 11), dp(activity, 14), dp(activity, 11));
         e.setMinHeight(dp(activity, 50));
@@ -160,18 +158,18 @@ final class UiPolish {
     private static void polishDashboard(Activity activity, ViewGroup root) {
         TextView chamberTitle = findText(root, "ТЕМПЕРАТУРА КАМЕРЫ");
         if (chamberTitle != null && chamberTitle.getParent() instanceof ViewGroup) {
-            ViewGroup card = (ViewGroup) chamberTitle.getParent();
-            card.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+            ViewGroup chamberCard = (ViewGroup) chamberTitle.getParent();
+            chamberCard.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,
                     new int[]{Color.rgb(247,251,255), Color.WHITE}));
-            if (card.getBackground() instanceof GradientDrawable) {
-                ((GradientDrawable) card.getBackground()).setCornerRadius(dp(activity, 20));
+            if (chamberCard.getBackground() instanceof GradientDrawable) {
+                ((GradientDrawable) chamberCard.getBackground()).setCornerRadius(dp(activity, 20));
             }
-            card.setElevation(dp(activity, 7));
+            chamberCard.setElevation(dp(activity, 7));
             chamberTitle.setTextColor(BLUE_DARK);
             chamberTitle.setTextSize(13);
             chamberTitle.setLetterSpacing(0.04f);
 
-            if (!CHAMBER_ACTIONS.containsKey(card)) {
+            if (!CHAMBER_ACTIONS.containsKey(chamberCard)) {
                 Button action = new Button(activity);
                 action.setText("Задать / изменить");
                 action.setAllCaps(false);
@@ -180,24 +178,23 @@ final class UiPolish {
                 action.setTypeface(Typeface.DEFAULT_BOLD);
                 action.setBackground(round(BLUE, dp(activity, 12), 0, Color.TRANSPARENT));
                 action.setElevation(dp(activity, 2));
-                action.setOnClickListener(v -> card.performClick());
+                action.setOnClickListener(v -> chamberCard.performClick());
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(activity, 48));
                 lp.setMargins(dp(activity, 14), dp(activity, 10), dp(activity, 14), dp(activity, 4));
-                card.addView(action, lp);
+                chamberCard.addView(action, lp);
                 TextView hint = new TextView(activity);
                 hint.setText("PID — уставка температуры · Ручной — мощность ТЭНа");
                 hint.setTextColor(MUTED);
                 hint.setTextSize(12);
                 hint.setGravity(Gravity.CENTER);
                 hint.setPadding(dp(activity, 6), 0, dp(activity, 6), dp(activity, 4));
-                card.addView(hint);
-                CHAMBER_ACTIONS.put(card, action);
+                chamberCard.addView(hint);
+                CHAMBER_ACTIONS.put(chamberCard, action);
             }
         }
 
         styleNamedCard(activity, root, "Щуп K", Color.WHITE, 4);
         styleNamedCard(activity, root, "Щуп T", Color.WHITE, 4);
-        styleNamedCard(activity, root, "Мощность ТЭНа", Color.WHITE, 4);
         styleNamedCard(activity, root, "АВТО ПРОГРАММА", BLUE_SOFT, 5);
         styleNamedCard(activity, root, "АВТОМАТИЧЕСКАЯ ПРОГРАММА", BLUE_SOFT, 5);
 
@@ -209,20 +206,23 @@ final class UiPolish {
 
         TextView heaterLabel = findText(root, "Мощность ТЭНа");
         if (heaterLabel != null) {
-            ViewGroup card = ancestorLinear(heaterLabel);
-            if (card != null && !HEATER_BARS.containsKey(card)) {
-                ProgressBar bar = new ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal);
-                bar.setMax(100);
-                bar.setProgressTintList(ColorStateList.valueOf(ORANGE));
-                bar.setProgressBackgroundTintList(ColorStateList.valueOf(Color.rgb(225,229,234)));
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(activity, 8));
-                lp.setMargins(0, dp(activity, 10), 0, dp(activity, 4));
-                card.addView(bar, lp);
-                HEATER_BARS.put(card, bar);
+            ViewGroup processCard = processCardFor(heaterLabel);
+            if (processCard != null) {
+                processCard.setBackground(round(CARD, dp(activity, 18), dp(activity, 1), Color.rgb(230,234,239)));
+                processCard.setElevation(dp(activity, 4));
+                if (!HEATER_BARS.containsKey(processCard)) {
+                    ProgressBar bar = new ProgressBar(activity, null, android.R.attr.progressBarStyleHorizontal);
+                    bar.setMax(100);
+                    bar.setProgressTintList(ColorStateList.valueOf(ORANGE));
+                    bar.setProgressBackgroundTintList(ColorStateList.valueOf(Color.rgb(225,229,234)));
+                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(activity, 8));
+                    lp.setMargins(0, dp(activity, 10), 0, dp(activity, 4));
+                    processCard.addView(bar, lp);
+                    HEATER_BARS.put(processCard, bar);
+                }
+                ProgressBar bar = HEATER_BARS.get(processCard);
+                if (bar != null) bar.setProgress(readPercent(processCard));
             }
-            ViewGroup card = ancestorLinear(heaterLabel);
-            ProgressBar bar = card == null ? null : HEATER_BARS.get(card);
-            if (bar != null) bar.setProgress(readPercent(card));
         }
     }
 
@@ -366,13 +366,11 @@ final class UiPolish {
         card.setElevation(dp(activity, elevation));
     }
 
-    private static ViewGroup ancestorLinear(View v) {
-        View p = v;
-        for (int i = 0; i < 3 && p != null; i++) {
-            if (p.getParent() instanceof LinearLayout) return (LinearLayout) p.getParent();
-            if (p.getParent() instanceof View) p = (View) p.getParent(); else break;
-        }
-        return null;
+    private static ViewGroup processCardFor(TextView heaterLabel) {
+        if (!(heaterLabel.getParent() instanceof ViewGroup)) return null;
+        ViewGroup row = (ViewGroup) heaterLabel.getParent();
+        if (row.getParent() instanceof ViewGroup) return (ViewGroup) row.getParent();
+        return row;
     }
 
     private static int readPercent(ViewGroup root) {
