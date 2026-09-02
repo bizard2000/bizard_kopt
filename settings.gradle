@@ -15,6 +15,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "HomeSmokeMQTT"
+include ':core'
 include ':app'
 include ':remote'
 include ':legacy'
