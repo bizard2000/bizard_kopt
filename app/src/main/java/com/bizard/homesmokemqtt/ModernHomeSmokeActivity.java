@@ -81,12 +81,14 @@ public class ModernHomeSmokeActivity extends MainActivity {
     private void styleTree(View view) {
         if (view == null) return;
 
-        // Styling used to be re-applied to every Button and CheckBox on every
-        // global-layout pass. Several setters below request another layout, so on
-        // some devices the controls visibly oscillated by a pixel or two. A view
-        // is now styled exactly once; later layout passes only discover new views.
+        // Geometry-affecting styling is applied only once. On some Android builds a
+        // CompoundButton can later restore its theme background when drawable state
+        // changes. For CheckBox only, keep a tiny idempotent visual guard that never
+        // changes size/padding/translation and therefore cannot cause the old jitter.
         if (styled.add(view)) {
             styleView(view);
+        } else if (view instanceof CheckBox) {
+            refreshCheckBoxAppearance((CheckBox) view);
         }
 
         if (view instanceof ViewGroup) {
@@ -234,15 +236,15 @@ public class ModernHomeSmokeActivity extends MainActivity {
     }
 
     private void styleCheckBox(CheckBox box) {
-        // Keep native check semantics, but remove presentation animations and
-        // transformations that can make the control appear to jump when toggled.
+        // Keep native checked/unchecked semantics but permanently opt the control
+        // out of the theme's full-width action-button background.
         box.animate().cancel();
         box.setStateListAnimator(null);
         box.setTranslationX(0f);
         box.setTranslationY(0f);
         box.setScaleX(1f);
         box.setScaleY(1f);
-        box.setBackground(null);
+        box.setBackground(new ColorDrawable(Color.TRANSPARENT));
         box.setBackgroundTintList(null);
         box.setElevation(0f);
         box.setTextColor(ColorStateList.valueOf(TEXT));
@@ -255,12 +257,38 @@ public class ModernHomeSmokeActivity extends MainActivity {
         box.setMinHeight(dp(40));
         box.setMinimumHeight(dp(40));
         box.setSingleLine(false);
-        box.setButtonTintList(new ColorStateList(
+        box.setButtonTintList(checkTint());
+    }
+
+    private void refreshCheckBoxAppearance(CheckBox box) {
+        // Do not touch layout properties here. Only repair visual attributes if the
+        // platform/theme changed them after the initial styling pass.
+        Drawable background = box.getBackground();
+        if (!(background instanceof ColorDrawable)
+                || ((ColorDrawable) background).getColor() != Color.TRANSPARENT) {
+            box.setBackground(new ColorDrawable(Color.TRANSPARENT));
+        }
+        if (box.getBackgroundTintList() != null) {
+            box.setBackgroundTintList(null);
+        }
+        if (box.getStateListAnimator() != null) {
+            box.setStateListAnimator(null);
+        }
+        if (box.getElevation() != 0f) {
+            box.setElevation(0f);
+        }
+        if (box.getCurrentTextColor() != TEXT) {
+            box.setTextColor(ColorStateList.valueOf(TEXT));
+        }
+    }
+
+    private ColorStateList checkTint() {
+        return new ColorStateList(
                 new int[][]{
                         new int[]{android.R.attr.state_checked},
                         new int[]{}
                 },
-                new int[]{PRIMARY, Color.rgb(148, 163, 184)}));
+                new int[]{PRIMARY, Color.rgb(148, 163, 184)});
     }
 
     private void styleButton(Button button) {
