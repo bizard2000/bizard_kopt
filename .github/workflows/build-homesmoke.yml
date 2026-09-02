@@ -1,4 +1,4 @@
-name: Build HomeSmoke 2.6 stabilization
+name: Build HomeSmoke modern and Remote
 
 on:
   push:
@@ -35,13 +35,13 @@ jobs:
       - name: Test shared protocol and Auto core
         run: gradle :core:test --stacktrace
 
-      - name: Build HomeSmoke 2.6 modern, Android 4 Legacy and Remote 2.0
+      - name: Build HomeSmoke 2.6.1 modern and Remote 2.0
         id: build
         shell: bash
         run: |
           set +e
           set -o pipefail
-          gradle :app:assembleDebug :legacy:assembleDebug :remote:assembleDebug --stacktrace 2>&1 | tee build.log
+          gradle :app:assembleDebug :remote:assembleDebug --stacktrace 2>&1 | tee build.log
           status=${PIPESTATUS[0]}
           echo "status=$status" >> "$GITHUB_OUTPUT"
           exit 0
@@ -51,18 +51,17 @@ jobs:
         run: |
           mkdir -p dist
           cp build.log dist/build.log
+          rm -f dist/HomeSmoke_FULL_2.6.0_Android4plus.apk dist/HomeSmoke_FULL_2.6.0_Android4plus.bin
           if [ "${{ steps.build.outputs.status }}" = "0" ]; then
-            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.0_Android6plus.apk
-            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.0_Android6plus.bin
-            cp legacy/build/outputs/apk/debug/legacy-debug.apk dist/HomeSmoke_FULL_2.6.0_Android4plus.apk
-            cp legacy/build/outputs/apk/debug/legacy-debug.apk dist/HomeSmoke_FULL_2.6.0_Android4plus.bin
+            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.1_Android6plus.apk
+            cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.1_Android6plus.bin
             cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_2.0.0_Android5plus.apk
             cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_2.0.0_Android5plus.bin
           fi
           git config user.name "github-actions[bot]"
           git config user.email "4189826+github-actions[bot]@users.noreply.github.com"
-          git add dist
-          git commit -m "CI: publish HomeSmoke 2.6 and Remote 2.0 [skip ci]" || true
+          git add -A dist
+          git commit -m "CI: publish HomeSmoke 2.6.1 and Remote 2.0 [skip ci]" || true
           git pull --rebase origin homesmoke-native || true
           git push origin homesmoke-native
 
@@ -70,24 +69,14 @@ jobs:
         if: steps.build.outputs.status != '0'
         run: exit 1
 
-      - name: Upload HomeSmoke 2.6 modern
+      - name: Upload HomeSmoke 2.6.1 modern
         if: steps.build.outputs.status == '0'
         uses: actions/upload-artifact@v4
         with:
-          name: HomeSmoke_FULL_2.6.0_Android6plus
+          name: HomeSmoke_FULL_2.6.1_Android6plus
           path: |
-            dist/HomeSmoke_FULL_2.6.0_Android6plus.apk
-            dist/HomeSmoke_FULL_2.6.0_Android6plus.bin
-          if-no-files-found: error
-
-      - name: Upload HomeSmoke 2.6 Android 4+
-        if: steps.build.outputs.status == '0'
-        uses: actions/upload-artifact@v4
-        with:
-          name: HomeSmoke_FULL_2.6.0_Android4plus
-          path: |
-            dist/HomeSmoke_FULL_2.6.0_Android4plus.apk
-            dist/HomeSmoke_FULL_2.6.0_Android4plus.bin
+            dist/HomeSmoke_FULL_2.6.1_Android6plus.apk
+            dist/HomeSmoke_FULL_2.6.1_Android6plus.bin
           if-no-files-found: error
 
       - name: Upload HomeSmoke Remote 2.0
