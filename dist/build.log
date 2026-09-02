@@ -12,9 +12,9 @@ Starting a Gradle Daemon (subsequent builds will be faster)
 > Task :app:preBuild UP-TO-DATE
 > Task :app:preDebugBuild UP-TO-DATE
 > Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:javaPreCompileDebug
 > Task :app:checkDebugAarMetadata
 > Task :app:generateDebugResValues
-> Task :app:javaPreCompileDebug
 > Task :app:mapDebugSourceSetPaths
 > Task :app:generateDebugResources
 > Task :app:packageDebugResources
@@ -26,123 +26,415 @@ Starting a Gradle Daemon (subsequent builds will be faster)
 > Task :app:processDebugManifest
 > Task :app:mergeDebugShaders
 > Task :app:compileDebugShaders NO-SOURCE
+> Task :app:processDebugManifestForPackage
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
 > Task :app:compressDebugAssets
-> Task :app:desugarDebugFileDependencies
-> Task :app:processDebugJavaRes NO-SOURCE
-> Task :app:processDebugManifestForPackage
-> Task :app:mergeDebugJavaResource
-> Task :app:checkDebugDuplicateClasses
-> Task :app:mergeDebugJniLibFolders
-> Task :app:mergeDebugNativeLibs NO-SOURCE
-> Task :app:stripDebugDebugSymbols NO-SOURCE
-> Task :app:mergeLibDexDebug
-> Task :app:mergeExtDexDebug
 > Task :app:processDebugResources
-> Task :app:validateSigningDebug
+> Task :app:desugarDebugFileDependencies
 
 > Task :app:compileDebugJavaWithJavac
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/CommandAckTracker.java:3: error: package com.bizard.homesmokecore does not exist
+import com.bizard.homesmokecore.Telemetry;
+                               ^
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/CommandAckTracker.java:22: error: cannot find symbol
+    synchronized void onTelemetry(Telemetry t,long now,Listener l){
+                                  ^
+  symbol:   class Telemetry
+  location: class CommandAckTracker
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:5: error: package com.bizard.homesmokecore does not exist
+import com.bizard.homesmokecore.AutoProgram;
+                               ^
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:6: error: package com.bizard.homesmokecore does not exist
+import com.bizard.homesmokecore.AutoStage;
+                               ^
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:21: error: cannot find symbol
+    synchronized List<AutoProgram> load(){
+                      ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:29: error: cannot find symbol
+    synchronized void save(List<AutoProgram> programs){
+                                ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:33: error: cannot find symbol
+    synchronized String exportJson(List<AutoProgram> programs)throws Exception{return encodeLibrary(programs);}
+                                        ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:34: error: cannot find symbol
+    synchronized List<AutoProgram> importJson(String json)throws Exception{List<AutoProgram> p=decodeLibrary(json);if(p.isEmpty())throw new IllegalArgumentException("Нет программ");save(p);return p;}
+                      ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:36: error: cannot find symbol
+    static AutoProgram defaultProgram(){
+           ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:43: error: cannot find symbol
+    private List<AutoProgram> migrateV1() throws Exception {
+                 ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:65: error: package AutoStage does not exist
+    private static AutoStage.FinishCondition conditionFromOld(int c){switch(c){case 1:return AutoStage.FinishCondition.PROBE_K;case 2:return AutoStage.FinishCondition.PROBE_T;case 3:return AutoStage.FinishCondition.TIME_OR_K;case 4:return AutoStage.FinishCondition.TIME_OR_T;case 5:return AutoStage.FinishCondition.TIME_AND_K;case 6:return AutoStage.FinishCondition.TIME_AND_T;default:return AutoStage.FinishCondition.TIME;}}
+                            ^
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:68: error: cannot find symbol
+    private static String encodeLibrary(List<AutoProgram> programs)throws Exception{
+                                             ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:71: error: cannot find symbol
+    private static List<AutoProgram> decodeLibrary(String raw)throws Exception{
+                        ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:74: error: cannot find symbol
+    private static JSONObject encodeProgram(AutoProgram p)throws Exception{
+                                            ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:78: error: cannot find symbol
+    private static AutoProgram decodeProgram(JSONObject o)throws Exception{
+                   ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:25: error: cannot find symbol
+            List<AutoProgram> migrated=migrateV1(); save(migrated); return migrated;
+                 ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:26: error: cannot find symbol
+        } catch(Exception e){List<AutoProgram> x=new ArrayList<>();x.add(defaultProgram());return x;}
+                                  ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:34: error: cannot find symbol
+    synchronized List<AutoProgram> importJson(String json)throws Exception{List<AutoProgram> p=decodeLibrary(json);if(p.isEmpty())throw new IllegalArgumentException("Нет программ");save(p);return p;}
+                                                                                ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:37: error: cannot find symbol
+        AutoProgram p=new AutoProgram(); p.name="Моя программа";
+        ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:37: error: cannot find symbol
+        AutoProgram p=new AutoProgram(); p.name="Моя программа";
+                          ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:38: error: cannot find symbol
+        AutoStage s=p.stages.get(0);s.enabled=true;s.chamberTarget=40;s.tolerance=1;s.stableSeconds=20;s.holdMs=15L*60L*1000L;
+        ^
+  symbol:   class AutoStage
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:45: error: cannot find symbol
+        if(raw==null||raw.trim().isEmpty()){List<AutoProgram>x=new ArrayList<>();x.add(defaultProgram());return x;}
+                                                 ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:46: error: cannot find symbol
+        JSONArray a=new JSONArray(raw); List<AutoProgram> out=new ArrayList<>();
+                                             ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:49: error: cannot find symbol
+            AutoProgram p=new AutoProgram();p.name=o.optString("name","Программа "+(i+1));p.id=UUID.randomUUID().toString();p.stages.clear();
+            ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:49: error: cannot find symbol
+            AutoProgram p=new AutoProgram();p.name=o.optString("name","Программа "+(i+1));p.id=UUID.randomUUID().toString();p.stages.clear();
+                              ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:52: error: cannot find symbol
+                JSONObject x=st==null?null:st.optJSONObject(j);AutoStage s=new AutoStage();s.name="Этап "+(j+1);
+                                                               ^
+  symbol:   class AutoStage
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:52: error: cannot find symbol
+                JSONObject x=st==null?null:st.optJSONObject(j);AutoStage s=new AutoStage();s.name="Этап "+(j+1);
+                                                                               ^
+  symbol:   class AutoStage
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:57: error: package AutoStage does not exist
+                s.tolerance=1.0;s.stableSeconds=20;s.probeActivation=AutoStage.ProbeActivation.AFTER_CHAMBER_READY;
+                                                                              ^
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:65: error: package AutoStage does not exist
+    private static AutoStage.FinishCondition conditionFromOld(int c){switch(c){case 1:return AutoStage.FinishCondition.PROBE_K;case 2:return AutoStage.FinishCondition.PROBE_T;case 3:return AutoStage.FinishCondition.TIME_OR_K;case 4:return AutoStage.FinishCondition.TIME_OR_T;case 5:return AutoStage.FinishCondition.TIME_AND_K;case 6:return AutoStage.FinishCondition.TIME_AND_T;default:return AutoStage.FinishCondition.TIME;}}
+                                                                                                      ^
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:65: error: package AutoStage does not exist
+    private static AutoStage.FinishCondition conditionFromOld(int c){switch(c){case 1:return AutoStage.FinishCondition.PROBE_K;case 2:return AutoStage.FinishCondition.PROBE_T;case 3:return AutoStage.FinishCondition.TIME_OR_K;case 4:return AutoStage.FinishCondition.TIME_OR_T;case 5:return AutoStage.FinishCondition.TIME_AND_K;case 6:return AutoStage.FinishCondition.TIME_AND_T;default:return AutoStage.FinishCondition.TIME;}}
+                                                                                                                                                      ^
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:65: error: package AutoStage does not exist
+    private static AutoStage.FinishCondition conditionFromOld(int c){switch(c){case 1:return AutoStage.FinishCondition.PROBE_K;case 2:return AutoStage.FinishCondition.PROBE_T;case 3:return AutoStage.FinishCondition.TIME_OR_K;case 4:return AutoStage.FinishCondition.TIME_OR_T;case 5:return AutoStage.FinishCondition.TIME_AND_K;case 6:return AutoStage.FinishCondition.TIME_AND_T;default:return AutoStage.FinishCondition.TIME;}}
+                                                                                                                                                                                                      ^
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:65: error: package AutoStage does not exist
+    private static AutoStage.FinishCondition conditionFromOld(int c){switch(c){case 1:return AutoStage.FinishCondition.PROBE_K;case 2:return AutoStage.FinishCondition.PROBE_T;case 3:return AutoStage.FinishCondition.TIME_OR_K;case 4:return AutoStage.FinishCondition.TIME_OR_T;case 5:return AutoStage.FinishCondition.TIME_AND_K;case 6:return AutoStage.FinishCondition.TIME_AND_T;default:return AutoStage.FinishCondition.TIME;}}
+                                                                                                                                                                                                                                                        ^
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:65: error: package AutoStage does not exist
+    private static AutoStage.FinishCondition conditionFromOld(int c){switch(c){case 1:return AutoStage.FinishCondition.PROBE_K;case 2:return AutoStage.FinishCondition.PROBE_T;case 3:return AutoStage.FinishCondition.TIME_OR_K;case 4:return AutoStage.FinishCondition.TIME_OR_T;case 5:return AutoStage.FinishCondition.TIME_AND_K;case 6:return AutoStage.FinishCondition.TIME_AND_T;default:return AutoStage.FinishCondition.TIME;}}
+                                                                                                                                                                                                                                                                                                          ^
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:65: error: package AutoStage does not exist
+    private static AutoStage.FinishCondition conditionFromOld(int c){switch(c){case 1:return AutoStage.FinishCondition.PROBE_K;case 2:return AutoStage.FinishCondition.PROBE_T;case 3:return AutoStage.FinishCondition.TIME_OR_K;case 4:return AutoStage.FinishCondition.TIME_OR_T;case 5:return AutoStage.FinishCondition.TIME_AND_K;case 6:return AutoStage.FinishCondition.TIME_AND_T;default:return AutoStage.FinishCondition.TIME;}}
+                                                                                                                                                                                                                                                                                                                                                             ^
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:65: error: package AutoStage does not exist
+    private static AutoStage.FinishCondition conditionFromOld(int c){switch(c){case 1:return AutoStage.FinishCondition.PROBE_K;case 2:return AutoStage.FinishCondition.PROBE_T;case 3:return AutoStage.FinishCondition.TIME_OR_K;case 4:return AutoStage.FinishCondition.TIME_OR_T;case 5:return AutoStage.FinishCondition.TIME_AND_K;case 6:return AutoStage.FinishCondition.TIME_AND_T;default:return AutoStage.FinishCondition.TIME;}}
+                                                                                                                                                                                                                                                                                                                                                                                                                 ^
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:69: error: cannot find symbol
+        JSONArray a=new JSONArray();for(AutoProgram p:programs)a.put(encodeProgram(p));return a.toString();
+                                        ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:72: error: cannot find symbol
+        JSONArray a=new JSONArray(raw);List<AutoProgram> out=new ArrayList<>();for(int i=0;i<a.length();i++){JSONObject o=a.optJSONObject(i);if(o!=null)out.add(decodeProgram(o));}return out;
+                                            ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:76: error: cannot find symbol
+        for(AutoStage s:p.stages){JSONObject x=new JSONObject();x.put("name",s.name);x.put("enabled",s.enabled);x.put("chamberTarget",s.chamberTarget);x.put("tolerance",s.tolerance);x.put("stableSeconds",s.stableSeconds);x.put("holdMs",s.holdMs);x.put("finishCondition",s.finishCondition.name());x.put("probeTarget",s.probeTarget);x.put("probeActivation",s.probeActivation.name());x.put("stopAfter",s.stopAfter);a.put(x);}o.put("stages",a);return o;
+            ^
+  symbol:   class AutoStage
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:79: error: cannot find symbol
+        AutoProgram p=new AutoProgram();p.id=o.optString("id",UUID.randomUUID().toString());p.name=o.optString("name","Программа");p.description=o.optString("description","");p.modifiedAt=o.optLong("modifiedAt",System.currentTimeMillis());p.stages.clear();JSONArray a=o.optJSONArray("stages");
+        ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:79: error: cannot find symbol
+        AutoProgram p=new AutoProgram();p.id=o.optString("id",UUID.randomUUID().toString());p.name=o.optString("name","Программа");p.description=o.optString("description","");p.modifiedAt=o.optLong("modifiedAt",System.currentTimeMillis());p.stages.clear();JSONArray a=o.optJSONArray("stages");
+                          ^
+  symbol:   class AutoProgram
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:80: error: cannot find symbol
+        for(int i=0;i<4;i++){JSONObject x=a==null?null:a.optJSONObject(i);AutoStage s=new AutoStage();s.name=x==null?"Этап "+(i+1):x.optString("name","Этап "+(i+1));s.enabled=x!=null?x.optBoolean("enabled",i==0):i==0;s.chamberTarget=x==null?(i==0?40:0):x.optDouble("chamberTarget",0);s.tolerance=x==null?1:x.optDouble("tolerance",1);s.stableSeconds=x==null?20:x.optInt("stableSeconds",20);s.holdMs=x==null?(i==0?900000:0):x.optLong("holdMs",0);try{s.finishCondition=AutoStage.FinishCondition.valueOf(x.optString("finishCondition","TIME"));}catch(Exception e){s.finishCondition=AutoStage.FinishCondition.TIME;}s.probeTarget=x==null?0:x.optDouble("probeTarget",0);try{s.probeActivation=AutoStage.ProbeActivation.valueOf(x.optString("probeActivation","AFTER_CHAMBER_READY"));}catch(Exception e){s.probeActivation=AutoStage.ProbeActivation.AFTER_CHAMBER_READY;}s.stopAfter=x!=null&&x.optBoolean("stopAfter",false);p.stages.add(s);}return p;
+                                                                          ^
+  symbol:   class AutoStage
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:80: error: cannot find symbol
+        for(int i=0;i<4;i++){JSONObject x=a==null?null:a.optJSONObject(i);AutoStage s=new AutoStage();s.name=x==null?"Этап "+(i+1):x.optString("name","Этап "+(i+1));s.enabled=x!=null?x.optBoolean("enabled",i==0):i==0;s.chamberTarget=x==null?(i==0?40:0):x.optDouble("chamberTarget",0);s.tolerance=x==null?1:x.optDouble("tolerance",1);s.stableSeconds=x==null?20:x.optInt("stableSeconds",20);s.holdMs=x==null?(i==0?900000:0):x.optLong("holdMs",0);try{s.finishCondition=AutoStage.FinishCondition.valueOf(x.optString("finishCondition","TIME"));}catch(Exception e){s.finishCondition=AutoStage.FinishCondition.TIME;}s.probeTarget=x==null?0:x.optDouble("probeTarget",0);try{s.probeActivation=AutoStage.ProbeActivation.valueOf(x.optString("probeActivation","AFTER_CHAMBER_READY"));}catch(Exception e){s.probeActivation=AutoStage.ProbeActivation.AFTER_CHAMBER_READY;}s.stopAfter=x!=null&&x.optBoolean("stopAfter",false);p.stages.add(s);}return p;
+                                                                                          ^
+  symbol:   class AutoStage
+  location: class ProgramRepository
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:80: error: package AutoStage does not exist
+        for(int i=0;i<4;i++){JSONObject x=a==null?null:a.optJSONObject(i);AutoStage s=new AutoStage();s.name=x==null?"Этап "+(i+1):x.optString("name","Этап "+(i+1));s.enabled=x!=null?x.optBoolean("enabled",i==0):i==0;s.chamberTarget=x==null?(i==0?40:0):x.optDouble("chamberTarget",0);s.tolerance=x==null?1:x.optDouble("tolerance",1);s.stableSeconds=x==null?20:x.optInt("stableSeconds",20);s.holdMs=x==null?(i==0?900000:0):x.optLong("holdMs",0);try{s.finishCondition=AutoStage.FinishCondition.valueOf(x.optString("finishCondition","TIME"));}catch(Exception e){s.finishCondition=AutoStage.FinishCondition.TIME;}s.probeTarget=x==null?0:x.optDouble("probeTarget",0);try{s.probeActivation=AutoStage.ProbeActivation.valueOf(x.optString("probeActivation","AFTER_CHAMBER_READY"));}catch(Exception e){s.probeActivation=AutoStage.ProbeActivation.AFTER_CHAMBER_READY;}s.stopAfter=x!=null&&x.optBoolean("stopAfter",false);p.stages.add(s);}return p;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ^
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:80: error: package AutoStage does not exist
+        for(int i=0;i<4;i++){JSONObject x=a==null?null:a.optJSONObject(i);AutoStage s=new AutoStage();s.name=x==null?"Этап "+(i+1):x.optString("name","Этап "+(i+1));s.enabled=x!=null?x.optBoolean("enabled",i==0):i==0;s.chamberTarget=x==null?(i==0?40:0):x.optDouble("chamberTarget",0);s.tolerance=x==null?1:x.optDouble("tolerance",1);s.stableSeconds=x==null?20:x.optInt("stableSeconds",20);s.holdMs=x==null?(i==0?900000:0):x.optLong("holdMs",0);try{s.finishCondition=AutoStage.FinishCondition.valueOf(x.optString("finishCondition","TIME"));}catch(Exception e){s.finishCondition=AutoStage.FinishCondition.TIME;}s.probeTarget=x==null?0:x.optDouble("probeTarget",0);try{s.probeActivation=AutoStage.ProbeActivation.valueOf(x.optString("probeActivation","AFTER_CHAMBER_READY"));}catch(Exception e){s.probeActivation=AutoStage.ProbeActivation.AFTER_CHAMBER_READY;}s.stopAfter=x!=null&&x.optBoolean("stopAfter",false);p.stages.add(s);}return p;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          ^
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:80: error: package AutoStage does not exist
+        for(int i=0;i<4;i++){JSONObject x=a==null?null:a.optJSONObject(i);AutoStage s=new AutoStage();s.name=x==null?"Этап "+(i+1):x.optString("name","Этап "+(i+1));s.enabled=x!=null?x.optBoolean("enabled",i==0):i==0;s.chamberTarget=x==null?(i==0?40:0):x.optDouble("chamberTarget",0);s.tolerance=x==null?1:x.optDouble("tolerance",1);s.stableSeconds=x==null?20:x.optInt("stableSeconds",20);s.holdMs=x==null?(i==0?900000:0):x.optLong("holdMs",0);try{s.finishCondition=AutoStage.FinishCondition.valueOf(x.optString("finishCondition","TIME"));}catch(Exception e){s.finishCondition=AutoStage.FinishCondition.TIME;}s.probeTarget=x==null?0:x.optDouble("probeTarget",0);try{s.probeActivation=AutoStage.ProbeActivation.valueOf(x.optString("probeActivation","AFTER_CHAMBER_READY"));}catch(Exception e){s.probeActivation=AutoStage.ProbeActivation.AFTER_CHAMBER_READY;}s.stopAfter=x!=null&&x.optBoolean("stopAfter",false);p.stages.add(s);}return p;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ^
+/home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java:80: error: package AutoStage does not exist
+        for(int i=0;i<4;i++){JSONObject x=a==null?null:a.optJSONObject(i);AutoStage s=new AutoStage();s.name=x==null?"Этап "+(i+1):x.optString("name","Этап "+(i+1));s.enabled=x!=null?x.optBoolean("enabled",i==0):i==0;s.chamberTarget=x==null?(i==0?40:0):x.optDouble("chamberTarget",0);s.tolerance=x==null?1:x.optDouble("tolerance",1);s.stableSeconds=x==null?20:x.optInt("stableSeconds",20);s.holdMs=x==null?(i==0?900000:0):x.optLong("holdMs",0);try{s.finishCondition=AutoStage.FinishCondition.valueOf(x.optString("finishCondition","TIME"));}catch(Exception e){s.finishCondition=AutoStage.FinishCondition.TIME;}s.probeTarget=x==null?0:x.optDouble("probeTarget",0);try{s.probeActivation=AutoStage.ProbeActivation.valueOf(x.optString("probeActivation","AFTER_CHAMBER_READY"));}catch(Exception e){s.probeActivation=AutoStage.ProbeActivation.AFTER_CHAMBER_READY;}s.stopAfter=x!=null&&x.optBoolean("stopAfter",false);p.stages.add(s);}return p;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ^
 Note: /home/runner/work/bizard_kopt/bizard_kopt/app/src/main/java/com/bizard/homesmokemqtt/MainActivity.java uses or overrides a deprecated API.
 Note: Recompile with -Xlint:deprecation for details.
+46 errors
 
-> Task :app:dexBuilderDebug
-> Task :app:mergeDebugGlobalSynthetics
-> Task :app:writeDebugAppMetadata
-> Task :app:writeDebugSigningConfigVersions
-> Task :legacy:preBuild UP-TO-DATE
-> Task :legacy:preDebugBuild UP-TO-DATE
-> Task :legacy:mergeDebugNativeDebugMetadata NO-SOURCE
-> Task :legacy:javaPreCompileDebug
-> Task :legacy:checkDebugAarMetadata
-> Task :legacy:generateDebugResValues
-> Task :legacy:mapDebugSourceSetPaths
-> Task :legacy:generateDebugResources
-> Task :legacy:mergeDebugResources
-> Task :legacy:packageDebugResources
-> Task :legacy:createDebugCompatibleScreenManifests
-> Task :legacy:extractDeepLinksDebug
-> Task :legacy:parseDebugLocalResources
-> Task :app:mergeProjectDexDebug
-> Task :legacy:processDebugMainManifest
-> Task :legacy:processDebugManifest
-> Task :legacy:mergeDebugShaders
-> Task :legacy:compileDebugShaders NO-SOURCE
-> Task :legacy:processDebugManifestForPackage
-> Task :legacy:generateDebugAssets UP-TO-DATE
-> Task :legacy:mergeDebugAssets
-> Task :legacy:compressDebugAssets
-> Task :legacy:processDebugJavaRes NO-SOURCE
-> Task :legacy:mergeDebugJavaResource
-> Task :legacy:checkDebugDuplicateClasses
-> Task :legacy:desugarDebugFileDependencies
-> Task :legacy:mergeExtDexDebug
-> Task :legacy:mergeDebugJniLibFolders
-> Task :legacy:mergeDebugNativeLibs NO-SOURCE
-> Task :legacy:stripDebugDebugSymbols NO-SOURCE
-> Task :legacy:validateSigningDebug
-> Task :legacy:writeDebugAppMetadata
-> Task :legacy:writeDebugSigningConfigVersions
-> Task :remote:preBuild UP-TO-DATE
-> Task :remote:preDebugBuild UP-TO-DATE
-> Task :remote:mergeDebugNativeDebugMetadata NO-SOURCE
-> Task :remote:javaPreCompileDebug
-> Task :remote:checkDebugAarMetadata
-> Task :remote:generateDebugResValues
-> Task :remote:mapDebugSourceSetPaths
-> Task :remote:generateDebugResources
-> Task :legacy:processDebugResources
-> Task :remote:mergeDebugResources
+> Task :app:compileDebugJavaWithJavac FAILED
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1788320505687.json
 
-> Task :legacy:compileDebugJavaWithJavac
-Note: /home/runner/work/bizard_kopt/bizard_kopt/legacy/src/main/java/com/bizard/homesmokemqtt/MainActivity.java uses or overrides a deprecated API.
-Note: Recompile with -Xlint:deprecation for details.
+FAILURE: Build failed with an exception.
 
-> Task :legacy:dexBuilderDebug
-> Task :remote:packageDebugResources
-> Task :remote:parseDebugLocalResources
-> Task :remote:createDebugCompatibleScreenManifests
-> Task :remote:extractDeepLinksDebug
-> Task :legacy:mergeDexDebug
-> Task :remote:processDebugMainManifest
-> Task :app:packageDebug
-> Task :app:createDebugApkListingFileRedirect
-> Task :app:assembleDebug
-> Task :remote:processDebugManifest
-> Task :remote:mergeDebugShaders
-> Task :legacy:packageDebug
-> Task :legacy:createDebugApkListingFileRedirect
-> Task :remote:processDebugManifestForPackage
-> Task :legacy:assembleDebug
-> Task :remote:compileDebugShaders NO-SOURCE
-> Task :remote:generateDebugAssets UP-TO-DATE
-> Task :remote:mergeDebugAssets
-> Task :remote:compressDebugAssets
-> Task :remote:desugarDebugFileDependencies
-> Task :remote:processDebugJavaRes NO-SOURCE
-> Task :remote:mergeDebugJavaResource
-> Task :remote:checkDebugDuplicateClasses
-> Task :remote:mergeDebugJniLibFolders
-> Task :remote:mergeExtDexDebug
-> Task :remote:mergeDebugNativeLibs NO-SOURCE
-> Task :remote:stripDebugDebugSymbols NO-SOURCE
-> Task :remote:validateSigningDebug
-> Task :remote:mergeLibDexDebug
-> Task :remote:writeDebugAppMetadata
-> Task :remote:writeDebugSigningConfigVersions
-> Task :remote:processDebugResources
+* What went wrong:
+Execution failed for task ':app:compileDebugJavaWithJavac'.
+> Compilation failed; see the compiler error output for details.
 
-> Task :remote:compileDebugJavaWithJavac
-Note: /home/runner/work/bizard_kopt/bizard_kopt/remote/src/main/java/com/bizard/homesmokeremote/MainActivity.java uses or overrides a deprecated API.
-Note: Recompile with -Xlint:deprecation for details.
+* Try:
+> Run with --info option to get more log output.
+> Run with --scan to get full insights.
 
-> Task :remote:dexBuilderDebug
-> Task :remote:mergeDebugGlobalSynthetics
-> Task :remote:mergeProjectDexDebug
-> Task :remote:packageDebug
-> Task :remote:createDebugApkListingFileRedirect
-> Task :remote:assembleDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/build-1787741232609.json
+* Exception is:
+org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:compileDebugJavaWithJavac'.
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.lambda$executeIfValid$1(ExecuteActionsTaskExecuter.java:130)
+	at org.gradle.internal.Try$Failure.ifSuccessfulOrElse(Try.java:293)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:128)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:116)
+	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
+	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
+	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
+	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
+	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
+	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:42)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:331)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:318)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:314)
+	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:85)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:314)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:459)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:376)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:48)
+Caused by: org.gradle.api.internal.tasks.compile.CompilationFailedException: Compilation failed; see the compiler error output for details.
+	at org.gradle.api.internal.tasks.compile.JdkJavaCompiler.execute(JdkJavaCompiler.java:79)
+	at org.gradle.api.internal.tasks.compile.JdkJavaCompiler.execute(JdkJavaCompiler.java:46)
+	at org.gradle.api.internal.tasks.compile.NormalizingJavaCompiler.delegateAndHandleErrors(NormalizingJavaCompiler.java:98)
+	at org.gradle.api.internal.tasks.compile.NormalizingJavaCompiler.execute(NormalizingJavaCompiler.java:52)
+	at org.gradle.api.internal.tasks.compile.NormalizingJavaCompiler.execute(NormalizingJavaCompiler.java:38)
+	at org.gradle.api.internal.tasks.compile.AnnotationProcessorDiscoveringCompiler.execute(AnnotationProcessorDiscoveringCompiler.java:52)
+	at org.gradle.api.internal.tasks.compile.AnnotationProcessorDiscoveringCompiler.execute(AnnotationProcessorDiscoveringCompiler.java:38)
+	at org.gradle.api.internal.tasks.compile.ModuleApplicationNameWritingCompiler.execute(ModuleApplicationNameWritingCompiler.java:46)
+	at org.gradle.api.internal.tasks.compile.ModuleApplicationNameWritingCompiler.execute(ModuleApplicationNameWritingCompiler.java:36)
+	at org.gradle.jvm.toolchain.internal.DefaultToolchainJavaCompiler.execute(DefaultToolchainJavaCompiler.java:57)
+	at org.gradle.api.tasks.compile.JavaCompile.lambda$createToolchainCompiler$3(JavaCompile.java:202)
+	at org.gradle.api.internal.tasks.compile.CleaningJavaCompiler.execute(CleaningJavaCompiler.java:53)
+	at org.gradle.api.internal.tasks.compile.incremental.IncrementalCompilerFactory.lambda$createRebuildAllCompiler$0(IncrementalCompilerFactory.java:52)
+	at org.gradle.api.internal.tasks.compile.incremental.SelectiveCompiler.execute(SelectiveCompiler.java:70)
+	at org.gradle.api.internal.tasks.compile.incremental.SelectiveCompiler.execute(SelectiveCompiler.java:44)
+	at org.gradle.api.internal.tasks.compile.incremental.IncrementalResultStoringCompiler.execute(IncrementalResultStoringCompiler.java:66)
+	at org.gradle.api.internal.tasks.compile.incremental.IncrementalResultStoringCompiler.execute(IncrementalResultStoringCompiler.java:52)
+	at org.gradle.api.internal.tasks.compile.CompileJavaBuildOperationReportingCompiler$1.call(CompileJavaBuildOperationReportingCompiler.java:64)
+	at org.gradle.api.internal.tasks.compile.CompileJavaBuildOperationReportingCompiler$1.call(CompileJavaBuildOperationReportingCompiler.java:48)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+	at org.gradle.api.internal.tasks.compile.CompileJavaBuildOperationReportingCompiler.execute(CompileJavaBuildOperationReportingCompiler.java:48)
+	at org.gradle.api.tasks.compile.JavaCompile.performCompilation(JavaCompile.java:220)
+	at org.gradle.api.tasks.compile.JavaCompile.performIncrementalCompilation(JavaCompile.java:161)
+	at org.gradle.api.tasks.compile.JavaCompile.compile(JavaCompile.java:146)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at org.gradle.internal.reflect.JavaMethod.invoke(JavaMethod.java:125)
+	at org.gradle.api.internal.project.taskfactory.IncrementalTaskAction.doExecute(IncrementalTaskAction.java:45)
+	at org.gradle.api.internal.project.taskfactory.StandardTaskAction.execute(StandardTaskAction.java:51)
+	at org.gradle.api.internal.project.taskfactory.IncrementalTaskAction.execute(IncrementalTaskAction.java:26)
+	at org.gradle.api.internal.project.taskfactory.StandardTaskAction.execute(StandardTaskAction.java:29)
+	at org.gradle.api.internal.tasks.execution.TaskExecution$3.run(TaskExecution.java:244)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:29)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:26)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.run(DefaultBuildOperationRunner.java:47)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeAction(TaskExecution.java:229)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeActions(TaskExecution.java:212)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeWithPreviousOutputFiles(TaskExecution.java:195)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.execute(TaskExecution.java:162)
+	at org.gradle.internal.execution.steps.ExecuteStep.executeInternal(ExecuteStep.java:105)
+	at org.gradle.internal.execution.steps.ExecuteStep.access$000(ExecuteStep.java:44)
+	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:59)
+	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:56)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:56)
+	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:44)
+	at org.gradle.internal.execution.steps.CancelExecutionStep.execute(CancelExecutionStep.java:42)
+	at org.gradle.internal.execution.steps.TimeoutStep.executeWithoutTimeout(TimeoutStep.java:75)
+	at org.gradle.internal.execution.steps.TimeoutStep.execute(TimeoutStep.java:55)
+	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:50)
+	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:28)
+	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:67)
+	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:37)
+	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:61)
+	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:26)
+	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:69)
+	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:46)
+	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:40)
+	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:29)
+	at org.gradle.internal.execution.steps.BuildCacheStep.executeWithoutCache(BuildCacheStep.java:189)
+	at org.gradle.internal.execution.steps.BuildCacheStep.lambda$execute$1(BuildCacheStep.java:75)
+	at org.gradle.internal.Either$Right.fold(Either.java:175)
+	at org.gradle.internal.execution.caching.CachingState.fold(CachingState.java:62)
+	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:73)
+	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:48)
+	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:46)
+	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:35)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.executeBecause(SkipUpToDateStep.java:75)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.lambda$execute$2(SkipUpToDateStep.java:53)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:53)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:35)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:37)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:27)
+	at org.gradle.internal.execution.steps.ResolveIncrementalCachingStateStep.executeDelegate(ResolveIncrementalCachingStateStep.java:49)
+	at org.gradle.internal.execution.steps.ResolveIncrementalCachingStateStep.executeDelegate(ResolveIncrementalCachingStateStep.java:27)
+	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:71)
+	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:39)
+	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:65)
+	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:36)
+	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:105)
+	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:54)
+	at org.gradle.internal.execution.steps.AbstractCaptureStateBeforeExecutionStep.execute(AbstractCaptureStateBeforeExecutionStep.java:64)
+	at org.gradle.internal.execution.steps.AbstractCaptureStateBeforeExecutionStep.execute(AbstractCaptureStateBeforeExecutionStep.java:43)
+	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.executeWithNonEmptySources(AbstractSkipEmptyWorkStep.java:125)
+	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.execute(AbstractSkipEmptyWorkStep.java:61)
+	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.execute(AbstractSkipEmptyWorkStep.java:36)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsStartedStep.execute(MarkSnapshottingInputsStartedStep.java:38)
+	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:36)
+	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:23)
+	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.execute(HandleStaleOutputsStep.java:75)
+	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.execute(HandleStaleOutputsStep.java:41)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.lambda$execute$0(AssignMutableWorkspaceStep.java:35)
+	at org.gradle.api.internal.tasks.execution.TaskExecution$4.withWorkspace(TaskExecution.java:289)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.execute(AssignMutableWorkspaceStep.java:31)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.execute(AssignMutableWorkspaceStep.java:22)
+	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:40)
+	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:23)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.lambda$execute$2(ExecuteWorkBuildOperationFiringStep.java:67)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:67)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:39)
+	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:46)
+	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:34)
+	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:48)
+	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:35)
+	at org.gradle.internal.execution.impl.DefaultExecutionEngine$1.execute(DefaultExecutionEngine.java:61)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:127)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:116)
+	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
+	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
+	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
+	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
+	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
+	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:42)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:331)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:318)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:314)
+	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:85)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:314)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:459)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:376)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:48)
 
-BUILD SUCCESSFUL in 45s
-94 actionable tasks: 94 executed
+
+BUILD FAILED in 40s
+19 actionable tasks: 19 executed
