@@ -80,16 +80,15 @@ public class ModernHomeSmokeActivity extends MainActivity {
 
     private void styleTree(View view) {
         if (view == null) return;
-        boolean firstPass = styled.add(view);
-        if (firstPass) {
+
+        // Styling used to be re-applied to every Button and CheckBox on every
+        // global-layout pass. Several setters below request another layout, so on
+        // some devices the controls visibly oscillated by a pixel or two. A view
+        // is now styled exactly once; later layout passes only discover new views.
+        if (styled.add(view)) {
             styleView(view);
-        } else if (view instanceof CheckBox) {
-            // CompoundButton state changes can cause the platform theme to re-apply
-            // background/tint attributes. Reassert the plain settings-row appearance.
-            styleCheckBox((CheckBox) view);
-        } else if (view instanceof Button) {
-            refreshDynamicButton((Button) view);
         }
+
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
             for (int i = 0; i < group.getChildCount(); i++) {
@@ -235,11 +234,16 @@ public class ModernHomeSmokeActivity extends MainActivity {
     }
 
     private void styleCheckBox(CheckBox box) {
-        // A CheckBox is a CompoundButton, not an action button. Android theme tints were
-        // producing a large filled button behind these controls on some devices.
+        // Keep native check semantics, but remove presentation animations and
+        // transformations that can make the control appear to jump when toggled.
+        box.animate().cancel();
+        box.setStateListAnimator(null);
+        box.setTranslationX(0f);
+        box.setTranslationY(0f);
+        box.setScaleX(1f);
+        box.setScaleY(1f);
         box.setBackground(null);
         box.setBackgroundTintList(null);
-        box.setStateListAnimator(null);
         box.setElevation(0f);
         box.setTextColor(ColorStateList.valueOf(TEXT));
         box.setTextSize(14);
@@ -259,30 +263,13 @@ public class ModernHomeSmokeActivity extends MainActivity {
                 new int[]{PRIMARY, Color.rgb(148, 163, 184)}));
     }
 
-    private void refreshDynamicButton(Button button) {
-        String label = button.getText() == null ? "" : button.getText().toString().trim();
-        String upper = label.toUpperCase(Locale.ROOT);
-
-        if (label.equals("Программы") || label.equals("Auto")) {
-            button.setText("AUTO");
-            button.setTextSize(12);
-            button.setSingleLine(true);
-            button.setGravity(Gravity.CENTER);
-            return;
-        }
-        if (label.equals("Ручной")) {
-            button.setText("РУЧНОЙ");
-            button.setTextSize(12);
-            button.setSingleLine(true);
-            button.setGravity(Gravity.CENTER);
-            return;
-        }
-        if (upper.contains("STOP") && !upper.contains("ПОСЛЕ ЭТАПА")) {
-            solidButton(button, DANGER, 15);
-        }
-    }
-
     private void styleButton(Button button) {
+        button.animate().cancel();
+        button.setStateListAnimator(null);
+        button.setTranslationX(0f);
+        button.setTranslationY(0f);
+        button.setScaleX(1f);
+        button.setScaleY(1f);
         button.setAllCaps(false);
         button.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         button.setTextSize(14);
