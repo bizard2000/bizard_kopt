@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,7 +31,7 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.UUID;
 
-/** HomeSmoke Remote 2.0 — MQTT-only monitor/control with correlated controller ACK. */
+/** HomeSmoke Remote — MQTT-only monitor/control with correlated controller ACK. */
 public class MainActivity extends Activity {
     private static final int NAVY=Color.rgb(9,47,73);
     private static final int BLUE=Color.rgb(31,122,210);
@@ -95,7 +96,7 @@ public class MainActivity extends Activity {
         LinearLayout root=new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(BG);
-        root.addView(buildBar(),new LinearLayout.LayoutParams(-1,dp(68)));
+        root.addView(buildBar(),new LinearLayout.LayoutParams(-1,dp(66)));
         host=new LinearLayout(this);
         host.setOrientation(LinearLayout.VERTICAL);
         root.addView(host,new LinearLayout.LayoutParams(-1,0,1));
@@ -107,35 +108,40 @@ public class MainActivity extends Activity {
     private View buildBar(){
         LinearLayout bar=new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(dp(12),0,dp(10),0);
+        bar.setPadding(dp(8),0,dp(6),0);
         bar.setBackgroundColor(NAVY);
 
         back=iconButton("‹");
-        back.setTextSize(38);
+        back.setTextSize(36);
         back.setVisibility(View.GONE);
         back.setOnClickListener(view->showMonitor());
-        bar.addView(back,new LinearLayout.LayoutParams(dp(44),dp(48)));
+        bar.addView(back,new LinearLayout.LayoutParams(dp(40),dp(46)));
 
         LinearLayout titles=new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
         titles.setGravity(Gravity.CENTER_VERTICAL);
-        title=text("HomeSmoke Remote",20,true,TEXT);
+        titles.setPadding(dp(2),0,dp(3),0);
+        title=text("HomeSmoke Remote",19,true,TEXT);
         title.setTextColor(Color.WHITE);
+        title.setSingleLine(true);
+        title.setEllipsize(TextUtils.TruncateAt.END);
         subtitle=text("Удалённое управление",12,false,MUTED);
         subtitle.setTextColor(Color.rgb(211,222,232));
+        subtitle.setSingleLine(true);
+        subtitle.setEllipsize(TextUtils.TruncateAt.END);
         titles.addView(title);
         titles.addView(subtitle);
         bar.addView(titles,new LinearLayout.LayoutParams(0,-1,1));
 
         mqttBadge=badge("MQTT");
         deviceBadge=badge("SMOKE");
-        bar.addView(mqttBadge,wrapMargin(3,0,3,0));
-        bar.addView(deviceBadge,wrapMargin(3,0,5,0));
+        bar.addView(mqttBadge,wrapMargin(2,0,2,0));
+        bar.addView(deviceBadge,wrapMargin(2,0,3,0));
 
         settings=iconButton("⚙");
-        settings.setTextSize(22);
+        settings.setTextSize(21);
         settings.setOnClickListener(view->showSettings());
-        bar.addView(settings,new LinearLayout.LayoutParams(dp(46),dp(46)));
+        bar.addView(settings,new LinearLayout.LayoutParams(dp(40),dp(44)));
         return bar;
     }
 
@@ -146,40 +152,40 @@ public class MainActivity extends Activity {
         healthCard.addView(sectionTitle("Состояние связи"));
         brokerState=statusRow(healthCard,"MQTT","MQTT отключён",RED);
         deviceState=statusRow(healthCard,"Коптильня","Данные не получены",ORANGE);
-        p.addView(healthCard,margin(12,12,12,6));
+        p.addView(healthCard,margin(8,10,8,5));
 
         LinearLayout cam=card();
         cam.addView(label("Камера"));
-        camera=center("— °C",54,true,TEXT);
+        camera=center("— °C",52,true,TEXT);
         camera.setPadding(0,dp(6),0,0);
         cam.addView(camera);
         setpoint=center("Уставка — °C",17,true,BLUE_DARK);
         setpoint.setPadding(0,0,0,dp(4));
         cam.addView(setpoint);
-        p.addView(cam,margin(12,6,12,6));
+        p.addView(cam,margin(8,5,8,5));
 
         LinearLayout probes=new LinearLayout(this);
         probes.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout kc=metricCard("Щуп K");
-        k=center("— °C",29,true,TEXT);
+        k=center("— °C",28,true,TEXT);
         kc.addView(k);
         LinearLayout tc=metricCard("Щуп T");
-        t=center("— °C",29,true,TEXT);
+        t=center("— °C",28,true,TEXT);
         tc.addView(t);
-        probes.addView(kc,half(12,5));
-        probes.addView(tc,half(5,12));
+        probes.addView(kc,half(8,4));
+        probes.addView(tc,half(4,8));
         p.addView(probes);
 
         LinearLayout stats=new LinearLayout(this);
         stats.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout heater=metricCard("ТЭН");
-        power=center("— %",26,true,ORANGE);
+        power=center("— %",25,true,ORANGE);
         heater.addView(power);
         LinearLayout modeCard=metricCard("Режим");
-        mode=center("—",24,true,TEXT);
+        mode=center("—",23,true,TEXT);
         modeCard.addView(mode);
-        stats.addView(heater,half(12,5));
-        stats.addView(modeCard,half(5,12));
+        stats.addView(heater,half(8,4));
+        stats.addView(modeCard,half(4,8));
         p.addView(stats);
 
         LinearLayout ac=card();
@@ -189,7 +195,7 @@ public class MainActivity extends Activity {
         autoStatus=text("Auto выключено",14,false,MUTED);
         autoStatus.setPadding(0,dp(9),0,0);
         ac.addView(autoStatus);
-        p.addView(ac,margin(12,6,12,6));
+        p.addView(ac,margin(8,5,8,5));
 
         LinearLayout ctrl=card();
         ctrl.addView(sectionTitle("Удалённое управление"));
@@ -199,13 +205,13 @@ public class MainActivity extends Activity {
         LinearLayout setRow=new LinearLayout(this);
         setRow.setGravity(Gravity.CENTER_VERTICAL);
         setInput=field("0…100",InputType.TYPE_CLASS_NUMBER);
-        LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(0,dp(52),1);
-        ip.setMargins(0,0,dp(8),0);
+        LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(0,dp(52),1f);
+        ip.setMargins(0,0,dp(7),0);
         setRow.addView(setInput,ip);
         setButton=action("Применить",BLUE);
         setButton.setOnClickListener(view->sendSetpoint());
-        setRow.addView(setButton,new LinearLayout.LayoutParams(dp(145),dp(52)));
-        ctrl.addView(setRow);
+        setRow.addView(setButton,new LinearLayout.LayoutParams(0,dp(52),0.92f));
+        ctrl.addView(setRow,new LinearLayout.LayoutParams(-1,-2));
 
         stopButton=action("STOP · выключить нагрев",RED);
         stopButton.setOnClickListener(view->confirmStop());
@@ -216,14 +222,14 @@ public class MainActivity extends Activity {
         commandState=text("Команды ещё не отправлялись",13,false,MUTED);
         commandState.setPadding(0,dp(10),0,0);
         ctrl.addView(commandState);
-        p.addView(ctrl,margin(12,6,12,6));
+        p.addView(ctrl,margin(8,5,8,5));
 
         LinearLayout commandCard=card();
         lastCommand=info(commandCard,"Последняя команда","—");
-        p.addView(commandCard,margin(12,6,12,5));
+        p.addView(commandCard,margin(8,5,8,4));
 
         lastUpdate=center("Данных ещё нет",12,false,MUTED);
-        p.addView(lastUpdate,margin(12,3,12,22));
+        p.addView(lastUpdate,margin(8,3,8,20));
         return p;
     }
 
@@ -232,10 +238,10 @@ public class MainActivity extends Activity {
 
         LinearLayout intro=card();
         intro.addView(sectionTitle("MQTT подключение"));
-        TextView versionText=text("HomeSmoke Remote 2.0.1 · Android 5+",13,false,MUTED);
+        TextView versionText=text("HomeSmoke Remote 2.0.2 · Android 5+",13,false,MUTED);
         versionText.setPadding(0,dp(3),0,0);
         intro.addView(versionText);
-        p.addView(intro,margin(12,12,12,6));
+        p.addView(intro,margin(8,10,8,5));
 
         LinearLayout form=card();
         broker=labeledField(form,"Broker / IP","Адрес MQTT брокера",InputType.TYPE_CLASS_TEXT);
@@ -249,19 +255,19 @@ public class MainActivity extends Activity {
         autoConnect=check("Автоподключение и переподключение");
         form.addView(tls,checkParams());
         form.addView(autoConnect,checkParams());
-        p.addView(form,margin(12,6,12,6));
+        p.addView(form,margin(8,5,8,5));
 
         Button c=action("Сохранить и подключить",GREEN);
         c.setOnClickListener(view->{saveSettings();wantConnection=true;connectMqtt(true);});
-        p.addView(c,buttonMargin(12,8,12,4));
+        p.addView(c,buttonMargin(8,7,8,4));
 
         disconnectButton=action("Отключить MQTT",OFF);
         disconnectButton.setOnClickListener(view->{wantConnection=false;disconnectInternal(true);});
-        p.addView(disconnectButton,buttonMargin(12,4,12,8));
+        p.addView(disconnectButton,buttonMargin(8,4,8,8));
 
         String sec=secrets.isEncrypted()?"Пароль MQTT хранится через Android Keystore.":"Android 5.0/5.1: защищённое хранилище этой реализации недоступно; используйте доверенную сеть/VPN.";
         TextView n=text(sec+" Команда температуры передаётся только целым значением 0…100 °C — в соответствии с текущим подтверждённым протоколом.",12,false,MUTED);
-        n.setPadding(dp(16),dp(10),dp(16),dp(22));
+        n.setPadding(dp(12),dp(8),dp(12),dp(20));
         p.addView(n);
         return p;
     }
@@ -431,7 +437,7 @@ public class MainActivity extends Activity {
     private void showSettings(){
         setPage(settingsPage);
         title.setText("Настройки MQTT");
-        subtitle.setText("HomeSmoke Remote 2.0.1");
+        subtitle.setText("HomeSmoke Remote 2.0.2");
         back.setVisibility(View.VISIBLE);
         settings.setVisibility(View.GONE);
     }
@@ -442,6 +448,9 @@ public class MainActivity extends Activity {
         ScrollView s=new ScrollView(this);
         s.setFillViewport(true);
         s.setClipToPadding(false);
+        s.setVerticalScrollBarEnabled(false);
+        s.setHorizontalScrollBarEnabled(false);
+        s.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
         s.addView(p,new ScrollView.LayoutParams(-1,-2));
         host.addView(s,new LinearLayout.LayoutParams(-1,-1));
         s.post(()->s.scrollTo(0,0));
@@ -463,7 +472,7 @@ public class MainActivity extends Activity {
     private LinearLayout page(){
         LinearLayout p=new LinearLayout(this);
         p.setOrientation(LinearLayout.VERTICAL);
-        p.setPadding(dp(0),dp(0),dp(0),dp(20));
+        p.setPadding(dp(4),0,dp(4),dp(20));
         p.setBackgroundColor(BG);
         return p;
     }
@@ -471,7 +480,7 @@ public class MainActivity extends Activity {
     private LinearLayout card(){
         LinearLayout c=new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
-        c.setPadding(dp(16),dp(14),dp(16),dp(14));
+        c.setPadding(dp(15),dp(13),dp(15),dp(13));
         c.setBackground(roundStroke(CARD,18,BORDER,1));
         if(Build.VERSION.SDK_INT>=21)c.setElevation(dp(1));
         return c;
@@ -490,10 +499,13 @@ public class MainActivity extends Activity {
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(0,dp(8),0,dp(2));
         TextView dot=text("●",13,true,dotColor);
-        dot.setPadding(0,0,dp(8),0);
+        dot.setPadding(0,0,dp(7),0);
         TextView a=text(label,14,true,TEXT);
+        a.setPadding(0,0,dp(8),0);
         TextView b=text(initial,14,false,MUTED);
         b.setGravity(Gravity.END);
+        b.setMaxLines(2);
+        b.setEllipsize(TextUtils.TruncateAt.END);
         row.addView(dot);
         row.addView(a);
         row.addView(b,new LinearLayout.LayoutParams(0,-2,1));
@@ -506,9 +518,12 @@ public class MainActivity extends Activity {
         r.setGravity(Gravity.CENTER_VERTICAL);
         r.setPadding(0,dp(5),0,dp(5));
         TextView a=text(label,14,false,MUTED),b=text(initial,16,true,TEXT);
+        a.setPadding(0,0,dp(8),0);
         b.setGravity(Gravity.END);
-        r.addView(a,new LinearLayout.LayoutParams(0,-2,1));
-        r.addView(b);
+        b.setMaxLines(2);
+        b.setEllipsize(TextUtils.TruncateAt.END);
+        r.addView(a);
+        r.addView(b,new LinearLayout.LayoutParams(0,-2,1));
         p.addView(r);
         return b;
     }
@@ -528,9 +543,10 @@ public class MainActivity extends Activity {
     }
 
     private TextView badge(String s){
-        TextView t=center(s,11,true,Color.WHITE);
-        t.setMinWidth(dp(50));
-        t.setPadding(dp(9),dp(7),dp(9),dp(7));
+        TextView t=center(s,10,true,Color.WHITE);
+        t.setMinWidth(dp(44));
+        t.setMaxLines(1);
+        t.setPadding(dp(7),dp(7),dp(7),dp(7));
         t.setBackground(round(OFF,14));
         return t;
     }
@@ -539,6 +555,7 @@ public class MainActivity extends Activity {
         Button b=new Button(this);
         b.setText(s);b.setTextColor(Color.WHITE);b.setAllCaps(false);
         b.setPadding(0,0,0,0);b.setBackgroundColor(Color.TRANSPARENT);
+        b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(0);b.setMinimumHeight(0);
         if(Build.VERSION.SDK_INT>=21){b.setBackgroundTintList(null);b.setStateListAnimator(null);}
         return b;
     }
@@ -546,7 +563,8 @@ public class MainActivity extends Activity {
     private Button action(String s,int color){
         Button b=new Button(this);
         b.setText(s);b.setAllCaps(false);b.setTextColor(Color.WHITE);b.setTextSize(16);b.setTypeface(Typeface.DEFAULT_BOLD);
-        b.setPadding(dp(10),0,dp(10),0);
+        b.setPadding(dp(8),0,dp(8),0);
+        b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(0);b.setMinimumHeight(0);
         if(Build.VERSION.SDK_INT>=21){b.setBackgroundTintList(null);b.setStateListAnimator(null);}
         b.setBackground(round(color,14));
         return b;
@@ -555,7 +573,7 @@ public class MainActivity extends Activity {
     private CheckBox check(String s){
         CheckBox c=new CheckBox(this);
         c.setText(s);c.setTextSize(15);c.setTypeface(Typeface.DEFAULT_BOLD);c.setTextColor(TEXT);
-        c.setBackgroundColor(Color.TRANSPARENT);c.setPadding(0,0,0,0);
+        c.setBackgroundColor(Color.TRANSPARENT);c.setPadding(0,0,0,0);c.setMinHeight(dp(48));
         if(Build.VERSION.SDK_INT>=21){
             int[][] states=new int[][]{new int[]{android.R.attr.state_checked},new int[]{-android.R.attr.state_checked}};
             c.setButtonTintList(new ColorStateList(states,new int[]{BLUE,Color.rgb(151,164,180)}));
@@ -576,7 +594,8 @@ public class MainActivity extends Activity {
     private EditText field(String hint,int type){
         EditText e=new EditText(this);
         e.setHint(hint);e.setHintTextColor(Color.rgb(151,164,180));e.setInputType(type);e.setSingleLine(true);e.setTextSize(16);e.setTextColor(TEXT);
-        e.setPadding(dp(13),0,dp(13),0);
+        e.setPadding(dp(12),0,dp(12),0);
+        e.setMinWidth(0);e.setMinimumWidth(0);
         if(Build.VERSION.SDK_INT>=21)e.setBackgroundTintList(null);
         e.setBackground(roundStroke(Color.rgb(250,251,252),13,BORDER,1));
         return e;
@@ -603,11 +622,11 @@ public class MainActivity extends Activity {
     }
 
     private LinearLayout.LayoutParams checkParams(){
-        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(48));p.setMargins(0,dp(2),0,0);return p;
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(2),0,0);return p;
     }
 
     private LinearLayout.LayoutParams half(int l,int r){
-        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-2,1);p.setMargins(dp(l),dp(6),dp(r),dp(6));return p;
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-2,1);p.setMargins(dp(l),dp(5),dp(r),dp(5));return p;
     }
 
     private int dp(int v){return Math.round(v*getResources().getDisplayMetrics().density);}
