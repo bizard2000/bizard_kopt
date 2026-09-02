@@ -2,19 +2,40 @@ plugins {
     id 'com.android.application'
 }
 
+def stableDebugKeystore = file('homesmoke-debug.keystore')
+def stableDebugKeystoreB64 = rootProject.file('ci/homesmoke-debug.keystore.b64')
+if (!stableDebugKeystore.exists()) {
+    if (!stableDebugKeystoreB64.exists()) {
+        throw new GradleException('Missing ci/homesmoke-debug.keystore.b64')
+    }
+    stableDebugKeystore.bytes = stableDebugKeystoreB64.text.trim().decodeBase64()
+}
+
 android {
     namespace 'com.bizard.homesmokemqtt'
     compileSdk 35
+
+    signingConfigs {
+        stableDebug {
+            storeFile stableDebugKeystore
+            storePassword 'homesmoke'
+            keyAlias 'homesmoke'
+            keyPassword 'homesmoke'
+        }
+    }
 
     defaultConfig {
         applicationId 'com.bizard.homesmokemqtt.full'
         minSdk 23
         targetSdk 35
-        versionCode 15
-        versionName '2.6.5'
+        versionCode 16
+        versionName '2.6.6'
     }
 
     buildTypes {
+        debug {
+            signingConfig signingConfigs.stableDebug
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
