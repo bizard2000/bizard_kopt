@@ -308,7 +308,6 @@ public class ModernHomeSmokeActivity extends MainActivity {
         String upper = label.toUpperCase(Locale.ROOT);
 
         if (upper.contains("STOP") && !upper.contains("ПОСЛЕ ЭТАПА")) {
-            button.setTextColor(Color.WHITE);
             button.setTextSize(16);
             button.setMinHeight(dp(52));
             solidButton(button, DANGER, 15);
@@ -336,6 +335,8 @@ public class ModernHomeSmokeActivity extends MainActivity {
             solidButton(button, DANGER, 13);
         } else if (label.startsWith("Отключить")) {
             softButton(button, NEUTRAL_SOFT, MUTED, 13);
+        } else if (label.equals("Сохранить и подключить")) {
+            solidButton(button, SUCCESS, 13);
         } else if (label.startsWith("Задать")
                 || label.startsWith("Выбрать")
                 || label.startsWith("Применить")
@@ -358,28 +359,54 @@ public class ModernHomeSmokeActivity extends MainActivity {
 
     private void refreshDynamicButtonAppearance(Button button) {
         String label = normalizeDynamicLabel(button);
-        int target = Integer.MIN_VALUE;
-        if (label.equals("Изменить") || label.startsWith("Экспорт") || label.startsWith("Импорт")) {
-            target = EDIT_TEXT;
+        String upper = label.toUpperCase(Locale.ROOT);
+
+        if (upper.contains("STOP") && !upper.contains("ПОСЛЕ ЭТАПА")) {
+            repairButtonColors(button, DANGER, Color.WHITE);
+        } else if (label.equals("Запустить")) {
+            repairButtonColors(button, SUCCESS, Color.WHITE);
         } else if (label.equals("Копия")) {
-            target = COPY_TEXT;
+            repairButtonColors(button, COPY_SOFT, COPY_TEXT);
+        } else if (label.equals("Изменить") || label.startsWith("Экспорт") || label.startsWith("Импорт")) {
+            repairButtonColors(button, EDIT_SOFT, EDIT_TEXT);
+        } else if (label.contains("Удалить")) {
+            repairButtonColors(button, DANGER_SOFT, DANGER);
+        } else if (label.contains("Остановить программу")) {
+            repairButtonColors(button, DANGER, Color.WHITE);
+        } else if (label.startsWith("Отключить")) {
+            repairButtonColors(button, NEUTRAL_SOFT, MUTED);
+        } else if (label.equals("Сохранить и подключить")) {
+            repairButtonColors(button, SUCCESS, Color.WHITE);
+        } else if (label.startsWith("Задать")
+                || label.startsWith("Выбрать")
+                || label.startsWith("Применить")
+                || label.startsWith("Сохранить")
+                || label.startsWith("+ Новая")) {
+            repairButtonColors(button, PRIMARY, Color.WHITE);
         }
-        if (target != Integer.MIN_VALUE && button.getCurrentTextColor() != target) {
-            button.setTextColor(target);
+    }
+
+    private void repairButtonColors(Button button, int fill, int textColor) {
+        ColorStateList tint = button.getBackgroundTintList();
+        if (tint == null || tint.getDefaultColor() != fill) {
+            button.setBackgroundTintList(ColorStateList.valueOf(fill));
+        }
+        if (button.getCurrentTextColor() != textColor) {
+            button.setTextColor(textColor);
         }
     }
 
     private void solidButton(Button button, int color, int radiusDp) {
         button.setTextColor(Color.WHITE);
         button.setBackground(round(color, radiusDp));
-        button.setBackgroundTintList(null);
+        button.setBackgroundTintList(ColorStateList.valueOf(color));
         button.setElevation(dp(1));
     }
 
     private void softButton(Button button, int fill, int textColor, int radiusDp) {
         button.setTextColor(textColor);
         button.setBackground(round(fill, radiusDp));
-        button.setBackgroundTintList(null);
+        button.setBackgroundTintList(ColorStateList.valueOf(fill));
         button.setElevation(0f);
     }
 
