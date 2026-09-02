@@ -342,6 +342,9 @@ public class MainActivity extends Activity implements HomeSmokeService.Listener 
             row.addView(edit,weightButton());
             row.addView(copy,weightButton());
             c.addView(row);
+            Button delete=smallAction("Удалить программу",RED);
+            delete.setOnClickListener(v->confirmDeleteProgram(pr));
+            c.addView(delete,buttonMargins(0,6,0,0));
             p.addView(c,margins(10,5,10,5));
         }
 
@@ -483,18 +486,30 @@ public class MainActivity extends Activity implements HomeSmokeService.Listener 
         };
         save.setOnClickListener(saver);
         run.setOnClickListener(saver);
-        del.setOnClickListener(v->new AlertDialog.Builder(this)
+        del.setOnClickListener(v->confirmDeleteProgram(pr));
+        setPage(p);
+    }
+
+    private void confirmDeleteProgram(AutoProgram program){
+        if(program==null)return;
+        if(programs.size()<=1){
+            toast("Должна остаться хотя бы одна программа");
+            return;
+        }
+        String name=program.name==null||program.name.trim().isEmpty()?"Без названия":program.name;
+        new AlertDialog.Builder(this)
                 .setTitle("Удалить программу?")
-                .setMessage(pr.name)
+                .setMessage(name+"\n\nПрограмма будет удалена из библиотеки. Это действие нельзя отменить.")
                 .setPositiveButton("Удалить",(d,w)->{
                     if(programs.size()<=1){toast("Должна остаться хотя бы одна программа");return;}
-                    programs.remove(index);
-                    programRepo.save(programs);
+                    if(programs.remove(program)){
+                        programRepo.save(programs);
+                        toast("Программа удалена");
+                    }
                     showPrograms();
                 })
                 .setNegativeButton("Отмена",null)
-                .show());
-        setPage(p);
+                .show();
     }
 
     private void setStageEditorEnabled(StageEditor e,boolean enabled){
