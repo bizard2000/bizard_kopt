@@ -94,7 +94,8 @@ public final class RemoteApplication extends Application {
     private void styleAuto(ViewGroup root, boolean stale) {
         TextView title = findExact(root, "Auto");
         if (title == null || !(title.getParent() instanceof ViewGroup)) return;
-        ViewGroup card = (ViewGroup) title.getParent();
+        ViewGroup header = (ViewGroup) title.getParent();
+        ViewGroup card = header.getParent() instanceof ViewGroup ? (ViewGroup) header.getParent() : header;
         List<TextView> texts = new ArrayList<>();
         collectTexts(card, texts);
         for (TextView t : texts) {
@@ -109,6 +110,9 @@ public final class RemoteApplication extends Application {
             } else if (s.equals("АКТИВНО")) {
                 t.setTextColor(Color.WHITE);
                 t.setBackground(round(BLUE, 12, t));
+            } else if (s.equals("ВЫКЛ")) {
+                t.setTextColor(Color.WHITE);
+                t.setBackground(round(OFF, 12, t));
             }
         }
     }
