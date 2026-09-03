@@ -11,6 +11,12 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
         <activity
+            android:name=".SystemStatusActivity"
+            android:exported="false" />
+        <activity
+            android:name=".SessionDetailActivity"
+            android:exported="false" />
+        <activity
             android:name=".HistoryActivity"
             android:exported="false" />
         <activity
