@@ -25,7 +25,6 @@ import java.lang.reflect.Method;
  */
 public final class GraphUxFixActivity extends GraphUxActivity {
     private static final int TEXT=Color.rgb(21,31,47);
-    private static final int MUTED=Color.rgb(101,116,139);
     private static final int BORDER=Color.rgb(220,225,232);
     private static final int ORANGE=Color.rgb(231,138,7);
     private static final int OFF=Color.rgb(116,129,145);
@@ -51,6 +50,7 @@ public final class GraphUxFixActivity extends GraphUxActivity {
             refreshScenarioChooser();
             fixGraphHeader();
             fixTestStatus();
+            fixModeChipText();
             enforceSinglePassScenario();
             fixHandler.postDelayed(this,350L);
         }
@@ -143,6 +143,16 @@ public final class GraphUxFixActivity extends GraphUxActivity {
         }else if(status!=null&&"ТЕСТ".contentEquals(status.getText())){
             status.setText("ОФЛАЙН");status.setTextColor(Color.WHITE);status.setBackground(round(OFF,12));
         }
+    }
+
+    private void fixModeChipText(){forceModeChipText(findViewById(android.R.id.content));}
+
+    private void forceModeChipText(View root){
+        if(root instanceof TextView&&root.getVisibility()==View.VISIBLE){
+            String s=String.valueOf(((TextView)root).getText()).trim();
+            if("● PID".equals(s)||"● AUTO".equals(s)||"● Ручной".equals(s)||"● STOP".equals(s))((TextView)root).setTextColor(Color.WHITE);
+        }
+        if(root instanceof ViewGroup){ViewGroup g=(ViewGroup)root;for(int i=0;i<g.getChildCount();i++)forceModeChipText(g.getChildAt(i));}
     }
 
     private void enforceSinglePassScenario(){
