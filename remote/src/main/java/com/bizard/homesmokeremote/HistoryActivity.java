@@ -2,6 +2,7 @@ package com.bizard.homesmokeremote;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -33,11 +34,13 @@ public final class HistoryActivity extends Activity {
     private static final int REQ_CSV=4101,REQ_JSON=4102;
     private TelemetryHistoryStore telemetry;
     private OperationalHistoryStore ops;
+    private SharedPreferences prefs;
     private OperationalHistoryStore.Session exportSession;
     private String exportFormat="";
 
     @Override protected void onCreate(Bundle state){
         super.onCreate(state);
+        prefs=getSharedPreferences("homesmoke_remote",MODE_PRIVATE);
         telemetry=new TelemetryHistoryStore(this);
         ops=new OperationalHistoryStore(this);
         synchronize();
@@ -95,7 +98,10 @@ public final class HistoryActivity extends Activity {
 
     private View sessionCard(OperationalHistoryStore.Session s){
         LinearLayout c=card();
-        LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);header.addView(text(s.title(),16,true,TEXT),new LinearLayout.LayoutParams(0,-2,1));TextView chip=text(s.active()?"АКТИВЕН":"ЗАВЕРШЁН",10,true,Color.WHITE);chip.setGravity(Gravity.CENTER);chip.setPadding(dp(8),dp(4),dp(8),dp(4));chip.setBackground(round(s.active()?GREEN:OFF,12));header.addView(chip);c.addView(header);
+        boolean test=isTestSession(s);
+        LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);header.addView(text(s.title(),16,true,TEXT),new LinearLayout.LayoutParams(0,-2,1));
+        String chipText=test?"ТЕСТ":(s.active()?"АКТИВЕН":"ЗАВЕРШЁН");int chipColor=test?ORANGE:(s.active()?GREEN:OFF);TextView chip=text(chipText,10,true,Color.WHITE);chip.setGravity(Gravity.CENTER);chip.setPadding(dp(8),dp(4),dp(8),dp(4));chip.setBackground(round(chipColor,12));header.addView(chip);c.addView(header);
+        if(test)c.addView(detail("Локальная симуляция · данные не от коптильни"));
         long end=s.active()?System.currentTimeMillis():s.endTs;
         c.addView(detail("Длительность · "+duration(Math.max(0,end-s.startTs))+" · точек "+s.samples));
         c.addView(detail("Камера "+range(s.cameraMin,s.cameraMax," °C")+" · K "+range(s.kMin,s.kMax," °C")+" · T "+range(s.tMin,s.tMax," °C")));
@@ -114,7 +120,14 @@ public final class HistoryActivity extends Activity {
         page.addView(c,margin(8,8,8,8));
     }
 
-    private int eventColor(String type){if("error".equals(type))return Color.rgb(190,40,40);if("connection".equals(type))return ORANGE;if("command".equals(type))return BLUE;if("session".equals(type))return GREEN;return TEXT;}
+    private int eventColor(String type){if("error".equals(type))return Color.rgb(190,40,40);if("connection".equals(type)||"test".equals(type))return ORANGE;if("command".equals(type))return BLUE;if("session".equals(type))return GREEN;return TEXT;}
+
+    private boolean isTestSession(OperationalHistoryStore.Session s){
+        long start=s.startTs,end=s.active()?System.currentTimeMillis():s.effectiveEnd();
+        if(prefs.getBoolean("test_mode_active",false)){long active=prefs.getLong("test_active_start",0L);if(active>0&&start<=System.currentTimeMillis()&&end>=active)return true;}
+        try{JSONArray a=new JSONArray(prefs.getString("test_intervals","[]"));for(int i=0;i<a.length();i++){JSONObject x=a.optJSONObject(i);if(x==null)continue;long ts=x.optLong("start",0),te=x.optLong("end",0);if(ts>0&&te>=ts&&start<=te&&end>=ts)return true;}}catch(Exception ignored){}
+        return false;
+    }
 
     private void requestExport(OperationalHistoryStore.Session session,String format){
         exportSession=session;exportFormat=format;
@@ -138,14 +151,14 @@ public final class HistoryActivity extends Activity {
 
     private void writeCsv(OutputStreamWriter w,OperationalHistoryStore.Session s,List<TelemetryHistoryStore.Sample> samples)throws Exception{
         SimpleDateFormat iso=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss",Locale.US);
-        w.write("session_start,"+iso.format(new Date(s.startTs))+"\n");w.write("session_end,"+iso.format(new Date(s.effectiveEnd()))+"\n");w.write("duration_minutes,"+(s.durationMs()/60000L)+"\n");w.write("outage_seconds,"+(s.outageMs/1000L)+"\n\n");
+        w.write("source,"+(isTestSession(s)?"test":"live")+"\n");w.write("session_start,"+iso.format(new Date(s.startTs))+"\n");w.write("session_end,"+iso.format(new Date(s.effectiveEnd()))+"\n");w.write("duration_minutes,"+(s.durationMs()/60000L)+"\n");w.write("outage_seconds,"+(s.outageMs/1000L)+"\n\n");
         w.write("timestamp,camera_c,setpoint_c,probe_k_c,probe_t_c,heater_pct\n");
         for(TelemetryHistoryStore.Sample x:samples)w.write(iso.format(new Date(x.ts))+","+csv(x.camera)+","+csv(x.setpoint)+","+csv(x.probeK)+","+csv(x.probeT)+","+csv(x.heater)+"\n");
         if(samples.isEmpty())w.write("# raw samples unavailable (local telemetry is retained for 24 hours)\n");
     }
 
     private void writeJson(OutputStreamWriter w,OperationalHistoryStore.Session s,List<TelemetryHistoryStore.Sample> samples)throws Exception{
-        JSONObject root=new JSONObject(),summary=new JSONObject();summary.put("start_ts",s.startTs);summary.put("end_ts",s.effectiveEnd());summary.put("duration_ms",s.durationMs());summary.put("samples",s.samples);summary.put("outage_ms",s.outageMs);put(summary,"camera_min",s.cameraMin);put(summary,"camera_max",s.cameraMax);put(summary,"probe_k_min",s.kMin);put(summary,"probe_k_max",s.kMax);put(summary,"probe_t_min",s.tMin);put(summary,"probe_t_max",s.tMax);put(summary,"heater_max",s.heaterMax);root.put("session",summary);JSONArray a=new JSONArray();for(TelemetryHistoryStore.Sample x:samples){JSONObject o=new JSONObject();o.put("ts",x.ts);put(o,"camera",x.camera);put(o,"setpoint",x.setpoint);put(o,"probe_k",x.probeK);put(o,"probe_t",x.probeT);put(o,"heater",x.heater);a.put(o);}root.put("telemetry",a);w.write(root.toString(2));
+        JSONObject root=new JSONObject(),summary=new JSONObject();summary.put("source",isTestSession(s)?"test":"live");summary.put("start_ts",s.startTs);summary.put("end_ts",s.effectiveEnd());summary.put("duration_ms",s.durationMs());summary.put("samples",s.samples);summary.put("outage_ms",s.outageMs);put(summary,"camera_min",s.cameraMin);put(summary,"camera_max",s.cameraMax);put(summary,"probe_k_min",s.kMin);put(summary,"probe_k_max",s.kMax);put(summary,"probe_t_min",s.tMin);put(summary,"probe_t_max",s.tMax);put(summary,"heater_max",s.heaterMax);root.put("session",summary);JSONArray a=new JSONArray();for(TelemetryHistoryStore.Sample x:samples){JSONObject o=new JSONObject();o.put("ts",x.ts);put(o,"camera",x.camera);put(o,"setpoint",x.setpoint);put(o,"probe_k",x.probeK);put(o,"probe_t",x.probeT);put(o,"heater",x.heater);a.put(o);}root.put("telemetry",a);w.write(root.toString(2));
     }
 
     private static void put(JSONObject o,String k,double v)throws Exception{if(Double.isNaN(v)||Double.isInfinite(v))o.put(k,JSONObject.NULL);else o.put(k,v);}
