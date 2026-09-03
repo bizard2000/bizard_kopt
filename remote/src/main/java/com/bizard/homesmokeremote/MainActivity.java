@@ -58,6 +58,7 @@ public class MainActivity extends Activity {
     private static final long STALE_MS=10000L;
     private static final long TREND_WINDOW_MS=5L*60L*1000L;
     private static final int MAX_COMMAND_HISTORY=5;
+    private static final float STALE_ALPHA=0.62f;
 
     private SharedPreferences prefs;
     private SecretStore secrets;
@@ -74,6 +75,7 @@ public class MainActivity extends Activity {
     private final ArrayList<String> commandHistoryItems=new ArrayList<>();
 
     private LinearLayout host,monitorPage,settingsPage,ackFlow,controllerCommandBlock,advancedMqttBlock,commandHistoryCard;
+    private LinearLayout telemetryCamCard,telemetryProbesRow,telemetryStatsRow,telemetryAutoCard;
     private TextView title,subtitle,mqttBadge,deviceBadge;
     private TextView mqttDot,deviceDot,brokerState,deviceState,brokerDetail,deviceDetail,systemState;
     private TextView camera,cameraSummary,tempTrend,k,t,power,mode,lastCommand,autoProgram,autoStage,autoStatus,autoChip,lastUpdate,commandState,commandHistory,controlAvailability;
@@ -95,6 +97,7 @@ public class MainActivity extends Activity {
         setDeviceUi(fresh,detail);
         updateLastDataCaption();
         updateCameraSummaryAndTrend();
+        applyTelemetryFreshness(fresh);
         if(wantConnection&&!mq&&!connecting&&!broker.getText().toString().trim().isEmpty())connectMqtt(false);
         handler.postDelayed(this,3000);
     }};
@@ -195,7 +198,8 @@ public class MainActivity extends Activity {
         healthCard.addView(deviceDetail);
         p.addView(healthCard,margin(8,8,8,4));
 
-        LinearLayout cam=card();
+        telemetryCamCard=card();
+        LinearLayout cam=telemetryCamCard;
         cam.addView(label("Камера"));
         camera=center("— °C",44,true,TEXT);
         camera.setPadding(0,dp(2),0,0);
@@ -207,7 +211,8 @@ public class MainActivity extends Activity {
         cam.addView(tempTrend);
         p.addView(cam,margin(8,4,8,4));
 
-        LinearLayout probes=new LinearLayout(this);
+        telemetryProbesRow=new LinearLayout(this);
+        LinearLayout probes=telemetryProbesRow;
         probes.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout kc=metricCard("Щуп K");
         k=center("— °C",24,true,TEXT);
@@ -219,7 +224,8 @@ public class MainActivity extends Activity {
         probes.addView(tc,half(4,8));
         p.addView(probes);
 
-        LinearLayout stats=new LinearLayout(this);
+        telemetryStatsRow=new LinearLayout(this);
+        LinearLayout stats=telemetryStatsRow;
         stats.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout heater=metricCard("ТЭН");
         power=center("— %",22,true,ORANGE);
@@ -240,7 +246,8 @@ public class MainActivity extends Activity {
         stats.addView(modeCard,half(4,8));
         p.addView(stats);
 
-        LinearLayout ac=card();
+        telemetryAutoCard=card();
+        LinearLayout ac=telemetryAutoCard;
         LinearLayout autoHeader=new LinearLayout(this);
         autoHeader.setGravity(Gravity.CENTER_VERTICAL);
         autoHeader.addView(sectionTitle("Auto"),new LinearLayout.LayoutParams(0,-2,1));
@@ -357,7 +364,7 @@ public class MainActivity extends Activity {
 
         LinearLayout intro=card();
         intro.addView(sectionTitle("MQTT подключение"));
-        TextView versionText=text("HomeSmoke Remote 2.0.8 · Android 5+",12,false,MUTED);
+        TextView versionText=text("HomeSmoke Remote 2.0.9 · Android 5+",12,false,MUTED);
         versionText.setPadding(0,dp(2),0,0);
         intro.addView(versionText);
         p.addView(intro,margin(8,8,8,4));
@@ -538,6 +545,7 @@ public class MainActivity extends Activity {
                 updateCameraSummaryAndTrend();
                 updateLastDataCaption();
                 setDeviceUi(fresh,fresh?"Коптильня онлайн · "+did:"Последние данные · "+relativeAge(ts));
+                applyTelemetryFreshness(fresh);
             });
         }catch(Exception ignored){}
     }
@@ -758,6 +766,11 @@ public class MainActivity extends Activity {
     private void applyTelemetryFreshness(boolean fresh){
         int main=fresh?TEXT:OFF;
         int secondary=fresh?BLUE_DARK:OFF;
+        float alpha=fresh?1f:STALE_ALPHA;
+        if(telemetryCamCard!=null)telemetryCamCard.setAlpha(alpha);
+        if(telemetryProbesRow!=null)telemetryProbesRow.setAlpha(alpha);
+        if(telemetryStatsRow!=null)telemetryStatsRow.setAlpha(alpha);
+        if(telemetryAutoCard!=null)telemetryAutoCard.setAlpha(alpha);
         camera.setTextColor(main);
         k.setTextColor(main);
         t.setTextColor(main);
@@ -767,7 +780,10 @@ public class MainActivity extends Activity {
         lastCommand.setTextColor(main);
         autoProgram.setTextColor(main);
         autoStage.setTextColor(main);
-        if(heaterProgress!=null&&Build.VERSION.SDK_INT>=21)heaterProgress.setProgressTintList(ColorStateList.valueOf(fresh?ORANGE:OFF));
+        if(heaterProgress!=null){
+            heaterProgress.setAlpha(fresh?1f:.72f);
+            if(Build.VERSION.SDK_INT>=21)heaterProgress.setProgressTintList(ColorStateList.valueOf(fresh?ORANGE:OFF));
+        }
         if(fresh){
             updateModeUi(lastModeRaw);
             if(lastAutoRunning){autoChip.setBackground(round(BLUE,12));autoStatus.setTextColor(BLUE_DARK);}else{autoChip.setBackground(round(OFF,12));autoStatus.setTextColor(MUTED);}
@@ -918,13 +934,14 @@ public class MainActivity extends Activity {
         back.setVisibility(View.GONE);
         settings.setVisibility(View.VISIBLE);
         applyUiPreferences();
+        applyTelemetryFreshness(isTelemetryFresh());
     }
 
     private void showSettings(){
         setPasswordVisible(false);
         setPage(settingsPage);
         title.setText("Настройки MQTT");
-        subtitle.setText("HomeSmoke Remote 2.0.8");
+        subtitle.setText("HomeSmoke Remote 2.0.9");
         back.setVisibility(View.VISIBLE);
         settings.setVisibility(View.GONE);
         applyUiPreferences();
