@@ -66,12 +66,14 @@ public class GraphUxActivity extends MainActivity {
     private boolean liveStateKnown=false,lastLiveState=false,setpointStateKnown=false,withinSetpoint=false;
     private double lastObservedTarget=Double.NaN;
 
+    private final Handler graphUxHandler=new Handler(Looper.getMainLooper());
+
     private final Runnable graphUxTick=new Runnable(){
         @Override public void run(){
             refreshOperationalFeatures();
             refreshGraphUx();
             updateVersionLabels();
-            uxHandler.postDelayed(this,2500L);
+            graphUxHandler.postDelayed(this,2500L);
         }
     };
 
@@ -84,12 +86,12 @@ public class GraphUxActivity extends MainActivity {
         installHostWatcher();
         installHistoryButton();
         updateVersionLabels();
-        uxHandler.postDelayed(()->ensureNotificationPermission(false),1200L);
-        uxHandler.postDelayed(graphUxTick,700L);
+        graphUxHandler.postDelayed(()->ensureNotificationPermission(false),1200L);
+        graphUxHandler.postDelayed(graphUxTick,700L);
     }
 
     @Override protected void onDestroy(){
-        uxHandler.removeCallbacks(graphUxTick);
+        graphUxHandler.removeCallbacks(graphUxTick);
         if(uxHistory!=null)uxHistory.close();
         if(operational!=null)operational.close();
         super.onDestroy();
@@ -121,8 +123,29 @@ public class GraphUxActivity extends MainActivity {
         ViewGroup cg=(ViewGroup)content;if(cg.getChildCount()==0||!(cg.getChildAt(0) instanceof ViewGroup))return;
         ViewGroup root=(ViewGroup)cg.getChildAt(0);if(root.getChildCount()==0||!(root.getChildAt(0) instanceof LinearLayout))return;
         LinearLayout bar=(LinearLayout)root.getChildAt(0);
-        TextView button=makeText("▤",22,true,Color.WHITE);button.setGravity(Gravity.CENTER);button.setContentDescription("Сеансы и журнал");button.setBackgroundColor(Color.TRANSPARENT);button.setOnClickListener(v->startActivity(new Intent(this,HistoryActivity.class)));
-        int index=Math.max(0,bar.getChildCount()-1);bar.addView(button,index,new LinearLayout.LayoutParams(dp(34),dp(42)));historyButtonAdded=true;
+        TextView button=makeText("▤",20,true,Color.WHITE);
+        button.setGravity(Gravity.CENTER);
+        button.setPadding(0,0,0,0);
+        button.setContentDescription("Сеансы и журнал");
+        button.setBackgroundColor(Color.TRANSPARENT);
+        button.setOnClickListener(v->startActivity(new Intent(this,HistoryActivity.class)));
+        int index=Math.max(0,bar.getChildCount()-1);
+        bar.addView(button,index,new LinearLayout.LayoutParams(dp(36),dp(42)));
+        normalizeNavigationIcons(bar);
+        historyButtonAdded=true;
+    }
+
+    private void normalizeNavigationIcons(LinearLayout bar){
+        if(bar==null)return;
+        int first=Math.max(0,bar.getChildCount()-3);
+        for(int i=first;i<bar.getChildCount();i++){
+            View child=bar.getChildAt(i);
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(36),dp(42));
+            lp.setMargins(0,0,0,0);
+            child.setLayoutParams(lp);
+            child.setPadding(0,0,0,0);
+            if(child instanceof TextView)((TextView)child).setGravity(Gravity.CENTER);
+        }
     }
 
     private void enhanceAttachedPage(View attached){
@@ -264,7 +287,7 @@ public class GraphUxActivity extends MainActivity {
         if(root instanceof TextView){TextView tv=(TextView)root;CharSequence cs=tv.getText();if(cs!=null){String s=cs.toString();if(s.startsWith("HomeSmoke Remote ")&&s.matches("HomeSmoke Remote \\d+\\.\\d+\\.\\d+.*")){String replacement=s.replaceFirst("HomeSmoke Remote \\d+\\.\\d+\\.\\d+","HomeSmoke Remote "+appVersion());if(!replacement.equals(s))tv.setText(replacement);}}}
         if(root instanceof ViewGroup){ViewGroup g=(ViewGroup)root;for(int i=0;i<g.getChildCount();i++)replaceVersionText(g.getChildAt(i));}
     }
-    private String appVersion(){try{String version=getPackageManager().getPackageInfo(getPackageName(),0).versionName;return version==null||version.trim().isEmpty()?"2.0.16":version;}catch(Exception ignored){return "2.0.16";}}
+    private String appVersion(){try{String version=getPackageManager().getPackageInfo(getPackageName(),0).versionName;return version==null||version.trim().isEmpty()?"2.0.17":version;}catch(Exception ignored){return "2.0.17";}}
 
     private boolean containsText(View root,String exact){return findText(root,exact)!=null;}
     private TextView findText(View root,String exact){if(root instanceof TextView&&exact.contentEquals(((TextView)root).getText()))return (TextView)root;if(root instanceof ViewGroup){ViewGroup g=(ViewGroup)root;for(int i=0;i<g.getChildCount();i++){TextView found=findText(g.getChildAt(i),exact);if(found!=null)return found;}}return null;}
