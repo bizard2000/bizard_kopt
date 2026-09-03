@@ -16,9 +16,9 @@ Starting a Gradle Daemon (subsequent builds will be faster)
 > Task :core:processTestResources NO-SOURCE
 > Task :core:testClasses
 > Task :core:test
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1788422885234.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1788422955250.json
 
-BUILD SUCCESSFUL in 30s
+BUILD SUCCESSFUL in 31s
 3 actionable tasks: 3 executed
 > Task :app:preBuild UP-TO-DATE
 > Task :app:preDebugBuild UP-TO-DATE
@@ -69,9 +69,9 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1788422910857.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1788422981867.json
 
-BUILD SUCCESSFUL in 14s
+BUILD SUCCESSFUL in 11s
 34 actionable tasks: 33 executed, 1 up-to-date
 > Task :remote:preBuild UP-TO-DATE
 > Task :remote:preDebugBuild UP-TO-DATE
@@ -88,8 +88,8 @@ BUILD SUCCESSFUL in 14s
 > Task :remote:parseDebugLocalResources
 > Task :remote:processDebugMainManifest
 > Task :remote:processDebugManifest
-> Task :remote:processDebugManifestForPackage
 > Task :remote:mergeDebugShaders
+> Task :remote:processDebugManifestForPackage
 > Task :remote:compileDebugShaders NO-SOURCE
 > Task :remote:generateDebugAssets UP-TO-DATE
 > Task :remote:mergeDebugAssets
@@ -118,7 +118,7 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :remote:packageDebug
 > Task :remote:createDebugApkListingFileRedirect
 > Task :remote:assembleDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_4-1788422925195.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_4-1788422993539.json
 
 BUILD SUCCESSFUL in 3s
 32 actionable tasks: 32 executed
