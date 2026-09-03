@@ -259,7 +259,7 @@ public class GraphUxActivity extends MainActivity {
             if(cs!=null){
                 String s=cs.toString();
                 if(s.startsWith("HomeSmoke Remote ")&&s.matches("HomeSmoke Remote \\d+\\.\\d+\\.\\d+.*")){
-                    String suffix=s.replaceFirst("HomeSmoke Remote \\d+\\.\\d+\\.\\d+","HomeSmoke Remote "+BuildConfig.VERSION_NAME);
+                    String suffix=s.replaceFirst("HomeSmoke Remote \\d+\\.\\d+\\.\\d+","HomeSmoke Remote "+appVersion());
                     if(!suffix.equals(s))tv.setText(suffix);
                 }
             }
@@ -267,6 +267,15 @@ public class GraphUxActivity extends MainActivity {
         if(root instanceof ViewGroup){
             ViewGroup g=(ViewGroup)root;
             for(int i=0;i<g.getChildCount();i++)replaceVersionText(g.getChildAt(i));
+        }
+    }
+
+    private String appVersion(){
+        try{
+            String version=getPackageManager().getPackageInfo(getPackageName(),0).versionName;
+            return version==null||version.trim().isEmpty()?"2.0.14":version;
+        }catch(Exception ignored){
+            return "2.0.14";
         }
     }
 
