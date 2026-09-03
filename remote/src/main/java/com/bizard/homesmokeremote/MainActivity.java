@@ -805,19 +805,21 @@ public class MainActivity extends Activity {
         t.setTextColor(main);
         cameraSummary.setTextColor(secondary);
         tempTrend.setTextColor(fresh?lastTrendColor:OFF);
-        if(fresh)updateHeaterUi(lastPowerValue);else power.setTextColor(OFF);
         lastCommand.setTextColor(main);
         autoProgram.setTextColor(main);
         autoStage.setTextColor(main);
-        if(heaterProgress!=null){
-            heaterProgress.setAlpha(fresh?1f:.72f);
-            if(Build.VERSION.SDK_INT>=21)heaterProgress.setProgressTintList(ColorStateList.valueOf(fresh?ORANGE:OFF));
-        }
+        if(heaterProgress!=null)heaterProgress.setAlpha(fresh?1f:.72f);
         if(fresh){
+            updateHeaterUi(lastPowerValue);
             updateModeUi(lastModeRaw);
             if(lastAutoRunning){autoChip.setBackground(round(BLUE,12));autoStatus.setTextColor(BLUE_DARK);}else{autoChip.setBackground(round(OFF,12));autoStatus.setTextColor(MUTED);}
         }else{
+            power.setTextColor(OFF);
+            if(heaterProgress!=null&&Build.VERSION.SDK_INT>=21)heaterProgress.setProgressTintList(ColorStateList.valueOf(OFF));
+            mode.setText(modeName(lastModeRaw));
             mode.setTextColor(OFF);
+            mode.setBackgroundColor(Color.TRANSPARENT);
+            mode.setPadding(dp(6),dp(2),dp(6),dp(2));
             autoChip.setBackground(round(OFF,12));
             autoStatus.setTextColor(OFF);
         }
