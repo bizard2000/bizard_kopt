@@ -68,7 +68,8 @@ public class MainActivity extends Activity {
     private String deviceId="—",pendingId="",pendingLabel="";
     private String lastModeRaw="—";
     private boolean lastAutoRunning=false;
-    private double lastCameraValue=Double.NaN,lastSetpointValue=Double.NaN;
+    private double lastCameraValue=Double.NaN,lastSetpointValue=Double.NaN,lastPowerValue=Double.NaN;
+    private int lastTrendColor=MUTED;
     private boolean showTechnicalEnabled=false,passwordVisible=false;
 
     private final ArrayList<TempSample> tempSamples=new ArrayList<>();
@@ -364,7 +365,7 @@ public class MainActivity extends Activity {
 
         LinearLayout intro=card();
         intro.addView(sectionTitle("MQTT подключение"));
-        TextView versionText=text("HomeSmoke Remote 2.0.9 · Android 5+",12,false,MUTED);
+        TextView versionText=text("HomeSmoke Remote 2.0.11 · Android 5+",12,false,MUTED);
         versionText.setPadding(0,dp(2),0,0);
         intro.addView(versionText);
         p.addView(intro,margin(8,8,8,4));
@@ -535,9 +536,8 @@ public class MainActivity extends Activity {
                 camera.setText(deg(cam));
                 k.setText(deg(pk));
                 t.setText(deg(pt));
-                power.setText(Double.isNaN(powerValue)?"— %":formatPlain(powerValue)+" %");
-                if(!Double.isNaN(powerValue))heaterProgress.setProgress(clamp((int)Math.round(powerValue),0,100));
-                else heaterProgress.setProgress(0);
+                lastPowerValue=powerValue;
+                updateHeaterUi(powerValue);
                 updateModeUi(md);
                 lastCommand.setText(lc);
                 updateAutoUi(ar,ap,stage,as);
@@ -665,13 +665,42 @@ public class MainActivity extends Activity {
 
     private void updateModeUi(String raw){
         lastModeRaw=raw;
-        mode.setText(modeName(raw));
-        int color=TEXT;
+        String name=modeName(raw);
+        boolean fresh=isTelemetryFresh();
+        if(!fresh||"—".equals(name)){
+            mode.setText(name);
+            mode.setTextColor(OFF);
+            mode.setBackgroundColor(Color.TRANSPARENT);
+            mode.setPadding(dp(6),dp(2),dp(6),dp(2));
+            return;
+        }
+        int color=OFF;
         if("0".equals(raw))color=ORANGE;
         else if("1".equals(raw))color=GREEN;
         else if("2".equals(raw))color=BLUE;
         else if("3".equals(raw))color=RED;
-        mode.setTextColor(isTelemetryFresh()?color:OFF);
+        mode.setText("● "+name);
+        mode.setTextColor(Color.WHITE);
+        mode.setPadding(dp(9),dp(3),dp(9),dp(3));
+        mode.setBackground(round(color,12));
+    }
+
+    private void updateHeaterUi(double value){
+        lastPowerValue=value;
+        boolean fresh=isTelemetryFresh();
+        if(Double.isNaN(value)){
+            power.setText("—");
+            power.setTextColor(fresh?MUTED:OFF);
+            heaterProgress.setProgress(0);
+            if(Build.VERSION.SDK_INT>=21)heaterProgress.setProgressTintList(ColorStateList.valueOf(OFF));
+            return;
+        }
+        int pct=clamp((int)Math.round(value),0,100);
+        boolean heating=pct>0;
+        power.setText(heating?"Нагрев · "+pct+" %":"Выкл. · 0 %");
+        power.setTextColor(fresh?(heating?ORANGE:MUTED):OFF);
+        heaterProgress.setProgress(pct);
+        if(Build.VERSION.SDK_INT>=21)heaterProgress.setProgressTintList(ColorStateList.valueOf(fresh?(heating?ORANGE:OFF):OFF));
     }
 
     private void updateAutoUi(boolean running,String program,int stage,String status){
@@ -775,8 +804,8 @@ public class MainActivity extends Activity {
         k.setTextColor(main);
         t.setTextColor(main);
         cameraSummary.setTextColor(secondary);
-        tempTrend.setTextColor(fresh?MUTED:OFF);
-        power.setTextColor(fresh?ORANGE:OFF);
+        tempTrend.setTextColor(fresh?lastTrendColor:OFF);
+        if(fresh)updateHeaterUi(lastPowerValue);else power.setTextColor(OFF);
         lastCommand.setTextColor(main);
         autoProgram.setTextColor(main);
         autoStage.setTextColor(main);
@@ -820,19 +849,37 @@ public class MainActivity extends Activity {
             cameraSummary.setText("Уставка "+oneDecimal(lastSetpointValue)+" °C · "+delta);
         }
 
-        if(tempSamples.size()<2){tempTrend.setText("Тренд накапливается");return;}
+        if(tempSamples.size()<2){
+            lastTrendColor=MUTED;
+            tempTrend.setTextColor(lastTrendColor);
+            tempTrend.setText("Состояние камеры · анализируется");
+            return;
+        }
         TempSample newest=tempSamples.get(tempSamples.size()-1);
         TempSample base=null;
         for(int i=tempSamples.size()-2;i>=0;i--){
             TempSample x=tempSamples.get(i);
             if(newest.ts-x.ts>=60000L){base=x;if(newest.ts-x.ts>=TREND_WINDOW_MS)break;}
         }
-        if(base==null){tempTrend.setText("Тренд накапливается");return;}
+        if(base==null){
+            lastTrendColor=MUTED;
+            tempTrend.setTextColor(lastTrendColor);
+            tempTrend.setText("Состояние камеры · анализируется");
+            return;
+        }
         double diff=newest.value-base.value;
         long minutes=Math.max(1,Math.round((newest.ts-base.ts)/60000.0));
-        if(Math.abs(diff)<0.15)tempTrend.setText("→ стабильно · "+minutes+" мин");
-        else if(diff>0)tempTrend.setText("↗ +"+oneDecimal(diff)+" °C / "+minutes+" мин");
-        else tempTrend.setText("↘ −"+oneDecimal(-diff)+" °C / "+minutes+" мин");
+        if(Math.abs(diff)<0.15){
+            lastTrendColor=GREEN;
+            tempTrend.setText("Стабильно · → "+minutes+" мин");
+        }else if(diff>0){
+            lastTrendColor=ORANGE;
+            tempTrend.setText("Нагрев · ↗ +"+oneDecimal(diff)+" °C / "+minutes+" мин");
+        }else{
+            lastTrendColor=BLUE_DARK;
+            tempTrend.setText("Остывает · ↘ −"+oneDecimal(-diff)+" °C / "+minutes+" мин");
+        }
+        tempTrend.setTextColor(lastTrendColor);
     }
 
     private void addTempSample(double value,long ts){
@@ -941,7 +988,7 @@ public class MainActivity extends Activity {
         setPasswordVisible(false);
         setPage(settingsPage);
         title.setText("Настройки MQTT");
-        subtitle.setText("HomeSmoke Remote 2.0.9");
+        subtitle.setText("HomeSmoke Remote 2.0.11");
         back.setVisibility(View.VISIBLE);
         settings.setVisibility(View.GONE);
         applyUiPreferences();
