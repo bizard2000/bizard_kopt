@@ -9,13 +9,14 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.WeakHashMap;
 
-/** Presentation-only freshness styling for retained MQTT telemetry. */
+/** Presentation-only freshness and availability styling for HomeSmoke Remote. */
 public final class RemoteApplication extends Application {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final WeakHashMap<Activity, Runnable> refreshers = new WeakHashMap<>();
@@ -55,8 +56,13 @@ public final class RemoteApplication extends Application {
         if (!(content instanceof ViewGroup)) return;
         ViewGroup root = (ViewGroup) content;
 
-        boolean hasOldData = findStartsWith(root, "Обновлено ") != null || findStartsWith(root, "Последние данные · ") != null;
-        boolean stale = hasOldData && (findExact(root, "Не отвечает") != null || findExact(root, "НЕТ ДАННЫХ") != null);
+        boolean hasOldData = findStartsWith(root, "Обновлено ") != null
+                || findStartsWith(root, "Последние данные · ") != null
+                || findStartsWith(root, "Последние данные:") != null;
+        boolean stale = hasOldData && (findExact(root, "Не отвечает") != null
+                || findExact(root, "Данные устарели") != null
+                || findExact(root, "НЕТ ДАННЫХ") != null
+                || findExact(root, "СТАРЫЕ ДАННЫЕ") != null);
 
         styleCard(root, "Камера", stale, Kind.CAMERA);
         styleCard(root, "Щуп K", stale, Kind.PLAIN);
@@ -66,6 +72,7 @@ public final class RemoteApplication extends Application {
         styleCard(root, "Последняя команда", stale, Kind.PLAIN);
         styleAuto(root, stale);
         styleTimestamp(root, stale);
+        styleRemoteControls(root);
         updateDisplayedVersion(activity, root);
     }
 
@@ -120,11 +127,45 @@ public final class RemoteApplication extends Application {
     private void styleTimestamp(ViewGroup root, boolean stale) {
         TextView t = findStartsWith(root, "Обновлено ");
         if (t == null) t = findStartsWith(root, "Последние данные · ");
+        if (t == null) t = findStartsWith(root, "Последние данные:");
         if (t == null) return;
         String s = text(t);
         if (stale && s.startsWith("Обновлено ")) t.setText("Последние данные · " + s.substring("Обновлено ".length()));
         else if (!stale && s.startsWith("Последние данные · ")) t.setText("Обновлено " + s.substring("Последние данные · ".length()));
         t.setTextColor(OFF);
+    }
+
+    /**
+     * MainActivity owns the actual enabled/disabled logic. This method only makes that state
+     * visually unambiguous: disabled remote controls are neutral gray, never pale blue/red.
+     */
+    private void styleRemoteControls(ViewGroup root) {
+        TextView availability = findStartsWith(root, "Управление ");
+        boolean unavailable = availability != null && text(availability).startsWith("Управление недоступно");
+
+        TextView apply = findExact(root, "Применить");
+        TextView stop = findExact(root, "STOP · выключить нагрев");
+        if (apply != null) styleControlButton(apply, unavailable, BLUE);
+        if (stop != null) styleControlButton(stop, unavailable, RED);
+
+        EditText setpoint = findEditTextByHint(root, "Уставка 0…100 °C");
+        if (setpoint != null) {
+            setpoint.setAlpha(1f);
+            setpoint.setTextColor(unavailable ? OFF : TEXT);
+            setpoint.setHintTextColor(unavailable ? DISABLED_TEXT : FIELD_HINT);
+            setpoint.setBackground(roundStroke(
+                    unavailable ? FIELD_DISABLED : FIELD_ACTIVE,
+                    13,
+                    unavailable ? DISABLED_BORDER : BORDER,
+                    1,
+                    setpoint));
+        }
+    }
+
+    private void styleControlButton(TextView button, boolean unavailable, int activeColor) {
+        button.setAlpha(1f);
+        button.setTextColor(unavailable ? DISABLED_TEXT : Color.WHITE);
+        button.setBackground(round(unavailable ? DISABLED_CONTROL : activeColor, 14, button));
     }
 
     private void updateDisplayedVersion(Activity activity, ViewGroup root) {
@@ -138,7 +179,9 @@ public final class RemoteApplication extends Application {
         collectTexts(root, texts);
         for (TextView t : texts) {
             String s = text(t);
-            if (s.contains("HomeSmoke Remote 2.0.3")) t.setText(s.replace("HomeSmoke Remote 2.0.3", "HomeSmoke Remote " + version));
+            if (!s.contains("HomeSmoke Remote ")) continue;
+            String replaced = s.replaceFirst("HomeSmoke Remote \\d+\\.\\d+\\.\\d+", "HomeSmoke Remote " + version);
+            if (!replaced.equals(s)) t.setText(replaced);
         }
     }
 
@@ -158,6 +201,13 @@ public final class RemoteApplication extends Application {
         return g;
     }
 
+    private static GradientDrawable roundStroke(int color, int radiusDp, int stroke, int widthDp, View v) {
+        GradientDrawable g = round(color, radiusDp, v);
+        float d = v.getResources().getDisplayMetrics().density;
+        g.setStroke(Math.max(1, Math.round(widthDp * d)), stroke);
+        return g;
+    }
+
     private static TextView findExact(ViewGroup root, String target) {
         List<TextView> all = new ArrayList<>();
         collectTexts(root, all);
@@ -172,11 +222,29 @@ public final class RemoteApplication extends Application {
         return null;
     }
 
+    private static EditText findEditTextByHint(ViewGroup root, String hint) {
+        List<EditText> all = new ArrayList<>();
+        collectEditTexts(root, all);
+        for (EditText e : all) {
+            CharSequence h = e.getHint();
+            if (h != null && hint.equals(h.toString())) return e;
+        }
+        return null;
+    }
+
     private static void collectTexts(View v, List<TextView> out) {
         if (v instanceof TextView) out.add((TextView) v);
         if (v instanceof ViewGroup) {
             ViewGroup g = (ViewGroup) v;
             for (int i = 0; i < g.getChildCount(); i++) collectTexts(g.getChildAt(i), out);
+        }
+    }
+
+    private static void collectEditTexts(View v, List<EditText> out) {
+        if (v instanceof EditText) out.add((EditText) v);
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) collectEditTexts(g.getChildAt(i), out);
         }
     }
 
@@ -189,4 +257,11 @@ public final class RemoteApplication extends Application {
     private static final int RED = Color.rgb(229,40,40);
     private static final int ORANGE = Color.rgb(231,138,7);
     private static final int OFF = Color.rgb(116,129,145);
+    private static final int BORDER = Color.rgb(220,225,232);
+    private static final int FIELD_HINT = Color.rgb(151,164,180);
+    private static final int DISABLED_CONTROL = Color.rgb(226,231,236);
+    private static final int DISABLED_TEXT = Color.rgb(137,148,160);
+    private static final int DISABLED_BORDER = Color.rgb(216,222,228);
+    private static final int FIELD_ACTIVE = Color.rgb(250,251,252);
+    private static final int FIELD_DISABLED = Color.rgb(246,248,250);
 }
