@@ -34,6 +34,7 @@ import org.json.JSONObject;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -57,12 +58,14 @@ public class MainActivity extends Activity {
     private static final int ERROR_BG=Color.rgb(255,239,239);
     private static final long STALE_MS=10000L;
     private static final long TREND_WINDOW_MS=5L*60L*1000L;
+    private static final long GRAPH_SESSION_GAP_MS=60L*1000L;
     private static final int MAX_COMMAND_HISTORY=5;
     private static final float STALE_ALPHA=0.62f;
 
     private SharedPreferences prefs;
     private SecretStore secrets;
     private MqttClient mqtt;
+    private TelemetryHistoryStore historyStore;
     private volatile boolean connecting,wantConnection;
     private long lastTelemetryAt=0;
     private String deviceId="—",pendingId="",pendingLabel="";
@@ -70,21 +73,25 @@ public class MainActivity extends Activity {
     private boolean lastAutoRunning=false;
     private double lastCameraValue=Double.NaN,lastSetpointValue=Double.NaN,lastPowerValue=Double.NaN;
     private int lastTrendColor=MUTED;
-    private boolean showTechnicalEnabled=false,passwordVisible=false;
+    private boolean showTechnicalEnabled=false,passwordVisible=false,graphVisible=false,graphSessionMode=false;
+    private long graphWindowMs=3L*60L*60L*1000L;
+    private volatile long graphSessionStartAt=0L,graphLastLiveAt=0L;
 
     private final ArrayList<TempSample> tempSamples=new ArrayList<>();
     private final ArrayList<String> commandHistoryItems=new ArrayList<>();
+    private final ArrayList<Button> graphRangeButtons=new ArrayList<>();
 
-    private LinearLayout host,monitorPage,settingsPage,ackFlow,controllerCommandBlock,advancedMqttBlock,commandHistoryCard;
+    private LinearLayout host,monitorPage,settingsPage,graphPage,ackFlow,controllerCommandBlock,advancedMqttBlock,commandHistoryCard;
     private LinearLayout telemetryCamCard,telemetryProbesRow,telemetryStatsRow,telemetryAutoCard;
     private TextView title,subtitle,mqttBadge,deviceBadge;
     private TextView mqttDot,deviceDot,brokerState,deviceState,brokerDetail,deviceDetail,systemState;
     private TextView camera,cameraSummary,tempTrend,k,t,power,mode,lastCommand,autoProgram,autoStage,autoStatus,autoChip,lastUpdate,commandState,commandHistory,controlAvailability;
-    private TextView ackRemote,ackHome,ackController;
+    private TextView ackRemote,ackHome,ackController,graphSummary,graphPointInfo;
     private ProgressBar heaterProgress;
-    private Button back,settings,setButton,stopButton,disconnectButton,passToggle;
+    private TemperatureChartView graphChart;
+    private Button back,graphButton,settings,setButton,stopButton,disconnectButton,passToggle;
     private EditText setInput,broker,port,statusTopic,commandTopic,ackTopic,user,pass;
-    private CheckBox tls,autoConnect,keepScreenOn,showTechnical;
+    private CheckBox tls,autoConnect,keepScreenOn,showTechnical,graphCamera,graphSetpoint,graphK,graphT;
     private final Handler handler=new Handler(Looper.getMainLooper());
 
     private final Runnable health=new Runnable(){@Override public void run(){
@@ -99,6 +106,7 @@ public class MainActivity extends Activity {
         updateLastDataCaption();
         updateCameraSummaryAndTrend();
         applyTelemetryFreshness(fresh);
+        if(graphVisible)refreshGraph();
         if(wantConnection&&!mq&&!connecting&&!broker.getText().toString().trim().isEmpty())connectMqtt(false);
         handler.postDelayed(this,3000);
     }};
@@ -107,6 +115,7 @@ public class MainActivity extends Activity {
         super.onCreate(b);
         prefs=getSharedPreferences("homesmoke_remote",MODE_PRIVATE);
         secrets=new SecretStore(this);
+        historyStore=new TelemetryHistoryStore(this);
         View root=buildRoot();
         setContentView(root);
         applyInsets(root);
@@ -125,6 +134,7 @@ public class MainActivity extends Activity {
         wantConnection=false;
         handler.removeCallbacks(health);
         disconnectInternal(false);
+        if(historyStore!=null)historyStore.close();
         super.onDestroy();
     }
 
@@ -137,6 +147,7 @@ public class MainActivity extends Activity {
         host.setOrientation(LinearLayout.VERTICAL);
         root.addView(host,new LinearLayout.LayoutParams(-1,0,1));
         monitorPage=buildMonitor();
+        graphPage=buildGraph();
         settingsPage=buildSettings();
         return root;
     }
@@ -172,12 +183,18 @@ public class MainActivity extends Activity {
         mqttBadge=badge("MQTT");
         deviceBadge=badge("SMOKE");
         bar.addView(mqttBadge,wrapMargin(2,0,2,0));
-        bar.addView(deviceBadge,wrapMargin(2,0,3,0));
+        bar.addView(deviceBadge,wrapMargin(2,0,2,0));
+
+        graphButton=iconButton("↗");
+        graphButton.setTextSize(22);
+        graphButton.setContentDescription("График температуры");
+        graphButton.setOnClickListener(view->showGraph());
+        bar.addView(graphButton,new LinearLayout.LayoutParams(dp(34),dp(42)));
 
         settings=iconButton("⚙");
         settings.setTextSize(20);
         settings.setOnClickListener(view->showSettings());
-        bar.addView(settings,new LinearLayout.LayoutParams(dp(38),dp(42)));
+        bar.addView(settings,new LinearLayout.LayoutParams(dp(36),dp(42)));
         return bar;
     }
 
@@ -331,6 +348,113 @@ public class MainActivity extends Activity {
         return p;
     }
 
+    private LinearLayout buildGraph(){
+        LinearLayout p=page();
+
+        LinearLayout intro=card();
+        intro.addView(sectionTitle("График температуры"));
+        TextView hint=text("Remote сохраняет только свежую телеметрию локально до 24 часов. Retained/устаревшие данные в историю не добавляются.",11,false,MUTED);
+        hint.setPadding(0,dp(3),0,0);
+        intro.addView(hint);
+        p.addView(intro,margin(8,8,8,4));
+
+        LinearLayout rangeCard=card();
+        rangeCard.addView(label("Период"));
+        LinearLayout ranges=new LinearLayout(this);
+        ranges.setGravity(Gravity.CENTER_VERTICAL);
+        ranges.setPadding(0,dp(6),0,0);
+        addGraphRangeButton(ranges,"1ч",1L*60L*60L*1000L,false);
+        addGraphRangeButton(ranges,"3ч",3L*60L*60L*1000L,false);
+        addGraphRangeButton(ranges,"6ч",6L*60L*60L*1000L,false);
+        addGraphRangeButton(ranges,"12ч",12L*60L*60L*1000L,false);
+        addGraphRangeButton(ranges,"24ч",24L*60L*60L*1000L,false);
+        addGraphRangeButton(ranges,"Сеанс",0L,true);
+        rangeCard.addView(ranges,new LinearLayout.LayoutParams(-1,-2));
+        p.addView(rangeCard,margin(8,4,8,4));
+
+        LinearLayout chartCard=card();
+        graphChart=new TemperatureChartView(this);
+        graphChart.setOnSelectionListener(sample->{if(graphPointInfo!=null)graphPointInfo.setText(graphPointText(sample));});
+        chartCard.addView(graphChart,new LinearLayout.LayoutParams(-1,dp(330)));
+        graphSummary=text("Свежих данных пока нет",11,false,MUTED);
+        graphSummary.setGravity(Gravity.CENTER);
+        graphSummary.setPadding(0,dp(5),0,0);
+        chartCard.addView(graphSummary);
+        p.addView(chartCard,margin(8,4,8,4));
+
+        LinearLayout series=card();
+        series.addView(label("Линии графика"));
+        LinearLayout row1=new LinearLayout(this),row2=new LinearLayout(this);
+        row1.setOrientation(LinearLayout.HORIZONTAL);row2.setOrientation(LinearLayout.HORIZONTAL);
+        graphCamera=check("Камера");graphSetpoint=check("Уставка");graphK=check("Щуп K");graphT=check("Щуп T");
+        graphCamera.setChecked(true);graphSetpoint.setChecked(true);graphK.setChecked(true);graphT.setChecked(true);
+        row1.addView(graphCamera,new LinearLayout.LayoutParams(0,-2,1));row1.addView(graphSetpoint,new LinearLayout.LayoutParams(0,-2,1));
+        row2.addView(graphK,new LinearLayout.LayoutParams(0,-2,1));row2.addView(graphT,new LinearLayout.LayoutParams(0,-2,1));
+        series.addView(row1);series.addView(row2);
+        android.widget.CompoundButton.OnCheckedChangeListener listener=(buttonView,isChecked)->{updateGraphSeries();saveSettings();};
+        graphCamera.setOnCheckedChangeListener(listener);graphSetpoint.setOnCheckedChangeListener(listener);graphK.setOnCheckedChangeListener(listener);graphT.setOnCheckedChangeListener(listener);
+        TextView heaterHint=text("Мощность ТЭНа отображается отдельной полосой 0…100 % под температурным графиком.",11,false,MUTED);
+        heaterHint.setPadding(0,dp(2),0,0);series.addView(heaterHint);
+        p.addView(series,margin(8,4,8,4));
+
+        LinearLayout point=card();
+        point.addView(label("Точка графика"));
+        graphPointInfo=text("Коснитесь графика, чтобы увидеть точные значения.",12,false,MUTED);
+        graphPointInfo.setPadding(0,dp(4),0,0);graphPointInfo.setLineSpacing(0,1.05f);
+        point.addView(graphPointInfo);
+        p.addView(point,margin(8,4,8,16));
+        updateGraphRangeButtons();
+        return p;
+    }
+
+    private void addGraphRangeButton(LinearLayout row,String label,long window,boolean session){
+        Button b=action(label,OFF);b.setTextSize(10);b.setTag(session?"session":String.valueOf(window));
+        b.setOnClickListener(v->{graphSessionMode=session;if(!session)graphWindowMs=window;updateGraphRangeButtons();saveSettings();refreshGraph();});
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(36),1);lp.setMargins(dp(2),0,dp(2),0);
+        row.addView(b,lp);graphRangeButtons.add(b);
+    }
+
+    private void updateGraphRangeButtons(){
+        for(Button b:graphRangeButtons){
+            Object tag=b.getTag();
+            boolean active;
+            if("session".equals(tag))active=graphSessionMode;
+            else{long value;try{value=Long.parseLong(String.valueOf(tag));}catch(Exception e){value=-1;}active=!graphSessionMode&&value==graphWindowMs;}
+            b.setTextColor(active?Color.WHITE:TEXT);
+            b.setBackground(round(active?BLUE:Color.rgb(235,239,244),11));
+        }
+    }
+
+    private void updateGraphSeries(){
+        if(graphChart==null||graphCamera==null)return;
+        graphChart.setSeries(graphCamera.isChecked(),graphSetpoint.isChecked(),graphK.isChecked(),graphT.isChecked());
+    }
+
+    private void refreshGraph(){
+        if(historyStore==null||graphChart==null)return;
+        long now=System.currentTimeMillis();
+        long from=graphSessionMode?(graphSessionStartAt>0?graphSessionStartAt:now-graphWindowMs):now-graphWindowMs;
+        if(graphSessionMode&&graphSessionStartAt<=0)from=now-60L*60L*1000L;
+        List<TelemetryHistoryStore.Sample> samples=historyStore.query(from,now,800);
+        graphChart.setData(samples);updateGraphSeries();updateGraphRangeButtons();
+        if(samples.isEmpty()){
+            graphSummary.setText(graphSessionMode?"В текущем сеансе свежих данных пока нет":"Свежих данных за выбранный период нет");
+            graphPointInfo.setText("Коснитесь графика, чтобы увидеть точные значения.");
+        }else{
+            TelemetryHistoryStore.Sample first=samples.get(0),last=samples.get(samples.size()-1);
+            String firstTime=new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date(first.ts));
+            String lastTime=new SimpleDateFormat("HH:mm",Locale.getDefault()).format(new Date(last.ts));
+            graphSummary.setText(samples.size()+" точек на графике · "+firstTime+"—"+lastTime+" · последние "+relativeAge(last.ts));
+        }
+    }
+
+    private String graphPointText(TelemetryHistoryStore.Sample s){
+        String time=new SimpleDateFormat("dd.MM HH:mm:ss",Locale.getDefault()).format(new Date(s.ts));
+        return time+"\nКамера "+graphValue(s.camera," °C")+" · Уставка "+graphValue(s.setpoint," °C")+"\nЩуп K "+graphValue(s.probeK," °C")+" · Щуп T "+graphValue(s.probeT," °C")+" · ТЭН "+graphValue(s.heater," %");
+    }
+
+    private static String graphValue(double v,String suffix){return Double.isNaN(v)||Double.isInfinite(v)?"—":oneDecimal(v)+suffix;}
+
     private LinearLayout buildAckFlow(){
         LinearLayout row=new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -365,7 +489,7 @@ public class MainActivity extends Activity {
 
         LinearLayout intro=card();
         intro.addView(sectionTitle("MQTT подключение"));
-        TextView versionText=text("HomeSmoke Remote 2.0.12 · Android 5+",12,false,MUTED);
+        TextView versionText=text("HomeSmoke Remote 2.0.13 · Android 5+",12,false,MUTED);
         versionText.setPadding(0,dp(2),0,0);
         intro.addView(versionText);
         p.addView(intro,margin(8,8,8,4));
@@ -447,15 +571,25 @@ public class MainActivity extends Activity {
         keepScreenOn.setChecked(prefs.getBoolean("keep_screen_on",false));
         showTechnical.setChecked(prefs.getBoolean("show_technical",false));
         showTechnicalEnabled=showTechnical.isChecked();
+        graphWindowMs=prefs.getLong("graph_window_ms",3L*60L*60L*1000L);
+        graphSessionMode=prefs.getBoolean("graph_session_mode",false);
+        graphCamera.setChecked(prefs.getBoolean("graph_camera",true));
+        graphSetpoint.setChecked(prefs.getBoolean("graph_setpoint",true));
+        graphK.setChecked(prefs.getBoolean("graph_k",true));
+        graphT.setChecked(prefs.getBoolean("graph_t",true));
+        updateGraphSeries();updateGraphRangeButtons();
     }
 
     private void saveSettings(){
-        prefs.edit()
+        SharedPreferences.Editor e=prefs.edit()
                 .putString("broker",s(broker)).putString("port",s(port))
                 .putString("status_topic",s(statusTopic)).putString("command_topic",s(commandTopic)).putString("ack_topic",s(ackTopic))
                 .putString("user",user.getText().toString()).putBoolean("tls",tls.isChecked()).putBoolean("auto",autoConnect.isChecked())
-                .putBoolean("keep_screen_on",keepScreenOn.isChecked()).putBoolean("show_technical",showTechnical.isChecked()).apply();
-        try{secrets.put(pass.getText().toString());}catch(Exception e){toast("Не удалось сохранить пароль защищённо");}
+                .putBoolean("keep_screen_on",keepScreenOn.isChecked()).putBoolean("show_technical",showTechnical.isChecked())
+                .putLong("graph_window_ms",graphWindowMs).putBoolean("graph_session_mode",graphSessionMode);
+        if(graphCamera!=null)e.putBoolean("graph_camera",graphCamera.isChecked()).putBoolean("graph_setpoint",graphSetpoint.isChecked()).putBoolean("graph_k",graphK.isChecked()).putBoolean("graph_t",graphT.isChecked());
+        e.apply();
+        try{secrets.put(pass.getText().toString());}catch(Exception ex){toast("Не удалось сохранить пароль защищённо");}
     }
 
     private void setPasswordVisible(boolean visible){
@@ -524,8 +658,13 @@ public class MainActivity extends Activity {
             boolean ar=o.optBoolean("android_auto_running",false);
             String did=o.optString("device_id",deviceId);
             long ts=normalizeTelemetryTs(o.optLong("ts",0L));
-            double camValue=parseNumber(cam),spValue=parseNumber(sp),powerValue=parseNumber(pw);
+            double camValue=parseNumber(cam),spValue=parseNumber(sp),powerValue=parseNumber(pw),pkValue=parseNumber(pk),ptValue=parseNumber(pt);
             boolean fresh=isFreshAt(ts);
+            if(fresh&&historyStore!=null){
+                if(graphLastLiveAt<=0||ts-graphLastLiveAt>GRAPH_SESSION_GAP_MS)graphSessionStartAt=ts;
+                graphLastLiveAt=ts;
+                historyStore.addFresh(new TelemetryHistoryStore.Sample(ts,camValue,spValue,pkValue,ptValue,powerValue));
+            }
             lastTelemetryAt=ts;
             deviceId=did;
             runOnUiThread(()->{
@@ -546,6 +685,7 @@ public class MainActivity extends Activity {
                 updateLastDataCaption();
                 setDeviceUi(fresh,fresh?"Коптильня онлайн · "+did:"Последние данные · "+relativeAge(ts));
                 applyTelemetryFreshness(fresh);
+                if(graphVisible)refreshGraph();
             });
         }catch(Exception ignored){}
     }
@@ -993,21 +1133,37 @@ public class MainActivity extends Activity {
 
     private void showMonitor(){
         setPasswordVisible(false);
+        graphVisible=false;
         setPage(monitorPage);
         title.setText("HomeSmoke Remote");
         subtitle.setText("Удалённое управление");
         back.setVisibility(View.GONE);
+        graphButton.setVisibility(View.VISIBLE);
         settings.setVisibility(View.VISIBLE);
         applyUiPreferences();
         applyTelemetryFreshness(isTelemetryFresh());
     }
 
+    private void showGraph(){
+        setPasswordVisible(false);
+        graphVisible=true;
+        setPage(graphPage);
+        title.setText("График температуры");
+        subtitle.setText("Локальная история · до 24 ч");
+        back.setVisibility(View.VISIBLE);
+        graphButton.setVisibility(View.GONE);
+        settings.setVisibility(View.VISIBLE);
+        refreshGraph();
+    }
+
     private void showSettings(){
         setPasswordVisible(false);
+        graphVisible=false;
         setPage(settingsPage);
         title.setText("Настройки MQTT");
-        subtitle.setText("HomeSmoke Remote 2.0.12");
+        subtitle.setText("HomeSmoke Remote 2.0.13");
         back.setVisibility(View.VISIBLE);
+        graphButton.setVisibility(View.GONE);
         settings.setVisibility(View.GONE);
         applyUiPreferences();
     }
