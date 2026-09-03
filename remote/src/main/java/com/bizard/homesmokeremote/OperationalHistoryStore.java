@@ -108,6 +108,13 @@ final class OperationalHistoryStore extends SQLiteOpenHelper {
         return out;
     }
 
+    synchronized Session querySession(long id){
+        if(id<=0)return null;
+        SQLiteDatabase db=getReadableDatabase();
+        Cursor c=db.query("sessions",null,"id=?",new String[]{String.valueOf(id)},null,null,null,"1");
+        try{return c.moveToFirst()?readSession(c):null;}finally{c.close();}
+    }
+
     synchronized List<Event> queryEvents(int limit){
         ArrayList<Event> out=new ArrayList<>();
         SQLiteDatabase db=getReadableDatabase();
@@ -115,6 +122,17 @@ final class OperationalHistoryStore extends SQLiteOpenHelper {
         try{while(c.moveToNext())out.add(new Event(c.getLong(0),c.getLong(1),c.getString(2),c.getString(3)));}finally{c.close();}
         return out;
     }
+
+    synchronized List<Event> queryEvents(long from,long to,int limit){
+        ArrayList<Event> out=new ArrayList<>();
+        SQLiteDatabase db=getReadableDatabase();
+        Cursor c=db.query("events",new String[]{"id","ts","type","message"},"ts>=? AND ts<=?",
+                new String[]{String.valueOf(Math.max(0L,from)),String.valueOf(Math.max(from,to))},null,null,"ts DESC",String.valueOf(Math.max(1,limit)));
+        try{while(c.moveToNext())out.add(new Event(c.getLong(0),c.getLong(1),c.getString(2),c.getString(3)));}finally{c.close();}
+        return out;
+    }
+
+    synchronized void clearEvents(){getWritableDatabase().delete("events",null,null);}
 
     private Session startSession(SQLiteDatabase db,long ts){
         ContentValues v=new ContentValues();
