@@ -14,12 +14,16 @@
             android:name=".HistoryActivity"
             android:exported="false" />
         <activity
+            android:name=".GraphUxFixActivity"
+            android:exported="false" />
+        <activity-alias
             android:name=".GraphUxActivity"
+            android:targetActivity=".GraphUxFixActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
     </application>
 </manifest>
