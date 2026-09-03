@@ -6,9 +6,11 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
+import android.view.WindowInsets;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -39,8 +41,9 @@ public final class HistoryActivity extends Activity {
         telemetry=new TelemetryHistoryStore(this);
         ops=new OperationalHistoryStore(this);
         synchronize();
-        setContentView(buildRoot());
-        if(android.os.Build.VERSION.SDK_INT>=21){getWindow().setStatusBarColor(NAVY);getWindow().setNavigationBarColor(BG);}
+        View root=buildRoot();
+        setContentView(root);
+        applyInsets(root);
     }
 
     @Override protected void onDestroy(){if(telemetry!=null)telemetry.close();if(ops!=null)ops.close();super.onDestroy();}
@@ -65,6 +68,20 @@ public final class HistoryActivity extends Activity {
         TextView back=text("‹",34,false,Color.WHITE);back.setGravity(Gravity.CENTER);back.setOnClickListener(v->finish());bar.addView(back,new LinearLayout.LayoutParams(dp(44),dp(46)));
         LinearLayout titles=new LinearLayout(this);titles.setOrientation(LinearLayout.VERTICAL);titles.setGravity(Gravity.CENTER_VERTICAL);
         TextView title=text("Сеансы и журнал",18,true,Color.WHITE);TextView sub=text("Локальная история Remote",11,false,Color.rgb(211,222,232));titles.addView(title);titles.addView(sub);bar.addView(titles,new LinearLayout.LayoutParams(0,-1,1));return bar;
+    }
+
+    private void applyInsets(View root){
+        if(Build.VERSION.SDK_INT<21)return;
+        root.setOnApplyWindowInsetsListener((view,i)->{
+            int l,t,r,b;
+            if(Build.VERSION.SDK_INT>=30){android.graphics.Insets x=i.getInsets(WindowInsets.Type.systemBars());l=x.left;t=x.top;r=x.right;b=x.bottom;}
+            else{l=i.getSystemWindowInsetLeft();t=i.getSystemWindowInsetTop();r=i.getSystemWindowInsetRight();b=i.getSystemWindowInsetBottom();}
+            view.setPadding(l,t,r,b);
+            return i;
+        });
+        root.requestApplyInsets();
+        getWindow().setStatusBarColor(NAVY);
+        getWindow().setNavigationBarColor(BG);
     }
 
     private void buildSessions(LinearLayout page){
