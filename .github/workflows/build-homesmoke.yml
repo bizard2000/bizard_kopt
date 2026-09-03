@@ -44,14 +44,14 @@ jobs:
           set -o pipefail
           gradle :app:assembleDebug --stacktrace 2>&1 | tee app-build.log
 
-      - name: Verify HomeSmoke Remote 2.0.15 version
+      - name: Verify HomeSmoke Remote 2.0.16 version
         shell: bash
         run: |
-          grep -q "versionCode 17" remote/build.gradle
-          grep -q "versionName '2.0.15'" remote/build.gradle
+          grep -q "versionCode 18" remote/build.gradle
+          grep -q "versionName '2.0.16'" remote/build.gradle
           grep -E "versionCode|versionName" remote/build.gradle
 
-      - name: Build HomeSmoke Remote 2.0.15 Android 5+
+      - name: Build HomeSmoke Remote 2.0.16 Android 5+
         shell: bash
         run: |
           set -o pipefail
@@ -74,12 +74,12 @@ jobs:
           rm -f dist/*Android4plus.apk dist/*Android4plus.bin
           cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.10_Android6plus.apk
           cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.10_Android6plus.bin
-          cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_2.0.15_Android5plus.apk
-          cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_2.0.15_Android5plus.bin
+          cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_2.0.16_Android5plus.apk
+          cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_2.0.16_Android5plus.bin
           git config user.name "github-actions[bot]"
           git config user.email "4189826+github-actions[bot]@users.noreply.github.com"
           git add -A dist remote/build.gradle
-          git commit -m "CI: publish HomeSmoke 2.6.10 and Remote 2.0.15 [skip ci]" || true
+          git commit -m "CI: publish HomeSmoke 2.6.10 and Remote 2.0.16 [skip ci]" || true
           git pull --rebase origin homesmoke-native
           git push origin homesmoke-native
 
@@ -92,11 +92,11 @@ jobs:
             dist/HomeSmoke_FULL_2.6.10_Android6plus.bin
           if-no-files-found: error
 
-      - name: Upload HomeSmoke Remote 2.0.15
+      - name: Upload HomeSmoke Remote 2.0.16
         uses: actions/upload-artifact@v4
         with:
-          name: HomeSmoke_Remote_2.0.15_Android5plus
+          name: HomeSmoke_Remote_2.0.16_Android5plus
           path: |
-            dist/HomeSmoke_Remote_2.0.15_Android5plus.apk
-            dist/HomeSmoke_Remote_2.0.15_Android5plus.bin
+            dist/HomeSmoke_Remote_2.0.16_Android5plus.apk
+            dist/HomeSmoke_Remote_2.0.16_Android5plus.bin
           if-no-files-found: error
