@@ -112,13 +112,14 @@ final class TemperatureChartView extends View {
         canvas.drawText("ТЭН, %",dp(8),heaterTop-dp(6),axisPaint);
         drawHeater(canvas,minTs,maxTs,left,right,heaterTop,heaterBottom);
 
-        axisPaint.setTextAlign(Paint.Align.CENTER);
         SimpleDateFormat axisTime=(maxTs-minTs)<10L*60L*1000L?shortTimeFormat:timeFormat;
         for(int i=0;i<=3;i++){
             float x=left+(right-left)*i/3f;
             long ts=minTs+Math.round((maxTs-minTs)*i/3.0);
+            axisPaint.setTextAlign(i==0?Paint.Align.LEFT:(i==3?Paint.Align.RIGHT:Paint.Align.CENTER));
             canvas.drawText(axisTime.format(new Date(ts)),x,h-dp(7),axisPaint);
         }
+        axisPaint.setTextAlign(Paint.Align.CENTER);
 
         if(selected>=0&&selected<data.size()){
             TelemetryHistoryStore.Sample s=data.get(selected);
