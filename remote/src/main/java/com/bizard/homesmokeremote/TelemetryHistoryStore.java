@@ -119,6 +119,13 @@ final class TelemetryHistoryStore extends SQLiteOpenHelper {
         return out;
     }
 
+    synchronized int countSamples(long from,long to){
+        SQLiteDatabase db=getReadableDatabase();
+        Cursor c=db.rawQuery("SELECT COUNT(*) FROM "+TABLE+" WHERE ts>=? AND ts<=?",
+                new String[]{String.valueOf(from),String.valueOf(to)});
+        try{return c.moveToFirst()?c.getInt(0):0;}finally{c.close();}
+    }
+
     synchronized long latestTimestamp(){
         SQLiteDatabase db=getReadableDatabase();
         Cursor c=db.rawQuery("SELECT MAX(ts) FROM "+TABLE,null);
