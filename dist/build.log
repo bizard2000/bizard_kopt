@@ -16,7 +16,7 @@ Starting a Gradle Daemon (subsequent builds will be faster)
 > Task :core:processTestResources NO-SOURCE
 > Task :core:testClasses
 > Task :core:test
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1788407666007.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1788408647773.json
 
 BUILD SUCCESSFUL in 33s
 3 actionable tasks: 3 executed
@@ -27,8 +27,8 @@ BUILD SUCCESSFUL in 33s
 > Task :core:processResources NO-SOURCE
 > Task :core:classes UP-TO-DATE
 > Task :core:jar
-> Task :app:javaPreCompileDebug
 > Task :app:checkDebugAarMetadata
+> Task :app:javaPreCompileDebug
 > Task :app:generateDebugResValues
 > Task :app:mapDebugSourceSetPaths
 > Task :app:generateDebugResources
@@ -48,12 +48,12 @@ BUILD SUCCESSFUL in 33s
 > Task :app:processDebugJavaRes NO-SOURCE
 > Task :app:processDebugManifestForPackage
 > Task :app:checkDebugDuplicateClasses
-> Task :app:mergeDebugJavaResource
 > Task :app:mergeDebugJniLibFolders
+> Task :app:mergeExtDexDebug
 > Task :app:mergeDebugNativeLibs NO-SOURCE
 > Task :app:stripDebugDebugSymbols NO-SOURCE
-> Task :app:mergeExtDexDebug
 > Task :app:validateSigningDebug
+> Task :app:mergeDebugJavaResource
 > Task :app:writeDebugAppMetadata
 > Task :app:writeDebugSigningConfigVersions
 > Task :app:mergeLibDexDebug
@@ -69,7 +69,7 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1788407693748.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1788408677205.json
 
 BUILD SUCCESSFUL in 12s
 34 actionable tasks: 33 executed, 1 up-to-date
@@ -89,6 +89,7 @@ BUILD SUCCESSFUL in 12s
 > Task :remote:processDebugMainManifest
 > Task :remote:processDebugManifest
 > Task :remote:mergeDebugShaders
+> Task :remote:processDebugManifestForPackage
 > Task :remote:compileDebugShaders NO-SOURCE
 > Task :remote:generateDebugAssets UP-TO-DATE
 > Task :remote:mergeDebugAssets
@@ -103,7 +104,6 @@ BUILD SUCCESSFUL in 12s
 > Task :remote:stripDebugDebugSymbols NO-SOURCE
 > Task :remote:validateSigningDebug
 > Task :remote:mergeLibDexDebug
-> Task :remote:processDebugManifestForPackage
 > Task :remote:writeDebugAppMetadata
 > Task :remote:writeDebugSigningConfigVersions
 > Task :remote:processDebugResources
@@ -118,7 +118,7 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :remote:packageDebug
 > Task :remote:createDebugApkListingFileRedirect
 > Task :remote:assembleDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_4-1788407706376.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_4-1788408689532.json
 
 BUILD SUCCESSFUL in 3s
 32 actionable tasks: 32 executed
