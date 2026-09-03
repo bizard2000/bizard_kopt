@@ -32,10 +32,6 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Apply HomeSmoke Remote 2.0.12 UI patch
-        shell: bash
-        run: python3 ci/patch_remote_2_0_12.py
-
       - name: Test shared protocol and Auto core
         shell: bash
         run: |
@@ -82,7 +78,7 @@ jobs:
           cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_2.0.12_Android5plus.bin
           git config user.name "github-actions[bot]"
           git config user.email "4189826+github-actions[bot]@users.noreply.github.com"
-          git add -A dist remote/build.gradle remote/src/main/java/com/bizard/homesmokeremote/MainActivity.java
+          git add -A dist remote/build.gradle
           git commit -m "CI: publish HomeSmoke 2.6.10 and Remote 2.0.12 [skip ci]" || true
           git pull --rebase origin homesmoke-native
           git push origin homesmoke-native
