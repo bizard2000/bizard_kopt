@@ -1,0 +1,204 @@
+package com.bizard.homesmokeremote;
+
+import android.app.AlertDialog;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.Spinner;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
+/**
+ * Small compatibility refinement layered over GraphUxActivity after real-device testing.
+ * It changes presentation/test orchestration only. MQTT and Arduino protocol are untouched.
+ */
+public final class GraphUxFixActivity extends GraphUxActivity {
+    private static final int TEXT=Color.rgb(21,31,47);
+    private static final int MUTED=Color.rgb(101,116,139);
+    private static final int BORDER=Color.rgb(220,225,232);
+    private static final int ORANGE=Color.rgb(231,138,7);
+    private static final int OFF=Color.rgb(116,129,145);
+    private static final int FIELD=Color.rgb(250,251,252);
+    private static final String[] TEST_SCENARIOS={
+            "Полный цикл",
+            "Нагрев камеры",
+            "Стабилизация PID",
+            "Auto-программа",
+            "Щуп достигает цели",
+            "Потеря и восстановление связи"
+    };
+    private static final long[] TEST_DURATIONS_MS={178000L,100000L,118000L,118000L,100000L,52000L};
+
+    private final Handler fixHandler=new Handler(Looper.getMainLooper());
+    private Spinner scenarioSpinner;
+    private Button scenarioButton;
+    private boolean autoStopIssued=false;
+
+    private final Runnable fixTick=new Runnable(){
+        @Override public void run(){
+            installScenarioChooser();
+            refreshScenarioChooser();
+            fixGraphHeader();
+            fixTestStatus();
+            enforceSinglePassScenario();
+            fixHandler.postDelayed(this,350L);
+        }
+    };
+
+    @Override protected void onCreate(Bundle state){
+        super.onCreate(state);
+        fixHandler.postDelayed(fixTick,250L);
+    }
+
+    @Override protected void onDestroy(){
+        fixHandler.removeCallbacks(fixTick);
+        super.onDestroy();
+    }
+
+    private void installScenarioChooser(){
+        if(scenarioButton!=null&&scenarioButton.getParent()!=null)return;
+        View content=findViewById(android.R.id.content);
+        Spinner spinner=findSpinner(content);
+        if(spinner==null||!(spinner.getParent() instanceof ViewGroup))return;
+
+        scenarioSpinner=spinner;
+        ViewGroup parent=(ViewGroup)spinner.getParent();
+        int index=parent.indexOfChild(spinner);
+        ViewGroup.LayoutParams original=spinner.getLayoutParams();
+        parent.removeView(spinner);
+
+        scenarioButton=new Button(this);
+        scenarioButton.setAllCaps(false);
+        scenarioButton.setTextSize(15);
+        scenarioButton.setTypeface(Typeface.DEFAULT);
+        scenarioButton.setTextColor(TEXT);
+        scenarioButton.setGravity(Gravity.CENTER_VERTICAL|Gravity.START);
+        scenarioButton.setPadding(dp(12),0,dp(12),0);
+        scenarioButton.setMinWidth(0);
+        scenarioButton.setMinimumWidth(0);
+        scenarioButton.setMinHeight(0);
+        scenarioButton.setMinimumHeight(0);
+        if(Build.VERSION.SDK_INT>=21){scenarioButton.setStateListAnimator(null);scenarioButton.setBackgroundTintList(null);}
+        scenarioButton.setBackground(roundStroke(FIELD,13,BORDER,1));
+        scenarioButton.setOnClickListener(v->showScenarioDialog());
+        updateScenarioButtonText();
+
+        if(original==null)original=new ViewGroup.LayoutParams(-1,dp(46));
+        parent.addView(scenarioButton,Math.max(0,index),original);
+    }
+
+    private void showScenarioDialog(){
+        if(scenarioSpinner==null||isTestRunning())return;
+        int selected=Math.max(0,Math.min(TEST_SCENARIOS.length-1,scenarioSpinner.getSelectedItemPosition()));
+        new AlertDialog.Builder(this)
+                .setTitle("Сценарий теста")
+                .setSingleChoiceItems(TEST_SCENARIOS,selected,(dialog,which)->{
+                    scenarioSpinner.setSelection(which);
+                    updateScenarioButtonText();
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Отмена",null)
+                .show();
+    }
+
+    private void refreshScenarioChooser(){
+        if(scenarioButton==null)return;
+        boolean running=isTestRunning();
+        scenarioButton.setEnabled(!running);
+        scenarioButton.setAlpha(running?.55f:1f);
+        updateScenarioButtonText();
+    }
+
+    private void updateScenarioButtonText(){
+        if(scenarioButton==null)return;
+        int selected=scenarioSpinner==null?readInt("testScenarioIndex",0):scenarioSpinner.getSelectedItemPosition();
+        selected=Math.max(0,Math.min(TEST_SCENARIOS.length-1,selected));
+        scenarioButton.setText(TEST_SCENARIOS[selected]+"   ▾");
+    }
+
+    private void fixGraphHeader(){
+        TextView title=findVisibleExact(findViewById(android.R.id.content),"График температуры");
+        if(title!=null)title.setText("График");
+    }
+
+    private void fixTestStatus(){
+        View content=findViewById(android.R.id.content);
+        boolean running=isTestRunning();
+        TextView status=findVisibleAny(content,"ОФЛАЙН","ГОТОВО","СТАРЫЕ ДАННЫЕ","НЕТ ДАННЫХ","ТЕСТ");
+        TextView availability=findVisibleStartsWith(content,"Управление недоступно");
+        if(running){
+            if(status!=null){status.setText("ТЕСТ");status.setTextColor(Color.WHITE);status.setBackground(round(ORANGE,12));}
+            if(availability!=null)availability.setText("Управление недоступно · тестовый режим");
+        }else if(status!=null&&"ТЕСТ".contentEquals(status.getText())){
+            status.setText("ОФЛАЙН");status.setTextColor(Color.WHITE);status.setBackground(round(OFF,12));
+        }
+    }
+
+    private void enforceSinglePassScenario(){
+        if(!isTestRunning()){autoStopIssued=false;return;}
+        long started=readLong("testStartedAt",0L);
+        int scenario=Math.max(0,Math.min(TEST_DURATIONS_MS.length-1,readInt("testScenarioIndex",0)));
+        if(started<=0||System.currentTimeMillis()-started<TEST_DURATIONS_MS[scenario]||autoStopIssued)return;
+        autoStopIssued=true;
+        String name=TEST_SCENARIOS[scenario];
+        invokePrivate("stopTestScenario",new Class<?>[]{boolean.class},true);
+        Toast.makeText(this,"Тест «"+name+"» завершён",Toast.LENGTH_SHORT).show();
+    }
+
+    private boolean isTestRunning(){return readBoolean("testRunning",false);}
+
+    private Spinner findSpinner(View root){
+        if(root instanceof Spinner&&root.getVisibility()==View.VISIBLE)return (Spinner)root;
+        if(root instanceof ViewGroup){ViewGroup g=(ViewGroup)root;for(int i=0;i<g.getChildCount();i++){Spinner x=findSpinner(g.getChildAt(i));if(x!=null)return x;}}
+        return null;
+    }
+
+    private TextView findVisibleExact(View root,String exact){
+        if(root instanceof TextView&&root.getVisibility()==View.VISIBLE&&exact.contentEquals(((TextView)root).getText()))return (TextView)root;
+        if(root instanceof ViewGroup){ViewGroup g=(ViewGroup)root;for(int i=0;i<g.getChildCount();i++){TextView x=findVisibleExact(g.getChildAt(i),exact);if(x!=null)return x;}}
+        return null;
+    }
+
+    private TextView findVisibleStartsWith(View root,String prefix){
+        if(root instanceof TextView&&root.getVisibility()==View.VISIBLE){CharSequence s=((TextView)root).getText();if(s!=null&&s.toString().startsWith(prefix))return (TextView)root;}
+        if(root instanceof ViewGroup){ViewGroup g=(ViewGroup)root;for(int i=0;i<g.getChildCount();i++){TextView x=findVisibleStartsWith(g.getChildAt(i),prefix);if(x!=null)return x;}}
+        return null;
+    }
+
+    private TextView findVisibleAny(View root,String... values){
+        if(root instanceof TextView&&root.getVisibility()==View.VISIBLE){String s=String.valueOf(((TextView)root).getText());for(String value:values)if(value.equals(s))return (TextView)root;}
+        if(root instanceof ViewGroup){ViewGroup g=(ViewGroup)root;for(int i=0;i<g.getChildCount();i++){TextView x=findVisibleAny(g.getChildAt(i),values);if(x!=null)return x;}}
+        return null;
+    }
+
+    private void invokePrivate(String name,Class<?>[] types,Object... args){
+        try{Method m=GraphUxActivity.class.getDeclaredMethod(name,types);m.setAccessible(true);m.invoke(this,args);}catch(Exception ignored){}
+    }
+
+    private boolean readBoolean(String name,boolean def){
+        try{Field f=GraphUxActivity.class.getDeclaredField(name);f.setAccessible(true);return f.getBoolean(this);}catch(Exception e){return def;}
+    }
+
+    private int readInt(String name,int def){
+        try{Field f=GraphUxActivity.class.getDeclaredField(name);f.setAccessible(true);return f.getInt(this);}catch(Exception e){return def;}
+    }
+
+    private long readLong(String name,long def){
+        try{Field f=GraphUxActivity.class.getDeclaredField(name);f.setAccessible(true);return f.getLong(this);}catch(Exception e){return def;}
+    }
+
+    private GradientDrawable round(int color,int radius){GradientDrawable g=new GradientDrawable();g.setColor(color);g.setCornerRadius(dp(radius));return g;}
+    private GradientDrawable roundStroke(int color,int radius,int stroke,int width){GradientDrawable g=round(color,radius);g.setStroke(dp(width),stroke);return g;}
+    private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
+}
