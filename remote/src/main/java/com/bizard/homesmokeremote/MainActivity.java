@@ -13,6 +13,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
 import android.text.TextUtils;
+import android.text.method.PasswordTransformationMethod;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -67,18 +68,18 @@ public class MainActivity extends Activity {
     private String lastModeRaw="—";
     private boolean lastAutoRunning=false;
     private double lastCameraValue=Double.NaN,lastSetpointValue=Double.NaN;
-    private boolean showTechnicalEnabled=false;
+    private boolean showTechnicalEnabled=false,passwordVisible=false;
 
     private final ArrayList<TempSample> tempSamples=new ArrayList<>();
     private final ArrayList<String> commandHistoryItems=new ArrayList<>();
 
-    private LinearLayout host,monitorPage,settingsPage,ackFlow,controllerCommandBlock;
+    private LinearLayout host,monitorPage,settingsPage,ackFlow,controllerCommandBlock,advancedMqttBlock,commandHistoryCard;
     private TextView title,subtitle,mqttBadge,deviceBadge;
     private TextView mqttDot,deviceDot,brokerState,deviceState,brokerDetail,deviceDetail,systemState;
     private TextView camera,cameraSummary,tempTrend,k,t,power,mode,lastCommand,autoProgram,autoStage,autoStatus,autoChip,lastUpdate,commandState,commandHistory,controlAvailability;
     private TextView ackRemote,ackHome,ackController;
     private ProgressBar heaterProgress;
-    private Button back,settings,setButton,stopButton,disconnectButton;
+    private Button back,settings,setButton,stopButton,disconnectButton,passToggle;
     private EditText setInput,broker,port,statusTopic,commandTopic,ackTopic,user,pass;
     private CheckBox tls,autoConnect,keepScreenOn,showTechnical;
     private final Handler handler=new Handler(Looper.getMainLooper());
@@ -199,7 +200,7 @@ public class MainActivity extends Activity {
         camera=center("— °C",44,true,TEXT);
         camera.setPadding(0,dp(2),0,0);
         cam.addView(camera);
-        cameraSummary=center("Уставка — °C · Δ —",14,true,BLUE_DARK);
+        cameraSummary=center("Уставка — °C",14,true,BLUE_DARK);
         cam.addView(cameraSummary);
         tempTrend=center("Тренд —",11,false,MUTED);
         tempTrend.setPadding(0,dp(2),0,0);
@@ -297,12 +298,12 @@ public class MainActivity extends Activity {
         ctrl.addView(commandState,cp);
         p.addView(ctrl,margin(8,4,8,4));
 
-        LinearLayout commandCard=card();
-        commandCard.addView(label("История команд Remote"));
+        commandHistoryCard=card();
+        commandHistoryCard.addView(label("История команд Remote"));
         commandHistory=text("Команд Remote ещё не было",12,false,MUTED);
         commandHistory.setPadding(0,dp(5),0,dp(4));
         commandHistory.setLineSpacing(0,1.08f);
-        commandCard.addView(commandHistory);
+        commandHistoryCard.addView(commandHistory);
 
         controllerCommandBlock=new LinearLayout(this);
         controllerCommandBlock.setOrientation(LinearLayout.VERTICAL);
@@ -314,8 +315,8 @@ public class MainActivity extends Activity {
         lastCommand.setMaxLines(2);
         lastCommand.setEllipsize(TextUtils.TruncateAt.END);
         controllerCommandBlock.addView(lastCommand);
-        commandCard.addView(controllerCommandBlock);
-        p.addView(commandCard,margin(8,4,8,3));
+        commandHistoryCard.addView(controllerCommandBlock);
+        p.addView(commandHistoryCard,margin(8,4,8,3));
 
         lastUpdate=center("Данных ещё нет",11,false,MUTED);
         p.addView(lastUpdate,margin(8,2,8,16));
@@ -356,7 +357,7 @@ public class MainActivity extends Activity {
 
         LinearLayout intro=card();
         intro.addView(sectionTitle("MQTT подключение"));
-        TextView versionText=text("HomeSmoke Remote 2.0.7 · Android 5+",12,false,MUTED);
+        TextView versionText=text("HomeSmoke Remote 2.0.8 · Android 5+",12,false,MUTED);
         versionText.setPadding(0,dp(2),0,0);
         intro.addView(versionText);
         p.addView(intro,margin(8,8,8,4));
@@ -364,11 +365,32 @@ public class MainActivity extends Activity {
         LinearLayout form=card();
         broker=labeledField(form,"Broker / IP","Адрес MQTT брокера",InputType.TYPE_CLASS_TEXT);
         port=labeledField(form,"Port","1883",InputType.TYPE_CLASS_NUMBER);
-        statusTopic=labeledField(form,"Status topic","homesmoke/status",InputType.TYPE_CLASS_TEXT);
-        commandTopic=labeledField(form,"Command topic","homesmoke/cmd",InputType.TYPE_CLASS_TEXT);
-        ackTopic=labeledField(form,"ACK topic","homesmoke/ack",InputType.TYPE_CLASS_TEXT);
+
+        advancedMqttBlock=new LinearLayout(this);
+        advancedMqttBlock.setOrientation(LinearLayout.VERTICAL);
+        statusTopic=labeledField(advancedMqttBlock,"Status topic","homesmoke/status",InputType.TYPE_CLASS_TEXT);
+        commandTopic=labeledField(advancedMqttBlock,"Command topic","homesmoke/cmd",InputType.TYPE_CLASS_TEXT);
+        ackTopic=labeledField(advancedMqttBlock,"ACK topic","homesmoke/ack",InputType.TYPE_CLASS_TEXT);
+        form.addView(advancedMqttBlock);
+
         user=labeledField(form,"Логин","Необязательно",InputType.TYPE_CLASS_TEXT);
-        pass=labeledField(form,"Пароль","Необязательно",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);
+
+        TextView passLabel=text("Пароль",12,true,MUTED);
+        passLabel.setPadding(0,dp(6),0,dp(4));
+        form.addView(passLabel);
+        LinearLayout passRow=new LinearLayout(this);
+        passRow.setGravity(Gravity.CENTER_VERTICAL);
+        pass=field("Необязательно",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        pass.setTransformationMethod(PasswordTransformationMethod.getInstance());
+        LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(0,dp(46),1f);
+        pp.setMargins(0,0,dp(7),0);
+        passRow.addView(pass,pp);
+        passToggle=action("Показать",OFF);
+        passToggle.setTextSize(11);
+        passToggle.setOnClickListener(view->setPasswordVisible(!passwordVisible));
+        passRow.addView(passToggle,new LinearLayout.LayoutParams(dp(92),dp(46)));
+        form.addView(passRow);
+
         tls=check("Использовать TLS");
         autoConnect=check("Автоподключение и переподключение");
         form.addView(tls,checkParams());
@@ -383,7 +405,7 @@ public class MainActivity extends Activity {
         showTechnical.setOnCheckedChangeListener((buttonView,isChecked)->{showTechnicalEnabled=isChecked;applyUiPreferences();});
         ui.addView(keepScreenOn,checkParams());
         ui.addView(showTechnical,checkParams());
-        TextView uiHint=text("Технические данные включают подробности MQTT/устройства и последнюю команду контроллера.",11,false,MUTED);
+        TextView uiHint=text("Технические данные включают MQTT topics, подробности соединения/устройства и последнюю команду контроллера.",11,false,MUTED);
         uiHint.setPadding(0,dp(2),0,0);
         ui.addView(uiHint);
         p.addView(ui,margin(8,4,8,4));
@@ -411,6 +433,7 @@ public class MainActivity extends Activity {
         ackTopic.setText(prefs.getString("ack_topic","homesmoke/ack"));
         user.setText(prefs.getString("user",""));
         pass.setText(secrets.get());
+        setPasswordVisible(false);
         tls.setChecked(prefs.getBoolean("tls",false));
         autoConnect.setChecked(prefs.getBoolean("auto",true));
         keepScreenOn.setChecked(prefs.getBoolean("keep_screen_on",false));
@@ -427,6 +450,16 @@ public class MainActivity extends Activity {
         try{secrets.put(pass.getText().toString());}catch(Exception e){toast("Не удалось сохранить пароль защищённо");}
     }
 
+    private void setPasswordVisible(boolean visible){
+        if(pass==null)return;
+        passwordVisible=visible;
+        int pos=pass.getSelectionStart();
+        pass.setTransformationMethod(visible?null:PasswordTransformationMethod.getInstance());
+        if(passToggle!=null)passToggle.setText(visible?"Скрыть":"Показать");
+        int len=pass.getText()==null?0:pass.getText().length();
+        pass.setSelection(Math.min(Math.max(pos,0),len));
+    }
+
     private void applyUiPreferences(){
         if(keepScreenOn!=null&&keepScreenOn.isChecked())getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -435,6 +468,8 @@ public class MainActivity extends Activity {
         if(brokerDetail!=null)brokerDetail.setVisibility(v);
         if(deviceDetail!=null)deviceDetail.setVisibility(v);
         if(controllerCommandBlock!=null)controllerCommandBlock.setVisibility(v);
+        if(advancedMqttBlock!=null)advancedMqttBlock.setVisibility(v);
+        if(commandHistoryCard!=null)commandHistoryCard.setVisibility((showTechnicalEnabled||!commandHistoryItems.isEmpty())?View.VISIBLE:View.GONE);
     }
 
     private void connectMqtt(boolean force){
@@ -676,12 +711,12 @@ public class MainActivity extends Activity {
     }
 
     private void setDeviceUi(boolean online,String txt){
-        int color=online?GREEN:(lastTelemetryAt>0?RED:ORANGE);
+        int color=online?GREEN:ORANGE;
         deviceBadge.setTextColor(Color.WHITE);
         deviceBadge.setBackground(round(color,14));
         deviceDot.setTextColor(color);
         deviceState.setText(online?"Онлайн":(lastTelemetryAt>0?"Данные устарели":"Нет данных"));
-        deviceState.setTextColor(online?GREEN:(lastTelemetryAt>0?RED:MUTED));
+        deviceState.setTextColor(online?GREEN:(lastTelemetryAt>0?ORANGE:MUTED));
         deviceDetail.setText(txt==null?"":txt);
         applyTelemetryFreshness(online);
         refreshOverallState();
@@ -698,7 +733,7 @@ public class MainActivity extends Activity {
         if(ready){txt="Управление доступно";bg=SUCCESS_BG;border=GREEN;color=Color.rgb(18,111,58);}
         else if(!mq){txt="Управление недоступно · MQTT не подключён";bg=INFO_BG;border=BORDER;color=MUTED;}
         else if(lastTelemetryAt<=0){txt="Управление недоступно · нет данных от коптильни";bg=WARN_BG;border=ORANGE;color=Color.rgb(151,88,0);}
-        else{txt="Управление недоступно · данные коптильни устарели";bg=ERROR_BG;border=RED;color=Color.rgb(170,30,30);}
+        else{txt="Управление недоступно · данные коптильни устарели";bg=WARN_BG;border=ORANGE;color=Color.rgb(151,88,0);}
         controlAvailability.setText(txt);
         controlAvailability.setTextColor(color);
         controlAvailability.setBackground(roundStroke(bg,10,border,1));
@@ -744,6 +779,18 @@ public class MainActivity extends Activity {
     }
 
     private void updateCameraSummaryAndTrend(){
+        boolean fresh=isTelemetryFresh();
+        if(lastTelemetryAt<=0){
+            cameraSummary.setText("Уставка — °C");
+            tempTrend.setText("Нет данных от коптильни");
+            return;
+        }
+        if(!fresh){
+            cameraSummary.setText(Double.isNaN(lastSetpointValue)?"Уставка — °C · данные устарели":"Уставка "+oneDecimal(lastSetpointValue)+" °C · данные устарели");
+            tempTrend.setText("Последние данные · "+relativeAge(lastTelemetryAt));
+            return;
+        }
+
         if(Double.isNaN(lastSetpointValue)){
             cameraSummary.setText("Уставка — °C · Δ —");
         }else if(Double.isNaN(lastCameraValue)){
@@ -757,7 +804,6 @@ public class MainActivity extends Activity {
             cameraSummary.setText("Уставка "+oneDecimal(lastSetpointValue)+" °C · "+delta);
         }
 
-        if(!isTelemetryFresh()){tempTrend.setText("Тренд недоступен · нет свежих данных");return;}
         if(tempSamples.size()<2){tempTrend.setText("Тренд накапливается");return;}
         TempSample newest=tempSamples.get(tempSamples.size()-1);
         TempSample base=null;
@@ -845,11 +891,17 @@ public class MainActivity extends Activity {
 
     private void renderCommandHistory(){
         if(commandHistory==null)return;
-        if(commandHistoryItems.isEmpty()){commandHistory.setText("Команд Remote ещё не было");commandHistory.setTextColor(MUTED);return;}
+        if(commandHistoryItems.isEmpty()){
+            commandHistory.setText("Команд Remote ещё не было");
+            commandHistory.setTextColor(MUTED);
+            if(commandHistoryCard!=null)commandHistoryCard.setVisibility(showTechnicalEnabled?View.VISIBLE:View.GONE);
+            return;
+        }
         StringBuilder b=new StringBuilder();
         for(int i=0;i<commandHistoryItems.size();i++){if(i>0)b.append('\n');b.append(commandHistoryItems.get(i));}
         commandHistory.setText(b.toString());
         commandHistory.setTextColor(TEXT);
+        if(commandHistoryCard!=null)commandHistoryCard.setVisibility(View.VISIBLE);
     }
 
     private void disconnectInternal(boolean ui){
@@ -859,6 +911,7 @@ public class MainActivity extends Activity {
     }
 
     private void showMonitor(){
+        setPasswordVisible(false);
         setPage(monitorPage);
         title.setText("HomeSmoke Remote");
         subtitle.setText("Удалённое управление");
@@ -868,11 +921,13 @@ public class MainActivity extends Activity {
     }
 
     private void showSettings(){
+        setPasswordVisible(false);
         setPage(settingsPage);
         title.setText("Настройки MQTT");
-        subtitle.setText("HomeSmoke Remote 2.0.7");
+        subtitle.setText("HomeSmoke Remote 2.0.8");
         back.setVisibility(View.VISIBLE);
         settings.setVisibility(View.GONE);
+        applyUiPreferences();
     }
 
     private void setPage(View p){
