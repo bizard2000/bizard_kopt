@@ -31,8 +31,11 @@ public final class GraphUxFixActivity extends GraphUxActivity {
 
     private final Runnable fixTick=new Runnable(){@Override public void run(){installScenarioChooser();refreshScenarioChooser();syncTestSessionBoundary();syncLatestGraphSession();fixGraphHeader();fixGraphSummary();fixTestStatus();fixModeChipText();syncDiagnosticSnapshot();enforceSinglePassScenario();fixHandler.postDelayed(this,350L);}};
 
-    @Override protected void onCreate(Bundle state){super.onCreate(state);fixHistory=new TelemetryHistoryStore(this);previousTestRunning=isTestRunning();fixHandler.postDelayed(fixTick,250L);}
+    @Override protected void onCreate(Bundle state){super.onCreate(state);preEnhanceGraphPage();fixHistory=new TelemetryHistoryStore(this);previousTestRunning=isTestRunning();fixHandler.postDelayed(fixTick,250L);}
     @Override protected void onDestroy(){fixHandler.removeCallbacks(fixTick);if(fixHistory!=null)fixHistory.close();super.onDestroy();}
+
+    /** Prepare the graph page while it is still off-screen, removing the one-frame legacy title flash. */
+    private void preEnhanceGraphPage(){Object page=readMainObject("graphPage");if(page instanceof View)invokeGraph("enhanceAttachedPage",new Class<?>[]{View.class},page);}
 
     private void installScenarioChooser(){
         if(scenarioButton!=null&&scenarioButton.getParent()!=null)return;View content=findViewById(android.R.id.content);Spinner spinner=findSpinner(content);if(spinner==null||!(spinner.getParent() instanceof ViewGroup))return;
