@@ -52,6 +52,8 @@ public class GraphUxActivity extends MainActivity {
     private TextView graphLiveValues;
     private TextView graphEmptyState;
     private TextView graphHeaterScale;
+    private TextView graphBaseSummary;
+    private View graphPointCard;
 
     private final Runnable graphUxTick=new Runnable(){
         @Override public void run(){
@@ -136,16 +138,16 @@ public class GraphUxActivity extends MainActivity {
             ViewGroup chartCard=(ViewGroup)graphChartView.getParent();
             int chartIndex=chartCard.indexOfChild(graphChartView);
 
-            graphLiveValues=makeText("",12,true,TEXT);
-            graphLiveValues.setLineSpacing(0,1.05f);
-            graphLiveValues.setPadding(0,0,0,dp(6));
+            graphLiveValues=makeText("",11,true,TEXT);
+            graphLiveValues.setLineSpacing(0,1.04f);
+            graphLiveValues.setPadding(0,0,0,dp(5));
             graphLiveValues.setVisibility(View.GONE);
             chartCard.addView(graphLiveValues,Math.max(0,chartIndex));
 
-            graphEmptyState=makeText("История пока пуста\nГрафик начнёт строиться автоматически после получения свежих данных от коптильни.",14,false,MUTED);
+            graphEmptyState=makeText("История пока пуста\nГрафик появится автоматически после получения свежих данных.",13,false,MUTED);
             graphEmptyState.setGravity(Gravity.CENTER);
-            graphEmptyState.setLineSpacing(0,1.12f);
-            graphEmptyState.setPadding(dp(14),dp(28),dp(14),dp(28));
+            graphEmptyState.setLineSpacing(0,1.10f);
+            graphEmptyState.setPadding(dp(12),dp(14),dp(12),dp(14));
             chartCard.addView(graphEmptyState,Math.max(0,chartIndex+1));
 
             graphHeaterScale=makeText("",11,true,MUTED);
@@ -154,8 +156,8 @@ public class GraphUxActivity extends MainActivity {
             setHeaterScaleText();
             chartCard.addView(graphHeaterScale);
 
-            TextView baseSummary=findText(chartCard,"Свежих данных пока нет");
-            if(baseSummary!=null)baseSummary.setVisibility(View.GONE);
+            graphBaseSummary=findTextStarting(chartCard,"Свежих данных");
+            if(graphBaseSummary==null)graphBaseSummary=findTextStarting(chartCard,"В текущем сеансе");
         }
 
         decorateSeriesCheck(findCheck(graphPage,"Камера"),CAMERA,"Камера");
@@ -164,7 +166,10 @@ public class GraphUxActivity extends MainActivity {
         decorateSeriesCheck(findCheck(graphPage,"Щуп T"),PROBE_T,"Щуп T");
 
         TextView heaterHint=findTextStarting(graphPage,"Мощность ТЭНа отображается");
-        if(heaterHint!=null)heaterHint.setText("Цветная метка соответствует линии на графике. Мощность ТЭНа показана отдельной полосой со шкалой 0—50—100 %.");
+        if(heaterHint!=null)heaterHint.setText("Цвет = линия графика · ТЭН — отдельная шкала 0–100 %");
+
+        TextView pointTitle=findText(graphPage,"Точка графика");
+        if(pointTitle!=null&&pointTitle.getParent() instanceof View)graphPointCard=(View)pointTitle.getParent();
 
         graphEnhanced=true;
         refreshGraphUx();
@@ -173,15 +178,15 @@ public class GraphUxActivity extends MainActivity {
     private View buildRecordCard(){
         LinearLayout card=new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(12),dp(9),dp(12),dp(9));
+        card.setPadding(dp(12),dp(8),dp(12),dp(8));
         card.setBackground(roundStroke(CARD,18,BORDER,1));
         if(android.os.Build.VERSION.SDK_INT>=21)card.setElevation(dp(1));
 
-        graphRecordStatus=makeText("Ожидание свежих данных",14,true,ORANGE);
-        graphRecordStatus.setPadding(0,0,0,dp(2));
+        graphRecordStatus=makeText("Ожидание телеметрии",14,true,ORANGE);
+        graphRecordStatus.setPadding(0,0,0,dp(1));
         card.addView(graphRecordStatus);
 
-        TextView hint=makeText("Локальная история · до 24 ч · retained/устаревшие пакеты не записываются",11,false,MUTED);
+        TextView hint=makeText("Локальная история · до 24 ч · retained не записывается",11,false,MUTED);
         card.addView(hint);
 
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);
@@ -199,14 +204,14 @@ public class GraphUxActivity extends MainActivity {
 
         if(graphRecordStatus!=null){
             if(last==null){
-                graphRecordStatus.setText("Ожидание свежих данных");
+                graphRecordStatus.setText("Ожидание телеметрии");
                 graphRecordStatus.setTextColor(ORANGE);
             }else if(live){
-                graphRecordStatus.setText("● Запись активна");
+                graphRecordStatus.setText("● Запись данных");
                 graphRecordStatus.setTextColor(GREEN);
             }else{
-                graphRecordStatus.setText("Запись приостановлена · нет свежих данных");
-                graphRecordStatus.setTextColor(ORANGE);
+                graphRecordStatus.setText("Нет свежих данных");
+                graphRecordStatus.setTextColor(MUTED);
             }
         }
 
@@ -215,7 +220,7 @@ public class GraphUxActivity extends MainActivity {
                 graphLiveValues.setVisibility(View.GONE);
             }else{
                 String prefix=live?"Сейчас: ":"Последние: ";
-                graphLiveValues.setText(prefix+"Камера "+value(last.camera," °C")+" · Уставка "+value(last.setpoint," °C")+"\nK "+value(last.probeK," °C")+" · T "+value(last.probeT," °C"));
+                graphLiveValues.setText(prefix+"Камера "+value(last.camera,"°")+" · Уставка "+value(last.setpoint,"°")+" · K "+value(last.probeK,"°")+" · T "+value(last.probeT,"°")+" · ТЭН "+value(last.heater,"%"));
                 graphLiveValues.setTextColor(live?TEXT:MUTED);
                 graphLiveValues.setVisibility(View.VISIBLE);
             }
@@ -229,6 +234,8 @@ public class GraphUxActivity extends MainActivity {
         }
         if(graphEmptyState!=null)graphEmptyState.setVisibility(any?View.GONE:View.VISIBLE);
         if(graphHeaterScale!=null)graphHeaterScale.setVisibility(any?View.VISIBLE:View.GONE);
+        if(graphBaseSummary!=null)graphBaseSummary.setVisibility(any?View.VISIBLE:View.GONE);
+        if(graphPointCard!=null)graphPointCard.setVisibility(any?View.VISIBLE:View.GONE);
     }
 
     private void setHeaterScaleText(){
@@ -273,9 +280,9 @@ public class GraphUxActivity extends MainActivity {
     private String appVersion(){
         try{
             String version=getPackageManager().getPackageInfo(getPackageName(),0).versionName;
-            return version==null||version.trim().isEmpty()?"2.0.14":version;
+            return version==null||version.trim().isEmpty()?"2.0.15":version;
         }catch(Exception ignored){
-            return "2.0.14";
+            return "2.0.15";
         }
     }
 
