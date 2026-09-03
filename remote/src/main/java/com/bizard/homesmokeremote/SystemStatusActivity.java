@@ -73,7 +73,7 @@ public final class SystemStatusActivity extends Activity {
         boolean diagFresh=diagAge<=5000L,test=prefs.getBoolean("test_mode_active",false)||prefs.getBoolean("diag_test_running",false);
         boolean mqttConnected=diagFresh&&prefs.getBoolean("diag_mqtt_connected",false),mqttConnecting=diagFresh&&prefs.getBoolean("diag_mqtt_connecting",false);
         String mqtt=mqttConnected?"Подключён":(mqttConnecting?"Подключение…":(diagFresh?"Отключён":"Нет актуального снимка"));
-        String runtime=diagAt>0?"Снимок Remote · "+age(diagAt,now)+" назад":"Снимок Remote ещё не получен";
+        String runtime=diagAt>0?"Диагностика обновлена · "+(diagAge<2000L?"сейчас":age(diagAt,now)+" назад"):"Диагностика ещё не обновлялась";
         connectionBody.setText("MQTT · "+mqtt+"\nИсточник данных · "+(test?"ТЕСТ · локальная симуляция":"Коптильня / MQTT")+"\n"+runtime);
         connectionBody.setTextColor(mqttConnected?GREEN:(test?ORANGE:(mqttConnecting?ORANGE:MUTED)));
 
