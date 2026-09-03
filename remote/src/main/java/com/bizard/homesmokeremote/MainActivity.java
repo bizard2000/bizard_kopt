@@ -365,7 +365,7 @@ public class MainActivity extends Activity {
 
         LinearLayout intro=card();
         intro.addView(sectionTitle("MQTT подключение"));
-        TextView versionText=text("HomeSmoke Remote 2.0.11 · Android 5+",12,false,MUTED);
+        TextView versionText=text("HomeSmoke Remote 2.0.12 · Android 5+",12,false,MUTED);
         versionText.setPadding(0,dp(2),0,0);
         intro.addView(versionText);
         p.addView(intro,margin(8,8,8,4));
@@ -667,8 +667,15 @@ public class MainActivity extends Activity {
         lastModeRaw=raw;
         String name=modeName(raw);
         boolean fresh=isTelemetryFresh();
-        if(!fresh||"—".equals(name)){
-            mode.setText(name);
+        if(!fresh){
+            mode.setText("Последний: "+name);
+            mode.setTextColor(OFF);
+            mode.setBackgroundColor(Color.TRANSPARENT);
+            mode.setPadding(dp(6),dp(2),dp(6),dp(2));
+            return;
+        }
+        if("—".equals(name)){
+            mode.setText("—");
             mode.setTextColor(OFF);
             mode.setBackgroundColor(Color.TRANSPARENT);
             mode.setPadding(dp(6),dp(2),dp(6),dp(2));
@@ -696,11 +703,18 @@ public class MainActivity extends Activity {
             return;
         }
         int pct=clamp((int)Math.round(value),0,100);
+        if(!fresh){
+            power.setText("Последнее: "+pct+" %");
+            power.setTextColor(OFF);
+            heaterProgress.setProgress(pct);
+            if(Build.VERSION.SDK_INT>=21)heaterProgress.setProgressTintList(ColorStateList.valueOf(OFF));
+            return;
+        }
         boolean heating=pct>0;
         power.setText(heating?"Нагрев · "+pct+" %":"Выкл. · 0 %");
-        power.setTextColor(fresh?(heating?ORANGE:MUTED):OFF);
+        power.setTextColor(heating?ORANGE:MUTED);
         heaterProgress.setProgress(pct);
-        if(Build.VERSION.SDK_INT>=21)heaterProgress.setProgressTintList(ColorStateList.valueOf(fresh?(heating?ORANGE:OFF):OFF));
+        if(Build.VERSION.SDK_INT>=21)heaterProgress.setProgressTintList(ColorStateList.valueOf(heating?ORANGE:OFF));
     }
 
     private void updateAutoUi(boolean running,String program,int stage,String status){
@@ -814,9 +828,11 @@ public class MainActivity extends Activity {
             updateModeUi(lastModeRaw);
             if(lastAutoRunning){autoChip.setBackground(round(BLUE,12));autoStatus.setTextColor(BLUE_DARK);}else{autoChip.setBackground(round(OFF,12));autoStatus.setTextColor(MUTED);}
         }else{
+            if(Double.isNaN(lastPowerValue))power.setText("Последнее: —");
+            else power.setText("Последнее: "+clamp((int)Math.round(lastPowerValue),0,100)+" %");
             power.setTextColor(OFF);
             if(heaterProgress!=null&&Build.VERSION.SDK_INT>=21)heaterProgress.setProgressTintList(ColorStateList.valueOf(OFF));
-            mode.setText(modeName(lastModeRaw));
+            mode.setText("Последний: "+modeName(lastModeRaw));
             mode.setTextColor(OFF);
             mode.setBackgroundColor(Color.TRANSPARENT);
             mode.setPadding(dp(6),dp(2),dp(6),dp(2));
@@ -834,7 +850,7 @@ public class MainActivity extends Activity {
         }
         if(!fresh){
             cameraSummary.setText(Double.isNaN(lastSetpointValue)?"Уставка — °C · данные устарели":"Уставка "+oneDecimal(lastSetpointValue)+" °C · данные устарели");
-            tempTrend.setText("Последние данные · "+relativeAge(lastTelemetryAt));
+            tempTrend.setText("Состояние недоступно · данные устарели");
             return;
         }
 
@@ -990,7 +1006,7 @@ public class MainActivity extends Activity {
         setPasswordVisible(false);
         setPage(settingsPage);
         title.setText("Настройки MQTT");
-        subtitle.setText("HomeSmoke Remote 2.0.11");
+        subtitle.setText("HomeSmoke Remote 2.0.12");
         back.setVisibility(View.VISIBLE);
         settings.setVisibility(View.GONE);
         applyUiPreferences();

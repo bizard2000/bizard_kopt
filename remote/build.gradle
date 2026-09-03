@@ -28,8 +28,8 @@ android {
         applicationId 'com.bizard.homesmokeremote'
         minSdk 21
         targetSdk 35
-        versionCode 13
-        versionName '2.0.11'
+        versionCode 14
+        versionName '2.0.12'
     }
 
     buildTypes {
