@@ -37,6 +37,7 @@ final class TemperatureChartView extends View {
     private int selected=-1;
     private OnSelectionListener selectionListener;
     private final SimpleDateFormat timeFormat=new SimpleDateFormat("HH:mm",Locale.getDefault());
+    private final SimpleDateFormat shortTimeFormat=new SimpleDateFormat("HH:mm:ss",Locale.getDefault());
 
     TemperatureChartView(Context context){
         super(context);
@@ -107,10 +108,11 @@ final class TemperatureChartView extends View {
         drawHeater(canvas,minTs,maxTs,left,right,heaterTop,heaterBottom);
 
         axisPaint.setTextAlign(Paint.Align.CENTER);
+        SimpleDateFormat axisTime=(maxTs-minTs)<10L*60L*1000L?shortTimeFormat:timeFormat;
         for(int i=0;i<=3;i++){
             float x=left+(right-left)*i/3f;
             long ts=minTs+Math.round((maxTs-minTs)*i/3.0);
-            canvas.drawText(timeFormat.format(new Date(ts)),x,h-dp(7),axisPaint);
+            canvas.drawText(axisTime.format(new Date(ts)),x,h-dp(7),axisPaint);
         }
 
         if(selected>=0&&selected<data.size()){
