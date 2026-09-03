@@ -146,24 +146,26 @@ final class TemperatureChartView extends View {
 
     private void drawSeries(Canvas c,long minTs,long maxTs,double min,double max,float left,float right,float top,float bottom,int field,int color,boolean enabled){
         if(!enabled)return;
-        Path path=new Path();boolean started=false;
+        Path path=new Path();boolean started=false;int segment=-1;
         for(TelemetryHistoryStore.Sample s:data){
             double value=value(s,field);
-            if(Double.isNaN(value)||Double.isInfinite(value)){started=false;continue;}
+            if(Double.isNaN(value)||Double.isInfinite(value)){started=false;segment=-1;continue;}
             float x=xFor(s.ts,minTs,maxTs,left,right),y=yFor(value,min,max,top,bottom);
-            if(!started){path.moveTo(x,y);started=true;}else path.lineTo(x,y);
+            if(!started||s.segmentId!=segment){path.moveTo(x,y);started=true;}else path.lineTo(x,y);
+            segment=s.segmentId;
         }
         linePaint.setColor(color);linePaint.setStrokeWidth(dp(field==1?1.6f:2f));
         c.drawPath(path,linePaint);
     }
 
     private void drawHeater(Canvas c,long minTs,long maxTs,float left,float right,float top,float bottom){
-        Path path=new Path();boolean started=false;
+        Path path=new Path();boolean started=false;int segment=-1;
         for(TelemetryHistoryStore.Sample s:data){
-            if(Double.isNaN(s.heater)||Double.isInfinite(s.heater)){started=false;continue;}
+            if(Double.isNaN(s.heater)||Double.isInfinite(s.heater)){started=false;segment=-1;continue;}
             double v=Math.max(0,Math.min(100,s.heater));
             float x=xFor(s.ts,minTs,maxTs,left,right),y=(float)(bottom-(bottom-top)*(v/100.0));
-            if(!started){path.moveTo(x,y);started=true;}else path.lineTo(x,y);
+            if(!started||s.segmentId!=segment){path.moveTo(x,y);started=true;}else path.lineTo(x,y);
+            segment=s.segmentId;
         }
         linePaint.setColor(HEATER);linePaint.setStrokeWidth(dp(1.8f));c.drawPath(path,linePaint);
     }

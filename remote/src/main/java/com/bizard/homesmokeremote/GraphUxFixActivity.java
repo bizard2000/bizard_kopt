@@ -26,9 +26,11 @@ import java.lang.reflect.Method;
 public final class GraphUxFixActivity extends GraphUxActivity {
     private static final int TEXT=Color.rgb(21,31,47);
     private static final int BORDER=Color.rgb(220,225,232);
+    private static final int GREEN=Color.rgb(35,151,83);
     private static final int ORANGE=Color.rgb(231,138,7);
     private static final int OFF=Color.rgb(116,129,145);
     private static final int FIELD=Color.rgb(250,251,252);
+    private static final long SESSION_SPLIT_MS=10L*60L*1000L;
     private static final String[] TEST_SCENARIOS={
             "Полный цикл",
             "Нагрев камеры",
@@ -43,12 +45,17 @@ public final class GraphUxFixActivity extends GraphUxActivity {
     private Spinner scenarioSpinner;
     private Button scenarioButton;
     private boolean autoStopIssued=false;
+    private boolean previousTestRunning=false;
+    private TelemetryHistoryStore fixHistory;
 
     private final Runnable fixTick=new Runnable(){
         @Override public void run(){
             installScenarioChooser();
             refreshScenarioChooser();
+            syncTestSessionBoundary();
+            syncLatestGraphSession();
             fixGraphHeader();
+            fixGraphSummary();
             fixTestStatus();
             fixModeChipText();
             enforceSinglePassScenario();
@@ -58,11 +65,14 @@ public final class GraphUxFixActivity extends GraphUxActivity {
 
     @Override protected void onCreate(Bundle state){
         super.onCreate(state);
+        fixHistory=new TelemetryHistoryStore(this);
+        previousTestRunning=isTestRunning();
         fixHandler.postDelayed(fixTick,250L);
     }
 
     @Override protected void onDestroy(){
         fixHandler.removeCallbacks(fixTick);
+        if(fixHistory!=null)fixHistory.close();
         super.onDestroy();
     }
 
@@ -122,9 +132,60 @@ public final class GraphUxFixActivity extends GraphUxActivity {
 
     private void updateScenarioButtonText(){
         if(scenarioButton==null)return;
-        int selected=scenarioSpinner==null?readInt("testScenarioIndex",0):scenarioSpinner.getSelectedItemPosition();
+        int selected=scenarioSpinner==null?readGraphInt("testScenarioIndex",0):scenarioSpinner.getSelectedItemPosition();
         selected=Math.max(0,Math.min(TEST_SCENARIOS.length-1,selected));
         scenarioButton.setText(TEST_SCENARIOS[selected]+"   ▾");
+    }
+
+    /**
+     * A test start is an explicit local session boundary even when two tests are launched
+     * less than ten minutes apart. The graph therefore never joins different test runs.
+     */
+    private void syncTestSessionBoundary(){
+        boolean running=isTestRunning();
+        if(running&&!previousTestRunning){
+            long started=readGraphLong("testStartedAt",System.currentTimeMillis());
+            if(fixHistory!=null)fixHistory.markSessionBoundary(started);
+            writeMainBoolean("graphSessionMode",true);
+            writeMainLong("graphSessionStartAt",started);
+            invokeMain("refreshGraph",new Class<?>[0]);
+        }
+        previousTestRunning=running;
+    }
+
+    /** Makes the Session range mean the latest logical session, including after app restart. */
+    private void syncLatestGraphSession(){
+        if(fixHistory==null||!readMainBoolean("graphVisible",false)||!readMainBoolean("graphSessionMode",false))return;
+        long latest=fixHistory.latestTimestamp();
+        if(latest<=0)return;
+        long start=isTestRunning()?readGraphLong("testStartedAt",latest):fixHistory.latestSessionStart(latest,SESSION_SPLIT_MS);
+        long current=readMainLong("graphSessionStartAt",0L);
+        if(start>0&&Math.abs(start-current)>1000L){
+            writeMainLong("graphSessionStartAt",start);
+            invokeMain("refreshGraph",new Class<?>[0]);
+        }
+    }
+
+    /** Adds session count to multi-session hour ranges without replacing the base summary. */
+    private void fixGraphSummary(){
+        if(fixHistory==null||!readMainBoolean("graphVisible",false)||readMainBoolean("graphSessionMode",false))return;
+        Object raw=readMainObject("graphSummary");
+        if(!(raw instanceof TextView))return;
+        TextView summary=(TextView)raw;
+        String current=String.valueOf(summary.getText());
+        if(current.isEmpty()||current.contains("сеанс")||current.contains("данных")&&current.contains("нет"))return;
+        long window=readMainLong("graphWindowMs",3L*60L*60L*1000L);
+        long now=System.currentTimeMillis();
+        int sessions=fixHistory.countSessions(now-window,now,SESSION_SPLIT_MS);
+        if(sessions>1)summary.setText(current+" · "+sessions+" "+sessionWord(sessions));
+    }
+
+    private static String sessionWord(int n){
+        int mod100=n%100,mod10=n%10;
+        if(mod100>=11&&mod100<=14)return "сеансов";
+        if(mod10==1)return "сеанс";
+        if(mod10>=2&&mod10<=4)return "сеанса";
+        return "сеансов";
     }
 
     private void fixGraphHeader(){
@@ -137,8 +198,11 @@ public final class GraphUxFixActivity extends GraphUxActivity {
         boolean running=isTestRunning();
         TextView status=findVisibleAny(content,"ОФЛАЙН","ГОТОВО","СТАРЫЕ ДАННЫЕ","НЕТ ДАННЫХ","ТЕСТ");
         TextView availability=findVisibleStartsWith(content,"Управление недоступно");
+        Object rawDevice=readMainObject("deviceState");
+        TextView device=rawDevice instanceof TextView?(TextView)rawDevice:null;
         if(running){
             if(status!=null){status.setText("ТЕСТ");status.setTextColor(Color.WHITE);status.setBackground(round(ORANGE,12));}
+            if(device!=null){device.setText("Тестовые данные");device.setTextColor(GREEN);}
             if(availability!=null)availability.setText("Управление недоступно · тестовый режим");
         }else if(status!=null&&"ТЕСТ".contentEquals(status.getText())){
             status.setText("ОФЛАЙН");status.setTextColor(Color.WHITE);status.setBackground(round(OFF,12));
@@ -157,16 +221,16 @@ public final class GraphUxFixActivity extends GraphUxActivity {
 
     private void enforceSinglePassScenario(){
         if(!isTestRunning()){autoStopIssued=false;return;}
-        long started=readLong("testStartedAt",0L);
-        int scenario=Math.max(0,Math.min(TEST_DURATIONS_MS.length-1,readInt("testScenarioIndex",0)));
+        long started=readGraphLong("testStartedAt",0L);
+        int scenario=Math.max(0,Math.min(TEST_DURATIONS_MS.length-1,readGraphInt("testScenarioIndex",0)));
         if(started<=0||System.currentTimeMillis()-started<TEST_DURATIONS_MS[scenario]||autoStopIssued)return;
         autoStopIssued=true;
         String name=TEST_SCENARIOS[scenario];
-        invokePrivate("stopTestScenario",new Class<?>[]{boolean.class},true);
+        invokeGraph("stopTestScenario",new Class<?>[]{boolean.class},true);
         Toast.makeText(this,"Тест «"+name+"» завершён",Toast.LENGTH_SHORT).show();
     }
 
-    private boolean isTestRunning(){return readBoolean("testRunning",false);}
+    private boolean isTestRunning(){return readGraphBoolean("testRunning",false);}
 
     private Spinner findSpinner(View root){
         if(root instanceof Spinner&&root.getVisibility()==View.VISIBLE)return (Spinner)root;
@@ -192,20 +256,44 @@ public final class GraphUxFixActivity extends GraphUxActivity {
         return null;
     }
 
-    private void invokePrivate(String name,Class<?>[] types,Object... args){
+    private void invokeGraph(String name,Class<?>[] types,Object... args){
         try{Method m=GraphUxActivity.class.getDeclaredMethod(name,types);m.setAccessible(true);m.invoke(this,args);}catch(Exception ignored){}
     }
 
-    private boolean readBoolean(String name,boolean def){
+    private void invokeMain(String name,Class<?>[] types,Object... args){
+        try{Method m=MainActivity.class.getDeclaredMethod(name,types);m.setAccessible(true);m.invoke(this,args);}catch(Exception ignored){}
+    }
+
+    private boolean readGraphBoolean(String name,boolean def){
         try{Field f=GraphUxActivity.class.getDeclaredField(name);f.setAccessible(true);return f.getBoolean(this);}catch(Exception e){return def;}
     }
 
-    private int readInt(String name,int def){
+    private int readGraphInt(String name,int def){
         try{Field f=GraphUxActivity.class.getDeclaredField(name);f.setAccessible(true);return f.getInt(this);}catch(Exception e){return def;}
     }
 
-    private long readLong(String name,long def){
+    private long readGraphLong(String name,long def){
         try{Field f=GraphUxActivity.class.getDeclaredField(name);f.setAccessible(true);return f.getLong(this);}catch(Exception e){return def;}
+    }
+
+    private boolean readMainBoolean(String name,boolean def){
+        try{Field f=MainActivity.class.getDeclaredField(name);f.setAccessible(true);return f.getBoolean(this);}catch(Exception e){return def;}
+    }
+
+    private long readMainLong(String name,long def){
+        try{Field f=MainActivity.class.getDeclaredField(name);f.setAccessible(true);return f.getLong(this);}catch(Exception e){return def;}
+    }
+
+    private Object readMainObject(String name){
+        try{Field f=MainActivity.class.getDeclaredField(name);f.setAccessible(true);return f.get(this);}catch(Exception e){return null;}
+    }
+
+    private void writeMainBoolean(String name,boolean value){
+        try{Field f=MainActivity.class.getDeclaredField(name);f.setAccessible(true);f.setBoolean(this,value);}catch(Exception ignored){}
+    }
+
+    private void writeMainLong(String name,long value){
+        try{Field f=MainActivity.class.getDeclaredField(name);f.setAccessible(true);f.setLong(this,value);}catch(Exception ignored){}
     }
 
     private GradientDrawable round(int color,int radius){GradientDrawable g=new GradientDrawable();g.setColor(color);g.setCornerRadius(dp(radius));return g;}
