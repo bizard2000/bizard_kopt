@@ -3,6 +3,7 @@ package com.bizard.homesmokeremote;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.view.MotionEvent;
@@ -26,12 +27,14 @@ final class TemperatureChartView extends View {
     private static final int GRID=Color.rgb(226,231,237);
     private static final int MUTED=Color.rgb(101,116,139);
     private static final int TEXT=Color.rgb(21,31,47);
+    private static final int SESSION=Color.rgb(170,181,194);
 
     private final float density;
     private final Paint gridPaint=new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint axisPaint=new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint linePaint=new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint selectedPaint=new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint sessionPaint=new Paint(Paint.ANTI_ALIAS_FLAG);
     private List<TelemetryHistoryStore.Sample> data=Collections.emptyList();
     private boolean showCamera=true,showSetpoint=true,showK=true,showT=true;
     private int selected=-1;
@@ -47,6 +50,7 @@ final class TemperatureChartView extends View {
         axisPaint.setColor(MUTED);axisPaint.setTextSize(sp(10));
         linePaint.setStyle(Paint.Style.STROKE);linePaint.setStrokeWidth(dp(2));linePaint.setStrokeCap(Paint.Cap.ROUND);linePaint.setStrokeJoin(Paint.Join.ROUND);
         selectedPaint.setColor(Color.rgb(151,164,180));selectedPaint.setStrokeWidth(dp(1));
+        sessionPaint.setColor(SESSION);sessionPaint.setStrokeWidth(dp(1));sessionPaint.setPathEffect(new DashPathEffect(new float[]{dp(3),dp(4)},0));
         setClickable(true);
     }
 
@@ -95,6 +99,7 @@ final class TemperatureChartView extends View {
         axisPaint.setTextAlign(Paint.Align.LEFT);
         canvas.drawText("°C",dp(8),top-sp(5),axisPaint);
 
+        drawSessionSeparators(canvas,minTs,maxTs,left,right,top,heaterBottom);
         drawSeries(canvas,minTs,maxTs,min,max,left,right,top,tempBottom,0,CAMERA,showCamera);
         drawSeries(canvas,minTs,maxTs,min,max,left,right,top,tempBottom,1,SETPOINT,showSetpoint);
         drawSeries(canvas,minTs,maxTs,min,max,left,right,top,tempBottom,2,PROBE_K,showK);
@@ -123,6 +128,22 @@ final class TemperatureChartView extends View {
             drawSelectionPoint(canvas,x,s.setpoint,min,max,top,tempBottom,SETPOINT,showSetpoint);
             drawSelectionPoint(canvas,x,s.probeK,min,max,top,tempBottom,PROBE_K,showK);
             drawSelectionPoint(canvas,x,s.probeT,min,max,top,tempBottom,PROBE_T,showT);
+        }
+    }
+
+    private void drawSessionSeparators(Canvas c,long minTs,long maxTs,float left,float right,float top,float bottom){
+        if(data.size()<2)return;
+        int previous=data.get(0).sessionId;
+        int transitions=0;
+        for(int i=1;i<data.size();i++)if(data.get(i).sessionId!=previous){transitions++;previous=data.get(i).sessionId;}
+        if(transitions==0)return;
+        previous=data.get(0).sessionId;
+        for(int i=1;i<data.size();i++){
+            TelemetryHistoryStore.Sample s=data.get(i);
+            if(s.sessionId==previous)continue;
+            float x=xFor(s.ts,minTs,maxTs,left,right);
+            c.drawLine(x,top,x,bottom,sessionPaint);
+            previous=s.sessionId;
         }
     }
 
@@ -156,6 +177,20 @@ final class TemperatureChartView extends View {
         }
         linePaint.setColor(color);linePaint.setStrokeWidth(dp(field==1?1.6f:2f));
         c.drawPath(path,linePaint);
+        drawSinglePointSegments(c,minTs,maxTs,min,max,left,right,top,bottom,field,color);
+    }
+
+    /** A one-sample segment would otherwise be invisible because Path.moveTo draws no mark. */
+    private void drawSinglePointSegments(Canvas c,long minTs,long maxTs,double min,double max,float left,float right,float top,float bottom,int field,int color){
+        Paint dot=new Paint(Paint.ANTI_ALIAS_FLAG);dot.setColor(color);dot.setStyle(Paint.Style.FILL);
+        for(int i=0;i<data.size();i++){
+            TelemetryHistoryStore.Sample s=data.get(i);
+            boolean sameBefore=i>0&&data.get(i-1).segmentId==s.segmentId;
+            boolean sameAfter=i+1<data.size()&&data.get(i+1).segmentId==s.segmentId;
+            if(sameBefore||sameAfter)continue;
+            double v=value(s,field);if(Double.isNaN(v)||Double.isInfinite(v))continue;
+            c.drawCircle(xFor(s.ts,minTs,maxTs,left,right),yFor(v,min,max,top,bottom),dp(2.2f),dot);
+        }
     }
 
     private void drawHeater(Canvas c,long minTs,long maxTs,float left,float right,float top,float bottom){
@@ -168,6 +203,20 @@ final class TemperatureChartView extends View {
             segment=s.segmentId;
         }
         linePaint.setColor(HEATER);linePaint.setStrokeWidth(dp(1.8f));c.drawPath(path,linePaint);
+        drawSingleHeaterPoints(c,minTs,maxTs,left,right,top,bottom);
+    }
+
+    private void drawSingleHeaterPoints(Canvas c,long minTs,long maxTs,float left,float right,float top,float bottom){
+        Paint dot=new Paint(Paint.ANTI_ALIAS_FLAG);dot.setColor(HEATER);dot.setStyle(Paint.Style.FILL);
+        for(int i=0;i<data.size();i++){
+            TelemetryHistoryStore.Sample s=data.get(i);
+            boolean sameBefore=i>0&&data.get(i-1).segmentId==s.segmentId;
+            boolean sameAfter=i+1<data.size()&&data.get(i+1).segmentId==s.segmentId;
+            if(sameBefore||sameAfter||Double.isNaN(s.heater)||Double.isInfinite(s.heater))continue;
+            double v=Math.max(0,Math.min(100,s.heater));
+            float y=(float)(bottom-(bottom-top)*(v/100.0));
+            c.drawCircle(xFor(s.ts,minTs,maxTs,left,right),y,dp(2f),dot);
+        }
     }
 
     private void drawLegend(Canvas c,float x,float y){

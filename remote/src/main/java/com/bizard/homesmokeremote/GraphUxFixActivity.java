@@ -25,11 +25,14 @@ import java.lang.reflect.Method;
  */
 public final class GraphUxFixActivity extends GraphUxActivity {
     private static final int TEXT=Color.rgb(21,31,47);
+    private static final int MUTED=Color.rgb(101,116,139);
     private static final int BORDER=Color.rgb(220,225,232);
     private static final int GREEN=Color.rgb(35,151,83);
     private static final int ORANGE=Color.rgb(231,138,7);
+    private static final int ORANGE_TEXT=Color.rgb(151,88,0);
     private static final int OFF=Color.rgb(116,129,145);
     private static final int FIELD=Color.rgb(250,251,252);
+    private static final int WARN_BG=Color.rgb(255,247,232);
     private static final long SESSION_SPLIT_MS=10L*60L*1000L;
     private static final String[] TEST_SCENARIOS={
             "Полный цикл",
@@ -46,6 +49,7 @@ public final class GraphUxFixActivity extends GraphUxActivity {
     private Button scenarioButton;
     private boolean autoStopIssued=false;
     private boolean previousTestRunning=false;
+    private boolean testPresentationApplied=false;
     private TelemetryHistoryStore fixHistory;
 
     private final Runnable fixTick=new Runnable(){
@@ -166,26 +170,18 @@ public final class GraphUxFixActivity extends GraphUxActivity {
         }
     }
 
-    /** Adds session count to multi-session hour ranges without replacing the base summary. */
+    /** Adds a concise session count to hour ranges; the chart itself marks session boundaries. */
     private void fixGraphSummary(){
         if(fixHistory==null||!readMainBoolean("graphVisible",false)||readMainBoolean("graphSessionMode",false))return;
         Object raw=readMainObject("graphSummary");
         if(!(raw instanceof TextView))return;
         TextView summary=(TextView)raw;
         String current=String.valueOf(summary.getText());
-        if(current.isEmpty()||current.contains("сеанс")||current.contains("данных")&&current.contains("нет"))return;
+        if(current.isEmpty()||current.contains(" · сеансов:")||current.contains("данных")&&current.contains("нет"))return;
         long window=readMainLong("graphWindowMs",3L*60L*60L*1000L);
         long now=System.currentTimeMillis();
         int sessions=fixHistory.countSessions(now-window,now,SESSION_SPLIT_MS);
-        if(sessions>1)summary.setText(current+" · "+sessions+" "+sessionWord(sessions));
-    }
-
-    private static String sessionWord(int n){
-        int mod100=n%100,mod10=n%10;
-        if(mod100>=11&&mod100<=14)return "сеансов";
-        if(mod10==1)return "сеанс";
-        if(mod10>=2&&mod10<=4)return "сеанса";
-        return "сеансов";
+        if(sessions>1)summary.setText(current+" · сеансов: "+sessions);
     }
 
     private void fixGraphHeader(){
@@ -193,18 +189,46 @@ public final class GraphUxFixActivity extends GraphUxActivity {
         if(title!=null)title.setText("График");
     }
 
+    /**
+     * Test telemetry must never look like a live physical smoker connection.
+     * MainActivity still owns all real connection logic; this is a presentation-only overlay.
+     */
     private void fixTestStatus(){
         View content=findViewById(android.R.id.content);
         boolean running=isTestRunning();
         TextView status=findVisibleAny(content,"ОФЛАЙН","ГОТОВО","СТАРЫЕ ДАННЫЕ","НЕТ ДАННЫХ","ТЕСТ");
         TextView availability=findVisibleStartsWith(content,"Управление недоступно");
-        Object rawDevice=readMainObject("deviceState");
-        TextView device=rawDevice instanceof TextView?(TextView)rawDevice:null;
+        TextView device=asText(readMainObject("deviceState"));
+        TextView deviceBadge=asText(readMainObject("deviceBadge"));
+        TextView deviceDot=asText(readMainObject("deviceDot"));
+        TextView deviceDetail=asText(readMainObject("deviceDetail"));
+
         if(running){
             if(status!=null){status.setText("ТЕСТ");status.setTextColor(Color.WHITE);status.setBackground(round(ORANGE,12));}
-            if(device!=null){device.setText("Тестовые данные");device.setTextColor(GREEN);}
-            if(availability!=null)availability.setText("Управление недоступно · тестовый режим");
-        }else if(status!=null&&"ТЕСТ".contentEquals(status.getText())){
+            if(deviceBadge!=null){
+                deviceBadge.setText("TEST");
+                deviceBadge.setTextColor(Color.WHITE);
+                deviceBadge.setBackground(round(ORANGE,14));
+                deviceBadge.setContentDescription("Тестовый режим · локальная симуляция");
+            }
+            if(deviceDot!=null)deviceDot.setTextColor(ORANGE);
+            if(device!=null){device.setText("Тестовые данные");device.setTextColor(ORANGE);}
+            if(deviceDetail!=null){deviceDetail.setText("Локальный симулятор · не реальная телеметрия");deviceDetail.setTextColor(MUTED);}
+            if(availability!=null){
+                availability.setText("Управление недоступно · тестовый режим");
+                availability.setTextColor(ORANGE_TEXT);
+                availability.setBackground(roundStroke(WARN_BG,10,ORANGE,1));
+            }
+            testPresentationApplied=true;
+            return;
+        }
+
+        if(testPresentationApplied||(deviceBadge!=null&&"TEST".contentEquals(deviceBadge.getText()))){
+            if(deviceBadge!=null){deviceBadge.setText("SMOKE");deviceBadge.setContentDescription("Состояние коптильни");}
+            invokeMain("setDeviceUi",new Class<?>[]{boolean.class,String.class},false,"Тест завершён · ожидаются реальные данные");
+            testPresentationApplied=false;
+        }
+        if(status!=null&&"ТЕСТ".contentEquals(status.getText())){
             status.setText("ОФЛАЙН");status.setTextColor(Color.WHITE);status.setBackground(round(OFF,12));
         }
     }
@@ -255,6 +279,8 @@ public final class GraphUxFixActivity extends GraphUxActivity {
         if(root instanceof ViewGroup){ViewGroup g=(ViewGroup)root;for(int i=0;i<g.getChildCount();i++){TextView x=findVisibleAny(g.getChildAt(i),values);if(x!=null)return x;}}
         return null;
     }
+
+    private static TextView asText(Object value){return value instanceof TextView?(TextView)value:null;}
 
     private void invokeGraph(String name,Class<?>[] types,Object... args){
         try{Method m=GraphUxActivity.class.getDeclaredMethod(name,types);m.setAccessible(true);m.invoke(this,args);}catch(Exception ignored){}
