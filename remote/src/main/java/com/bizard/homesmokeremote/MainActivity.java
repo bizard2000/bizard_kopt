@@ -17,6 +17,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -66,18 +67,20 @@ public class MainActivity extends Activity {
     private String lastModeRaw="—";
     private boolean lastAutoRunning=false;
     private double lastCameraValue=Double.NaN,lastSetpointValue=Double.NaN;
+    private boolean showTechnicalEnabled=false;
 
     private final ArrayList<TempSample> tempSamples=new ArrayList<>();
     private final ArrayList<String> commandHistoryItems=new ArrayList<>();
 
-    private LinearLayout host,monitorPage,settingsPage;
+    private LinearLayout host,monitorPage,settingsPage,ackFlow,controllerCommandBlock;
     private TextView title,subtitle,mqttBadge,deviceBadge;
     private TextView mqttDot,deviceDot,brokerState,deviceState,brokerDetail,deviceDetail,systemState;
-    private TextView camera,k,t,setpoint,deltaToTarget,tempTrend,power,mode,lastCommand,autoProgram,autoStage,autoStatus,autoChip,lastUpdate,commandState,commandHistory;
+    private TextView camera,cameraSummary,tempTrend,k,t,power,mode,lastCommand,autoProgram,autoStage,autoStatus,autoChip,lastUpdate,commandState,commandHistory,controlAvailability;
+    private TextView ackRemote,ackHome,ackController;
     private ProgressBar heaterProgress;
     private Button back,settings,setButton,stopButton,disconnectButton;
     private EditText setInput,broker,port,statusTopic,commandTopic,ackTopic,user,pass;
-    private CheckBox tls,autoConnect;
+    private CheckBox tls,autoConnect,keepScreenOn,showTechnical;
     private final Handler handler=new Handler(Looper.getMainLooper());
 
     private final Runnable health=new Runnable(){@Override public void run(){
@@ -90,7 +93,7 @@ public class MainActivity extends Activity {
         else detail="Последние данные · "+relativeAge(lastTelemetryAt);
         setDeviceUi(fresh,detail);
         updateLastDataCaption();
-        updateDeltaAndTrend();
+        updateCameraSummaryAndTrend();
         if(wantConnection&&!mq&&!connecting&&!broker.getText().toString().trim().isEmpty())connectMqtt(false);
         handler.postDelayed(this,3000);
     }};
@@ -104,6 +107,7 @@ public class MainActivity extends Activity {
         applyInsets(root);
         loadSettings();
         loadCommandHistory();
+        applyUiPreferences();
         showMonitor();
         wantConnection=autoConnect.isChecked()&&!broker.getText().toString().trim().isEmpty();
         if(wantConnection)connectMqtt(false);
@@ -123,7 +127,7 @@ public class MainActivity extends Activity {
         LinearLayout root=new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(BG);
-        root.addView(buildBar(),new LinearLayout.LayoutParams(-1,dp(66)));
+        root.addView(buildBar(),new LinearLayout.LayoutParams(-1,dp(60)));
         host=new LinearLayout(this);
         host.setOrientation(LinearLayout.VERTICAL);
         root.addView(host,new LinearLayout.LayoutParams(-1,0,1));
@@ -139,20 +143,20 @@ public class MainActivity extends Activity {
         bar.setBackgroundColor(NAVY);
 
         back=iconButton("‹");
-        back.setTextSize(36);
+        back.setTextSize(34);
         back.setVisibility(View.GONE);
         back.setOnClickListener(view->showMonitor());
-        bar.addView(back,new LinearLayout.LayoutParams(dp(40),dp(46)));
+        bar.addView(back,new LinearLayout.LayoutParams(dp(38),dp(44)));
 
         LinearLayout titles=new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
         titles.setGravity(Gravity.CENTER_VERTICAL);
         titles.setPadding(dp(2),0,dp(3),0);
-        title=text("HomeSmoke Remote",19,true,TEXT);
+        title=text("HomeSmoke Remote",18,true,TEXT);
         title.setTextColor(Color.WHITE);
         title.setSingleLine(true);
         title.setEllipsize(TextUtils.TruncateAt.END);
-        subtitle=text("Удалённое управление",12,false,MUTED);
+        subtitle=text("Удалённое управление",11,false,MUTED);
         subtitle.setTextColor(Color.rgb(211,222,232));
         subtitle.setSingleLine(true);
         subtitle.setEllipsize(TextUtils.TruncateAt.END);
@@ -166,9 +170,9 @@ public class MainActivity extends Activity {
         bar.addView(deviceBadge,wrapMargin(2,0,3,0));
 
         settings=iconButton("⚙");
-        settings.setTextSize(21);
+        settings.setTextSize(20);
         settings.setOnClickListener(view->showSettings());
-        bar.addView(settings,new LinearLayout.LayoutParams(dp(40),dp(44)));
+        bar.addView(settings,new LinearLayout.LayoutParams(dp(38),dp(42)));
         return bar;
     }
 
@@ -188,30 +192,27 @@ public class MainActivity extends Activity {
         deviceDetail=smallDetail("Телеметрия ещё не поступала");
         healthCard.addView(brokerDetail);
         healthCard.addView(deviceDetail);
-        p.addView(healthCard,margin(8,10,8,5));
+        p.addView(healthCard,margin(8,8,8,4));
 
         LinearLayout cam=card();
         cam.addView(label("Камера"));
-        camera=center("— °C",52,true,TEXT);
-        camera.setPadding(0,dp(6),0,0);
+        camera=center("— °C",44,true,TEXT);
+        camera.setPadding(0,dp(2),0,0);
         cam.addView(camera);
-        setpoint=center("Уставка — °C",17,true,BLUE_DARK);
-        cam.addView(setpoint);
-        deltaToTarget=center("Δ до уставки —",13,true,MUTED);
-        deltaToTarget.setPadding(0,dp(2),0,0);
-        cam.addView(deltaToTarget);
-        tempTrend=center("Тренд —",12,false,MUTED);
-        tempTrend.setPadding(0,dp(3),0,dp(4));
+        cameraSummary=center("Уставка — °C · Δ —",14,true,BLUE_DARK);
+        cam.addView(cameraSummary);
+        tempTrend=center("Тренд —",11,false,MUTED);
+        tempTrend.setPadding(0,dp(2),0,0);
         cam.addView(tempTrend);
-        p.addView(cam,margin(8,5,8,5));
+        p.addView(cam,margin(8,4,8,4));
 
         LinearLayout probes=new LinearLayout(this);
         probes.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout kc=metricCard("Щуп K");
-        k=center("— °C",28,true,TEXT);
+        k=center("— °C",24,true,TEXT);
         kc.addView(k);
         LinearLayout tc=metricCard("Щуп T");
-        t=center("— °C",28,true,TEXT);
+        t=center("— °C",24,true,TEXT);
         tc.addView(t);
         probes.addView(kc,half(8,4));
         probes.addView(tc,half(4,8));
@@ -220,17 +221,17 @@ public class MainActivity extends Activity {
         LinearLayout stats=new LinearLayout(this);
         stats.setOrientation(LinearLayout.HORIZONTAL);
         LinearLayout heater=metricCard("ТЭН");
-        power=center("— %",25,true,ORANGE);
+        power=center("— %",22,true,ORANGE);
         heater.addView(power);
         heaterProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
         heaterProgress.setMax(100);
         heaterProgress.setProgress(0);
         if(Build.VERSION.SDK_INT>=21)heaterProgress.setProgressTintList(ColorStateList.valueOf(ORANGE));
-        LinearLayout.LayoutParams hp=new LinearLayout.LayoutParams(-1,dp(6));
-        hp.setMargins(dp(8),dp(7),dp(8),0);
+        LinearLayout.LayoutParams hp=new LinearLayout.LayoutParams(-1,dp(5));
+        hp.setMargins(dp(8),dp(4),dp(8),0);
         heater.addView(heaterProgress,hp);
         LinearLayout modeCard=metricCard("Режим");
-        mode=center("—",23,true,TEXT);
+        mode=center("—",21,true,TEXT);
         mode.setSingleLine(true);
         mode.setEllipsize(TextUtils.TruncateAt.END);
         modeCard.addView(mode);
@@ -249,60 +250,105 @@ public class MainActivity extends Activity {
         autoStage=info(ac,"Этап","—");
         ((View)autoProgram.getParent()).setVisibility(View.GONE);
         ((View)autoStage.getParent()).setVisibility(View.GONE);
-        autoStatus=text("Программа не запущена",14,false,MUTED);
-        autoStatus.setPadding(0,dp(9),0,0);
+        autoStatus=text("Программа не запущена",13,false,MUTED);
+        autoStatus.setPadding(0,dp(5),0,0);
         ac.addView(autoStatus);
-        p.addView(ac,margin(8,5,8,5));
+        p.addView(ac,margin(8,4,8,4));
 
         LinearLayout ctrl=card();
         ctrl.addView(sectionTitle("Удалённое управление"));
-        TextView hint=text("Уставка PID, °C",13,true,MUTED);
-        hint.setPadding(0,dp(8),0,dp(5));
-        ctrl.addView(hint);
+        controlAvailability=text("Управление недоступно · нет свежих данных",12,true,MUTED);
+        controlAvailability.setPadding(dp(9),dp(6),dp(9),dp(6));
+        controlAvailability.setBackground(roundStroke(WARN_BG,10,ORANGE,1));
+        LinearLayout.LayoutParams avp=new LinearLayout.LayoutParams(-1,-2);
+        avp.setMargins(0,dp(6),0,dp(6));
+        ctrl.addView(controlAvailability,avp);
+
         LinearLayout setRow=new LinearLayout(this);
         setRow.setGravity(Gravity.CENTER_VERTICAL);
-        setInput=field("0…100",InputType.TYPE_CLASS_NUMBER);
-        LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(0,dp(52),1f);
+        setInput=field("Уставка 0…100 °C",InputType.TYPE_CLASS_NUMBER);
+        LinearLayout.LayoutParams ip=new LinearLayout.LayoutParams(0,dp(46),1f);
         ip.setMargins(0,0,dp(7),0);
         setRow.addView(setInput,ip);
         setButton=action("Применить",BLUE);
+        setButton.setTextSize(14);
         setButton.setOnClickListener(view->sendSetpoint());
-        setRow.addView(setButton,new LinearLayout.LayoutParams(0,dp(52),0.92f));
+        setRow.addView(setButton,new LinearLayout.LayoutParams(0,dp(46),0.88f));
         ctrl.addView(setRow,new LinearLayout.LayoutParams(-1,-2));
 
         stopButton=action("STOP · выключить нагрев",RED);
+        stopButton.setTextSize(15);
         stopButton.setOnClickListener(view->confirmStop());
-        LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-1,dp(54));
-        sp.setMargins(0,dp(10),0,0);
+        LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-1,dp(48));
+        sp.setMargins(0,dp(7),0,0);
         ctrl.addView(stopButton,sp);
 
-        commandState=text("Команды ещё не отправлялись",13,false,MUTED);
-        commandState.setPadding(dp(10),dp(9),dp(10),dp(9));
-        commandState.setBackground(roundStroke(INFO_BG,12,BORDER,1));
+        ackFlow=buildAckFlow();
+        ackFlow.setVisibility(View.GONE);
+        LinearLayout.LayoutParams afp=new LinearLayout.LayoutParams(-1,-2);
+        afp.setMargins(0,dp(8),0,0);
+        ctrl.addView(ackFlow,afp);
+
+        commandState=text("Команды ещё не отправлялись",12,false,MUTED);
+        commandState.setPadding(dp(9),dp(7),dp(9),dp(7));
+        commandState.setBackground(roundStroke(INFO_BG,10,BORDER,1));
         LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);
-        cp.setMargins(0,dp(10),0,0);
+        cp.setMargins(0,dp(7),0,0);
         ctrl.addView(commandState,cp);
-        p.addView(ctrl,margin(8,5,8,5));
+        p.addView(ctrl,margin(8,4,8,4));
 
         LinearLayout commandCard=card();
         commandCard.addView(label("История команд Remote"));
-        commandHistory=text("Команд Remote ещё не было",13,false,MUTED);
-        commandHistory.setPadding(0,dp(7),0,dp(8));
-        commandHistory.setLineSpacing(0,1.12f);
+        commandHistory=text("Команд Remote ещё не было",12,false,MUTED);
+        commandHistory.setPadding(0,dp(5),0,dp(4));
+        commandHistory.setLineSpacing(0,1.08f);
         commandCard.addView(commandHistory);
-        TextView controllerLabel=text("Последняя команда контроллера",12,false,MUTED);
-        controllerLabel.setPadding(0,dp(5),0,0);
-        commandCard.addView(controllerLabel);
-        lastCommand=text("—",15,true,TEXT);
-        lastCommand.setPadding(0,dp(3),0,0);
+
+        controllerCommandBlock=new LinearLayout(this);
+        controllerCommandBlock.setOrientation(LinearLayout.VERTICAL);
+        TextView controllerLabel=text("Последняя команда контроллера",11,false,MUTED);
+        controllerLabel.setPadding(0,dp(4),0,0);
+        controllerCommandBlock.addView(controllerLabel);
+        lastCommand=text("—",14,true,TEXT);
+        lastCommand.setPadding(0,dp(2),0,0);
         lastCommand.setMaxLines(2);
         lastCommand.setEllipsize(TextUtils.TruncateAt.END);
-        commandCard.addView(lastCommand);
-        p.addView(commandCard,margin(8,5,8,4));
+        controllerCommandBlock.addView(lastCommand);
+        commandCard.addView(controllerCommandBlock);
+        p.addView(commandCard,margin(8,4,8,3));
 
-        lastUpdate=center("Данных ещё нет",12,false,MUTED);
-        p.addView(lastUpdate,margin(8,3,8,20));
+        lastUpdate=center("Данных ещё нет",11,false,MUTED);
+        p.addView(lastUpdate,margin(8,2,8,16));
         return p;
+    }
+
+    private LinearLayout buildAckFlow(){
+        LinearLayout row=new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        ackRemote=ackPill("Remote");
+        ackHome=ackPill("HomeSmoke");
+        ackController=ackPill("Arduino");
+        row.addView(ackRemote,new LinearLayout.LayoutParams(0,dp(30),1));
+        row.addView(arrow("›"));
+        row.addView(ackHome,new LinearLayout.LayoutParams(0,dp(30),1.25f));
+        row.addView(arrow("›"));
+        row.addView(ackController,new LinearLayout.LayoutParams(0,dp(30),1));
+        setAckProgress(0,false);
+        return row;
+    }
+
+    private TextView ackPill(String text){
+        TextView t=center(text,10,true,Color.WHITE);
+        t.setSingleLine(true);
+        t.setPadding(dp(4),0,dp(4),0);
+        t.setBackground(round(OFF,10));
+        return t;
+    }
+
+    private TextView arrow(String s){
+        TextView t=center(s,19,true,MUTED);
+        t.setPadding(dp(3),0,dp(3),0);
+        return t;
     }
 
     private LinearLayout buildSettings(){
@@ -310,10 +356,10 @@ public class MainActivity extends Activity {
 
         LinearLayout intro=card();
         intro.addView(sectionTitle("MQTT подключение"));
-        TextView versionText=text("HomeSmoke Remote 2.0.6 · Android 5+",13,false,MUTED);
-        versionText.setPadding(0,dp(3),0,0);
+        TextView versionText=text("HomeSmoke Remote 2.0.7 · Android 5+",12,false,MUTED);
+        versionText.setPadding(0,dp(2),0,0);
         intro.addView(versionText);
-        p.addView(intro,margin(8,10,8,5));
+        p.addView(intro,margin(8,8,8,4));
 
         LinearLayout form=card();
         broker=labeledField(form,"Broker / IP","Адрес MQTT брокера",InputType.TYPE_CLASS_TEXT);
@@ -327,19 +373,32 @@ public class MainActivity extends Activity {
         autoConnect=check("Автоподключение и переподключение");
         form.addView(tls,checkParams());
         form.addView(autoConnect,checkParams());
-        p.addView(form,margin(8,5,8,5));
+        p.addView(form,margin(8,4,8,4));
+
+        LinearLayout ui=card();
+        ui.addView(sectionTitle("Интерфейс"));
+        keepScreenOn=check("Не выключать экран при открытом Remote");
+        showTechnical=check("Показывать технические данные");
+        keepScreenOn.setOnCheckedChangeListener((buttonView,isChecked)->applyUiPreferences());
+        showTechnical.setOnCheckedChangeListener((buttonView,isChecked)->{showTechnicalEnabled=isChecked;applyUiPreferences();});
+        ui.addView(keepScreenOn,checkParams());
+        ui.addView(showTechnical,checkParams());
+        TextView uiHint=text("Технические данные включают подробности MQTT/устройства и последнюю команду контроллера.",11,false,MUTED);
+        uiHint.setPadding(0,dp(2),0,0);
+        ui.addView(uiHint);
+        p.addView(ui,margin(8,4,8,4));
 
         Button c=action("Сохранить и подключить",GREEN);
-        c.setOnClickListener(view->{saveSettings();wantConnection=true;connectMqtt(true);});
-        p.addView(c,buttonMargin(8,7,8,4));
+        c.setOnClickListener(view->{saveSettings();applyUiPreferences();wantConnection=true;connectMqtt(true);});
+        p.addView(c,buttonMargin(8,6,8,3));
 
         disconnectButton=action("Отключить MQTT",OFF);
         disconnectButton.setOnClickListener(view->{wantConnection=false;disconnectInternal(true);});
-        p.addView(disconnectButton,buttonMargin(8,4,8,8));
+        p.addView(disconnectButton,buttonMargin(8,3,8,6));
 
         String sec=secrets.isEncrypted()?"Пароль MQTT хранится через Android Keystore.":"Android 5.0/5.1: защищённое хранилище этой реализации недоступно; используйте доверенную сеть/VPN.";
-        TextView n=text(sec+" Команда температуры передаётся только целым значением 0…100 °C — в соответствии с текущим подтверждённым протоколом.",12,false,MUTED);
-        n.setPadding(dp(12),dp(8),dp(12),dp(20));
+        TextView n=text(sec+" Команда температуры передаётся только целым значением 0…100 °C — в соответствии с текущим подтверждённым протоколом.",11,false,MUTED);
+        n.setPadding(dp(12),dp(6),dp(12),dp(16));
         p.addView(n);
         return p;
     }
@@ -354,11 +413,28 @@ public class MainActivity extends Activity {
         pass.setText(secrets.get());
         tls.setChecked(prefs.getBoolean("tls",false));
         autoConnect.setChecked(prefs.getBoolean("auto",true));
+        keepScreenOn.setChecked(prefs.getBoolean("keep_screen_on",false));
+        showTechnical.setChecked(prefs.getBoolean("show_technical",false));
+        showTechnicalEnabled=showTechnical.isChecked();
     }
 
     private void saveSettings(){
-        prefs.edit().putString("broker",s(broker)).putString("port",s(port)).putString("status_topic",s(statusTopic)).putString("command_topic",s(commandTopic)).putString("ack_topic",s(ackTopic)).putString("user",user.getText().toString()).putBoolean("tls",tls.isChecked()).putBoolean("auto",autoConnect.isChecked()).apply();
+        prefs.edit()
+                .putString("broker",s(broker)).putString("port",s(port))
+                .putString("status_topic",s(statusTopic)).putString("command_topic",s(commandTopic)).putString("ack_topic",s(ackTopic))
+                .putString("user",user.getText().toString()).putBoolean("tls",tls.isChecked()).putBoolean("auto",autoConnect.isChecked())
+                .putBoolean("keep_screen_on",keepScreenOn.isChecked()).putBoolean("show_technical",showTechnical.isChecked()).apply();
         try{secrets.put(pass.getText().toString());}catch(Exception e){toast("Не удалось сохранить пароль защищённо");}
+    }
+
+    private void applyUiPreferences(){
+        if(keepScreenOn!=null&&keepScreenOn.isChecked())getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        showTechnicalEnabled=showTechnical!=null&&showTechnical.isChecked();
+        int v=showTechnicalEnabled?View.VISIBLE:View.GONE;
+        if(brokerDetail!=null)brokerDetail.setVisibility(v);
+        if(deviceDetail!=null)deviceDetail.setVisibility(v);
+        if(controllerCommandBlock!=null)controllerCommandBlock.setVisibility(v);
     }
 
     private void connectMqtt(boolean force){
@@ -417,15 +493,14 @@ public class MainActivity extends Activity {
                 camera.setText(deg(cam));
                 k.setText(deg(pk));
                 t.setText(deg(pt));
-                setpoint.setText("Уставка "+deg(sp));
-                power.setText(pw+" %");
+                power.setText(Double.isNaN(powerValue)?"— %":formatPlain(powerValue)+" %");
                 if(!Double.isNaN(powerValue))heaterProgress.setProgress(clamp((int)Math.round(powerValue),0,100));
                 else heaterProgress.setProgress(0);
                 updateModeUi(md);
                 lastCommand.setText(lc);
                 updateAutoUi(ar,ap,stage,as);
                 addTempSample(camValue,ts);
-                updateDeltaAndTrend();
+                updateCameraSummaryAndTrend();
                 updateLastDataCaption();
                 setDeviceUi(fresh,fresh?"Коптильня онлайн · "+did:"Последние данные · "+relativeAge(ts));
             });
@@ -441,17 +516,24 @@ public class MainActivity extends Activity {
             String value=o.has("value")?o.optString("value",""):"";
             runOnUiThread(()->{
                 if(!pendingId.isEmpty()&&!id.isEmpty()&&!pendingId.equals(id))return;
-                if("accepted_waiting_controller".equals(state)){setCommandUi("Ожидание Arduino · команда принята HomeSmoke",1);return;}
+                if("accepted_waiting_controller".equals(state)){
+                    setAckProgress(2,false);
+                    setCommandUi("HomeSmoke принял команду · ожидается Arduino",1);
+                    return;
+                }
                 String label=pendingLabel;
                 pendingId="";
                 pendingLabel="";
                 if(ok&&"applied".equals(state)){
+                    setAckProgress(3,false);
                     setCommandUi("✓ Arduino применила уставку "+value+" °C",2);
                     if(!label.isEmpty())addCommandHistory(label,"✓ подтверждено");
                 }else if(ok&&"stop_sent".equals(state)){
-                    setCommandUi("✓ STOP отправлен контроллеру",2);
-                    if(!label.isEmpty())addCommandHistory(label,"✓ подтверждено");
+                    setAckProgress(3,true);
+                    setCommandUi("✓ HomeSmoke передал STOP контроллеру",2);
+                    if(!label.isEmpty())addCommandHistory(label,"✓ передано");
                 }else{
+                    setAckError(state);
                     String translated=translateState(state);
                     setCommandUi("Не выполнено · "+translated,3);
                     if(!label.isEmpty())addCommandHistory(label,"✕ "+translated);
@@ -476,8 +558,9 @@ public class MainActivity extends Activity {
             JSONObject o=new JSONObject();
             o.put("v",2);o.put("id",pendingId);o.put("cmd","set_temp");o.put("value",target);o.put("ts",System.currentTimeMillis());
             c.publish(topic(s(commandTopic),"homesmoke/cmd"),o.toString(),false);
-            setCommandUi("Отправлено · ожидается HomeSmoke",1);
-        }catch(Exception e){pendingId="";pendingLabel="";toast("Ошибка MQTT: "+safe(e));}
+            setAckProgress(1,false);
+            setCommandUi("Remote отправил команду · ожидается HomeSmoke",1);
+        }catch(Exception e){pendingId="";pendingLabel="";setAckError("");toast("Ошибка MQTT: "+safe(e));}
     }
 
     private void confirmStop(){
@@ -494,8 +577,47 @@ public class MainActivity extends Activity {
             JSONObject o=new JSONObject();
             o.put("v",2);o.put("id",pendingId);o.put("cmd","stop");o.put("ts",System.currentTimeMillis());
             c.publish(topic(s(commandTopic),"homesmoke/cmd"),o.toString(),false);
-            setCommandUi("STOP отправлен · ожидается подтверждение",1);
-        }catch(Exception e){pendingId="";pendingLabel="";toast("Ошибка MQTT: "+safe(e));}
+            setAckProgress(1,false);
+            setCommandUi("Remote отправил STOP · ожидается HomeSmoke",1);
+        }catch(Exception e){pendingId="";pendingLabel="";setAckError("");toast("Ошибка MQTT: "+safe(e));}
+    }
+
+    private void setAckProgress(int stage,boolean controllerSentOnly){
+        if(ackFlow==null)return;
+        if(stage<=0){
+            ackFlow.setVisibility(View.GONE);
+            setAckStage(ackRemote,"Remote",OFF);
+            setAckStage(ackHome,"HomeSmoke",OFF);
+            setAckStage(ackController,"Arduino",OFF);
+            return;
+        }
+        ackFlow.setVisibility(View.VISIBLE);
+        setAckStage(ackRemote,"Remote ✓",GREEN);
+        setAckStage(ackHome,stage>=2?"HomeSmoke ✓":"HomeSmoke",stage>=2?GREEN:OFF);
+        if(stage>=3){
+            if(controllerSentOnly)setAckStage(ackController,"Передано",BLUE);
+            else setAckStage(ackController,"Arduino ✓",GREEN);
+        }else if(stage==2)setAckStage(ackController,"Arduino …",ORANGE);
+        else setAckStage(ackController,"Arduino",OFF);
+    }
+
+    private void setAckError(String state){
+        if(ackFlow==null)return;
+        ackFlow.setVisibility(View.VISIBLE);
+        setAckStage(ackRemote,"Remote ✓",GREEN);
+        if("controller_ack_timeout".equals(state)){
+            setAckStage(ackHome,"HomeSmoke ✓",GREEN);
+            setAckStage(ackController,"Arduino ✕",RED);
+        }else{
+            setAckStage(ackHome,"HomeSmoke ✕",RED);
+            setAckStage(ackController,"Arduino",OFF);
+        }
+    }
+
+    private void setAckStage(TextView view,String text,int color){
+        view.setText(text);
+        view.setBackground(round(color,10));
+        view.setTextColor(Color.WHITE);
     }
 
     private void updateModeUi(String raw){
@@ -536,7 +658,7 @@ public class MainActivity extends Activity {
         else if(state==2){bg=SUCCESS_BG;border=GREEN;color=Color.rgb(18,111,58);}
         else if(state==3){bg=ERROR_BG;border=RED;color=Color.rgb(170,30,30);}
         commandState.setTextColor(color);
-        commandState.setBackground(roundStroke(bg,12,border,1));
+        commandState.setBackground(roundStroke(bg,10,border,1));
     }
 
     private void setBrokerUi(boolean connected,String txt){
@@ -550,6 +672,7 @@ public class MainActivity extends Activity {
         brokerDetail.setText(txt==null?"":txt);
         if(disconnectButton!=null){disconnectButton.setEnabled(connected||connecting);disconnectButton.setAlpha((connected||connecting)?1f:.45f);}
         refreshOverallState();
+        refreshControlAvailability();
     }
 
     private void setDeviceUi(boolean online,String txt){
@@ -560,12 +683,31 @@ public class MainActivity extends Activity {
         deviceState.setText(online?"Онлайн":(lastTelemetryAt>0?"Данные устарели":"Нет данных"));
         deviceState.setTextColor(online?GREEN:(lastTelemetryAt>0?RED:MUTED));
         deviceDetail.setText(txt==null?"":txt);
-        setButton.setEnabled(online);
-        stopButton.setEnabled(online);
-        setButton.setAlpha(online?1f:.46f);
-        stopButton.setAlpha(online?1f:.46f);
         applyTelemetryFreshness(online);
         refreshOverallState();
+        refreshControlAvailability();
+    }
+
+    private void refreshControlAvailability(){
+        if(controlAvailability==null||setButton==null||stopButton==null||setInput==null)return;
+        boolean mq=mqtt!=null&&mqtt.isConnected();
+        boolean fresh=isTelemetryFresh();
+        boolean ready=mq&&fresh;
+        String txt;
+        int bg,border,color;
+        if(ready){txt="Управление доступно";bg=SUCCESS_BG;border=GREEN;color=Color.rgb(18,111,58);}
+        else if(!mq){txt="Управление недоступно · MQTT не подключён";bg=INFO_BG;border=BORDER;color=MUTED;}
+        else if(lastTelemetryAt<=0){txt="Управление недоступно · нет данных от коптильни";bg=WARN_BG;border=ORANGE;color=Color.rgb(151,88,0);}
+        else{txt="Управление недоступно · данные коптильни устарели";bg=ERROR_BG;border=RED;color=Color.rgb(170,30,30);}
+        controlAvailability.setText(txt);
+        controlAvailability.setTextColor(color);
+        controlAvailability.setBackground(roundStroke(bg,10,border,1));
+        setButton.setEnabled(ready);
+        stopButton.setEnabled(ready);
+        setInput.setEnabled(ready);
+        setButton.setAlpha(ready?1f:.45f);
+        stopButton.setAlpha(ready?1f:.45f);
+        setInput.setAlpha(ready?1f:.65f);
     }
 
     private void refreshOverallState(){
@@ -584,8 +726,7 @@ public class MainActivity extends Activity {
         camera.setTextColor(main);
         k.setTextColor(main);
         t.setTextColor(main);
-        setpoint.setTextColor(secondary);
-        deltaToTarget.setTextColor(fresh?BLUE_DARK:OFF);
+        cameraSummary.setTextColor(secondary);
         tempTrend.setTextColor(fresh?MUTED:OFF);
         power.setTextColor(fresh?ORANGE:OFF);
         lastCommand.setTextColor(main);
@@ -602,14 +743,18 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void updateDeltaAndTrend(){
-        if(Double.isNaN(lastCameraValue)||Double.isNaN(lastSetpointValue)){
-            deltaToTarget.setText("Δ до уставки —");
+    private void updateCameraSummaryAndTrend(){
+        if(Double.isNaN(lastSetpointValue)){
+            cameraSummary.setText("Уставка — °C · Δ —");
+        }else if(Double.isNaN(lastCameraValue)){
+            cameraSummary.setText("Уставка "+oneDecimal(lastSetpointValue)+" °C · Δ —");
         }else{
             double d=lastSetpointValue-lastCameraValue;
-            if(Math.abs(d)<0.05)deltaToTarget.setText("Камера на уставке");
-            else if(d>0)deltaToTarget.setText("До уставки +"+oneDecimal(d)+" °C");
-            else deltaToTarget.setText("Выше уставки "+oneDecimal(-d)+" °C");
+            String delta;
+            if(Math.abs(d)<0.05)delta="Δ 0,0 °C";
+            else if(d>0)delta="Δ +"+oneDecimal(d)+" °C";
+            else delta="Δ −"+oneDecimal(-d)+" °C";
+            cameraSummary.setText("Уставка "+oneDecimal(lastSetpointValue)+" °C · "+delta);
         }
 
         if(!isTelemetryFresh()){tempTrend.setText("Тренд недоступен · нет свежих данных");return;}
@@ -719,12 +864,13 @@ public class MainActivity extends Activity {
         subtitle.setText("Удалённое управление");
         back.setVisibility(View.GONE);
         settings.setVisibility(View.VISIBLE);
+        applyUiPreferences();
     }
 
     private void showSettings(){
         setPage(settingsPage);
         title.setText("Настройки MQTT");
-        subtitle.setText("HomeSmoke Remote 2.0.6");
+        subtitle.setText("HomeSmoke Remote 2.0.7");
         back.setVisibility(View.VISIBLE);
         settings.setVisibility(View.GONE);
     }
@@ -759,7 +905,7 @@ public class MainActivity extends Activity {
     private LinearLayout page(){
         LinearLayout p=new LinearLayout(this);
         p.setOrientation(LinearLayout.VERTICAL);
-        p.setPadding(dp(4),0,dp(4),dp(20));
+        p.setPadding(dp(4),0,dp(4),dp(16));
         p.setBackgroundColor(BG);
         return p;
     }
@@ -767,7 +913,7 @@ public class MainActivity extends Activity {
     private LinearLayout card(){
         LinearLayout c=new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
-        c.setPadding(dp(15),dp(13),dp(15),dp(13));
+        c.setPadding(dp(12),dp(10),dp(12),dp(10));
         c.setBackground(roundStroke(CARD,18,BORDER,1));
         if(Build.VERSION.SDK_INT>=21)c.setElevation(dp(1));
         return c;
@@ -776,7 +922,8 @@ public class MainActivity extends Activity {
     private LinearLayout metricCard(String name){
         LinearLayout c=card();
         c.setGravity(Gravity.CENTER_HORIZONTAL);
-        TextView l=center(name,14,true,MUTED);
+        c.setPadding(dp(10),dp(8),dp(10),dp(8));
+        TextView l=center(name,13,true,MUTED);
         c.addView(l);
         return c;
     }
@@ -784,13 +931,13 @@ public class MainActivity extends Activity {
     private TextView statusRow(LinearLayout parent,String label,String initial,int dotColor,boolean mqttRow){
         LinearLayout row=new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(0,dp(8),0,dp(2));
-        TextView dot=text("●",13,true,dotColor);
-        dot.setPadding(0,0,dp(7),0);
+        row.setPadding(0,dp(5),0,dp(1));
+        TextView dot=text("●",12,true,dotColor);
+        dot.setPadding(0,0,dp(6),0);
         if(mqttRow)mqttDot=dot;else deviceDot=dot;
-        TextView a=text(label,14,true,TEXT);
-        a.setPadding(0,0,dp(8),0);
-        TextView b=text(initial,14,true,MUTED);
+        TextView a=text(label,13,true,TEXT);
+        a.setPadding(0,0,dp(7),0);
+        TextView b=text(initial,13,true,MUTED);
         b.setGravity(Gravity.END);
         b.setSingleLine(true);
         b.setEllipsize(TextUtils.TruncateAt.END);
@@ -802,8 +949,8 @@ public class MainActivity extends Activity {
     }
 
     private TextView smallDetail(String s){
-        TextView t=text(s,12,false,MUTED);
-        t.setPadding(dp(20),0,0,dp(2));
+        TextView t=text(s,11,false,MUTED);
+        t.setPadding(dp(18),0,0,dp(1));
         t.setMaxLines(2);
         t.setEllipsize(TextUtils.TruncateAt.END);
         return t;
@@ -812,7 +959,7 @@ public class MainActivity extends Activity {
     private TextView statusChip(String s,int color){
         TextView t=center(s,10,true,Color.WHITE);
         t.setSingleLine(true);
-        t.setPadding(dp(9),dp(5),dp(9),dp(5));
+        t.setPadding(dp(8),dp(4),dp(8),dp(4));
         t.setBackground(round(color,12));
         return t;
     }
@@ -820,9 +967,9 @@ public class MainActivity extends Activity {
     private TextView info(LinearLayout p,String label,String initial){
         LinearLayout r=new LinearLayout(this);
         r.setGravity(Gravity.CENTER_VERTICAL);
-        r.setPadding(0,dp(5),0,dp(5));
-        TextView a=text(label,14,false,MUTED),b=text(initial,16,true,TEXT);
-        a.setPadding(0,0,dp(8),0);
+        r.setPadding(0,dp(3),0,dp(3));
+        TextView a=text(label,13,false,MUTED),b=text(initial,15,true,TEXT);
+        a.setPadding(0,0,dp(7),0);
         b.setGravity(Gravity.END);
         b.setMaxLines(2);
         b.setEllipsize(TextUtils.TruncateAt.END);
@@ -832,8 +979,8 @@ public class MainActivity extends Activity {
         return b;
     }
 
-    private TextView sectionTitle(String s){return text(s,18,true,TEXT);}
-    private TextView label(String s){return text(s,17,true,MUTED);}
+    private TextView sectionTitle(String s){return text(s,17,true,TEXT);}
+    private TextView label(String s){return text(s,16,true,MUTED);}
 
     private TextView text(String s,int sp,boolean bold,int color){
         TextView t=new TextView(this);
@@ -848,9 +995,9 @@ public class MainActivity extends Activity {
 
     private TextView badge(String s){
         TextView t=center(s,10,true,Color.WHITE);
-        t.setMinWidth(dp(44));
+        t.setMinWidth(dp(42));
         t.setMaxLines(1);
-        t.setPadding(dp(7),dp(7),dp(7),dp(7));
+        t.setPadding(dp(6),dp(6),dp(6),dp(6));
         t.setBackground(round(OFF,14));
         return t;
     }
@@ -866,8 +1013,8 @@ public class MainActivity extends Activity {
 
     private Button action(String s,int color){
         Button b=new Button(this);
-        b.setText(s);b.setAllCaps(false);b.setTextColor(Color.WHITE);b.setTextSize(16);b.setTypeface(Typeface.DEFAULT_BOLD);
-        b.setPadding(dp(8),0,dp(8),0);
+        b.setText(s);b.setAllCaps(false);b.setTextColor(Color.WHITE);b.setTextSize(15);b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setPadding(dp(7),0,dp(7),0);
         b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(0);b.setMinimumHeight(0);
         if(Build.VERSION.SDK_INT>=21){b.setBackgroundTintList(null);b.setStateListAnimator(null);}
         b.setBackground(round(color,14));
@@ -876,8 +1023,8 @@ public class MainActivity extends Activity {
 
     private CheckBox check(String s){
         CheckBox c=new CheckBox(this);
-        c.setText(s);c.setTextSize(15);c.setTypeface(Typeface.DEFAULT_BOLD);c.setTextColor(TEXT);
-        c.setBackgroundColor(Color.TRANSPARENT);c.setPadding(0,0,0,0);c.setMinHeight(dp(48));
+        c.setText(s);c.setTextSize(14);c.setTypeface(Typeface.DEFAULT_BOLD);c.setTextColor(TEXT);
+        c.setBackgroundColor(Color.TRANSPARENT);c.setPadding(0,0,0,0);c.setMinHeight(dp(44));
         if(Build.VERSION.SDK_INT>=21){
             int[][] states=new int[][]{new int[]{android.R.attr.state_checked},new int[]{-android.R.attr.state_checked}};
             c.setButtonTintList(new ColorStateList(states,new int[]{BLUE,Color.rgb(151,164,180)}));
@@ -887,18 +1034,18 @@ public class MainActivity extends Activity {
     }
 
     private EditText labeledField(LinearLayout parent,String label,String hint,int type){
-        TextView l=text(label,13,true,MUTED);
-        l.setPadding(0,dp(8),0,dp(5));
+        TextView l=text(label,12,true,MUTED);
+        l.setPadding(0,dp(6),0,dp(4));
         parent.addView(l);
         EditText e=field(hint,type);
-        parent.addView(e,new LinearLayout.LayoutParams(-1,dp(50)));
+        parent.addView(e,new LinearLayout.LayoutParams(-1,dp(46)));
         return e;
     }
 
     private EditText field(String hint,int type){
         EditText e=new EditText(this);
-        e.setHint(hint);e.setHintTextColor(Color.rgb(151,164,180));e.setInputType(type);e.setSingleLine(true);e.setTextSize(16);e.setTextColor(TEXT);
-        e.setPadding(dp(12),0,dp(12),0);
+        e.setHint(hint);e.setHintTextColor(Color.rgb(151,164,180));e.setInputType(type);e.setSingleLine(true);e.setTextSize(15);e.setTextColor(TEXT);
+        e.setPadding(dp(11),0,dp(11),0);
         e.setMinWidth(0);e.setMinimumWidth(0);
         if(Build.VERSION.SDK_INT>=21)e.setBackgroundTintList(null);
         e.setBackground(roundStroke(Color.rgb(250,251,252),13,BORDER,1));
@@ -918,7 +1065,7 @@ public class MainActivity extends Activity {
     }
 
     private LinearLayout.LayoutParams buttonMargin(int l,int t,int r,int b){
-        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(54));p.setMargins(dp(l),dp(t),dp(r),dp(b));return p;
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(50));p.setMargins(dp(l),dp(t),dp(r),dp(b));return p;
     }
 
     private LinearLayout.LayoutParams wrapMargin(int l,int t,int r,int b){
@@ -926,11 +1073,11 @@ public class MainActivity extends Activity {
     }
 
     private LinearLayout.LayoutParams checkParams(){
-        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(2),0,0);return p;
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(1),0,0);return p;
     }
 
     private LinearLayout.LayoutParams half(int l,int r){
-        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-2,1);p.setMargins(dp(l),dp(5),dp(r),dp(5));return p;
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-2,1);p.setMargins(dp(l),dp(4),dp(r),dp(4));return p;
     }
 
     private int dp(int v){return Math.round(v*getResources().getDisplayMetrics().density);}
@@ -942,6 +1089,7 @@ public class MainActivity extends Activity {
     private static String safe(Exception e){return e.getMessage()==null?e.getClass().getSimpleName():e.getMessage();}
     private static double parseNumber(String s){try{return Double.parseDouble(s==null?"":s.trim().replace(',','.'));}catch(Exception e){return Double.NaN;}}
     private static String oneDecimal(double v){return String.format(Locale.getDefault(),"%.1f",v);}
+    private static String formatPlain(double v){if(Math.abs(v-Math.rint(v))<0.000001)return String.valueOf((long)Math.rint(v));return oneDecimal(v);}
     private static int clamp(int v,int lo,int hi){return Math.max(lo,Math.min(hi,v));}
     private void toast(String s){Toast.makeText(this,s,Toast.LENGTH_SHORT).show();}
 
