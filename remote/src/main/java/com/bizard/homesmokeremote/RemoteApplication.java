@@ -165,20 +165,25 @@ public final class RemoteApplication extends Application {
         button.setBackground(round(unavailable ? DISABLED_CONTROL : activeColor, 14, button));
     }
 
-    /** Keep the compact classic cards while avoiding heavy "Последнее:" captions on stale data. */
+    /** Keep the compact classic cards while avoiding heavy "Последнее:" captions when data is unavailable. */
     private void normalizeUnavailableMetricCaptions(ViewGroup root, boolean stale) {
-        if (!stale) return;
         TextView heaterLabel = findExact(root, "ТЭН");
         if (heaterLabel != null && heaterLabel.getParent() instanceof ViewGroup) {
             List<TextView> texts = new ArrayList<>();
             collectTexts((ViewGroup) heaterLabel.getParent(), texts);
-            for (TextView t : texts) if (text(t).startsWith("Последнее:")) t.setText("— %");
+            for (TextView t : texts) {
+                String s = text(t);
+                if (s.equals("Последнее: —") || (stale && s.startsWith("Последнее:"))) t.setText("— %");
+            }
         }
         TextView modeLabel = findExact(root, "Режим");
         if (modeLabel != null && modeLabel.getParent() instanceof ViewGroup) {
             List<TextView> texts = new ArrayList<>();
             collectTexts((ViewGroup) modeLabel.getParent(), texts);
-            for (TextView t : texts) if (text(t).startsWith("Последний:")) t.setText("—");
+            for (TextView t : texts) {
+                String s = text(t);
+                if (s.equals("Последний: —") || (stale && s.startsWith("Последний:"))) t.setText("—");
+            }
         }
     }
 
