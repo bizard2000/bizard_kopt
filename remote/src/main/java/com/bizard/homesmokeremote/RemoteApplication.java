@@ -14,12 +14,11 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.WeakHashMap;
 
 /** Presentation-only freshness and availability styling for HomeSmoke Remote. */
 public final class RemoteApplication extends Application {
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final WeakHashMap<Activity, Runnable> refreshers = new WeakHashMap<>();
+    private final java.util.WeakHashMap<Activity, Runnable> refreshers = new java.util.WeakHashMap<>();
 
     @Override public void onCreate() {
         super.onCreate();
@@ -73,6 +72,7 @@ public final class RemoteApplication extends Application {
         styleAuto(root, stale);
         styleTimestamp(root, stale);
         styleRemoteControls(root);
+        normalizeUnavailableMetricCaptions(root, stale);
         updateDisplayedVersion(activity, root);
     }
 
@@ -135,10 +135,7 @@ public final class RemoteApplication extends Application {
         t.setTextColor(OFF);
     }
 
-    /**
-     * MainActivity owns the actual enabled/disabled logic. This method only makes that state
-     * visually unambiguous: disabled remote controls are neutral gray, never pale blue/red.
-     */
+    /** MainActivity owns enabled/disabled logic; this only clarifies the visual state. */
     private void styleRemoteControls(ViewGroup root) {
         TextView availability = findStartsWith(root, "Управление ");
         boolean unavailable = availability != null && text(availability).startsWith("Управление недоступно");
@@ -168,6 +165,23 @@ public final class RemoteApplication extends Application {
         button.setBackground(round(unavailable ? DISABLED_CONTROL : activeColor, 14, button));
     }
 
+    /** Keep the compact classic cards while avoiding heavy "Последнее:" captions on stale data. */
+    private void normalizeUnavailableMetricCaptions(ViewGroup root, boolean stale) {
+        if (!stale) return;
+        TextView heaterLabel = findExact(root, "ТЭН");
+        if (heaterLabel != null && heaterLabel.getParent() instanceof ViewGroup) {
+            List<TextView> texts = new ArrayList<>();
+            collectTexts((ViewGroup) heaterLabel.getParent(), texts);
+            for (TextView t : texts) if (text(t).startsWith("Последнее:")) t.setText("— %");
+        }
+        TextView modeLabel = findExact(root, "Режим");
+        if (modeLabel != null && modeLabel.getParent() instanceof ViewGroup) {
+            List<TextView> texts = new ArrayList<>();
+            collectTexts((ViewGroup) modeLabel.getParent(), texts);
+            for (TextView t : texts) if (text(t).startsWith("Последний:")) t.setText("—");
+        }
+    }
+
     private void updateDisplayedVersion(Activity activity, ViewGroup root) {
         String version;
         try {
@@ -179,8 +193,14 @@ public final class RemoteApplication extends Application {
         collectTexts(root, texts);
         for (TextView t : texts) {
             String s = text(t);
-            if (!s.contains("HomeSmoke Remote ")) continue;
-            String replaced = s.replaceFirst("HomeSmoke Remote \\d+\\.\\d+\\.\\d+", "HomeSmoke Remote " + version);
+            String replaced = s;
+            if (s.contains("HomeSmoke Remote ")) {
+                replaced = replaced.replaceFirst("HomeSmoke Remote \\d+\\.\\d+\\.\\d+", "HomeSmoke Remote " + version);
+            }
+            replaced = replaced.replace("Android 5+", "Android 6+");
+            replaced = replaced.replace(
+                    "Android 5.0/5.1: защищённое хранилище этой реализации недоступно; используйте доверенную сеть/VPN.",
+                    "Android 6+: пароль MQTT хранится через Android Keystore.");
             if (!replaced.equals(s)) t.setText(replaced);
         }
     }
