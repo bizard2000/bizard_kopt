@@ -26,10 +26,10 @@ android {
 
     defaultConfig {
         applicationId 'com.bizard.homesmokeremote'
-        minSdk 21
+        minSdk 23
         targetSdk 35
-        versionCode 26
-        versionName '2.0.24'
+        versionCode 27
+        versionName '2.1.0'
     }
 
     buildTypes {
@@ -49,5 +49,6 @@ android {
 }
 
 dependencies {
+    implementation 'com.google.android.material:material:1.14.0'
     testImplementation 'junit:junit:4.13.2'
 }
