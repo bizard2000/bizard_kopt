@@ -28,8 +28,8 @@ android {
         applicationId 'com.bizard.homesmokeremote'
         minSdk 23
         targetSdk 35
-        versionCode 28
-        versionName '2.1.1'
+        versionCode 29
+        versionName '2.1.2'
     }
 
     buildTypes {
@@ -49,6 +49,5 @@ android {
 }
 
 dependencies {
-    implementation 'com.google.android.material:material:1.14.0'
     testImplementation 'junit:junit:4.13.2'
 }
