@@ -50,14 +50,18 @@ jobs:
           set -o pipefail
           gradle :app:assembleDebug --stacktrace 2>&1 | tee app-build.log
 
-      - name: Verify HomeSmoke Remote 2.0.24 version
+      - name: Verify HomeSmoke Remote 2.1.0 Expressive configuration
         shell: bash
         run: |
-          grep -q "versionCode 26" remote/build.gradle
-          grep -q "versionName '2.0.24'" remote/build.gradle
-          grep -E "versionCode|versionName" remote/build.gradle
+          grep -q "minSdk 23" remote/build.gradle
+          grep -q "versionCode 27" remote/build.gradle
+          grep -q "versionName '2.1.0'" remote/build.gradle
+          grep -q "com.google.android.material:material:1.14.0" remote/build.gradle
+          grep -q "Theme.Material3Expressive.Light.NoActionBar" remote/src/main/res/values/styles.xml
+          grep -q "ExpressiveRemoteApplication" remote/src/main/AndroidManifest.xml
+          grep -E "minSdk|versionCode|versionName|com.google.android.material" remote/build.gradle
 
-      - name: Build HomeSmoke Remote 2.0.24 Android 5+
+      - name: Build HomeSmoke Remote 2.1.0 Android 6+ Material 3 Expressive
         shell: bash
         run: |
           set -o pipefail
@@ -76,16 +80,17 @@ jobs:
           mkdir -p dist
           cat core-test.log remote-test.log app-build.log remote-build.log > dist/build.log
           rm -f dist/HomeSmoke_FULL_2.6.*_Android6plus.apk dist/HomeSmoke_FULL_2.6.*_Android6plus.bin
-          rm -f dist/HomeSmoke_Remote_2.0.*_Android5plus.apk dist/HomeSmoke_Remote_2.0.*_Android5plus.bin
+          rm -f dist/HomeSmoke_Remote_2.*_Android5plus.apk dist/HomeSmoke_Remote_2.*_Android5plus.bin
+          rm -f dist/HomeSmoke_Remote_2.*_Android6plus.apk dist/HomeSmoke_Remote_2.*_Android6plus.bin
           rm -f dist/*Android4plus.apk dist/*Android4plus.bin
           cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.10_Android6plus.apk
           cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.10_Android6plus.bin
-          cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_2.0.24_Android5plus.apk
-          cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_2.0.24_Android5plus.bin
+          cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_2.1.0_Android6plus.apk
+          cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_2.1.0_Android6plus.bin
           git config user.name "github-actions[bot]"
           git config user.email "4189826+github-actions[bot]@users.noreply.github.com"
           git add -A dist remote/build.gradle
-          git commit -m "CI: publish HomeSmoke 2.6.10 and Remote 2.0.24 [skip ci]" || true
+          git commit -m "CI: publish HomeSmoke 2.6.10 and Remote 2.1.0 [skip ci]" || true
           git pull --rebase origin homesmoke-native
           git push origin homesmoke-native
 
@@ -98,11 +103,11 @@ jobs:
             dist/HomeSmoke_FULL_2.6.10_Android6plus.bin
           if-no-files-found: error
 
-      - name: Upload HomeSmoke Remote 2.0.24
+      - name: Upload HomeSmoke Remote 2.1.0
         uses: actions/upload-artifact@v4
         with:
-          name: HomeSmoke_Remote_2.0.24_Android5plus
+          name: HomeSmoke_Remote_2.1.0_Android6plus
           path: |
-            dist/HomeSmoke_Remote_2.0.24_Android5plus.apk
-            dist/HomeSmoke_Remote_2.0.24_Android5plus.bin
+            dist/HomeSmoke_Remote_2.1.0_Android6plus.apk
+            dist/HomeSmoke_Remote_2.1.0_Android6plus.bin
           if-no-files-found: error
