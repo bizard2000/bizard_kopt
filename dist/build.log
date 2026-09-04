@@ -16,15 +16,15 @@ Starting a Gradle Daemon (subsequent builds will be faster)
 > Task :core:processTestResources NO-SOURCE
 > Task :core:testClasses
 > Task :core:test
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1788431787819.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1788532530364.json
 
-BUILD SUCCESSFUL in 28s
+BUILD SUCCESSFUL in 36s
 3 actionable tasks: 3 executed
 > Task :remote:preBuild UP-TO-DATE
 > Task :remote:preDebugBuild UP-TO-DATE
 > Task :remote:javaPreCompileDebug
-> Task :remote:checkDebugAarMetadata
 > Task :remote:generateDebugResValues
+> Task :remote:checkDebugAarMetadata
 > Task :remote:mapDebugSourceSetPaths
 > Task :remote:generateDebugResources
 > Task :remote:packageDebugResources
@@ -35,10 +35,10 @@ BUILD SUCCESSFUL in 28s
 > Task :remote:processDebugMainManifest
 > Task :remote:processDebugManifest
 > Task :remote:preDebugUnitTestBuild UP-TO-DATE
-> Task :remote:processDebugManifestForPackage
 > Task :remote:javaPreCompileDebugUnitTest
 > Task :remote:processDebugJavaRes NO-SOURCE
 > Task :remote:processDebugUnitTestJavaRes NO-SOURCE
+> Task :remote:processDebugManifestForPackage
 > Task :remote:processDebugResources
 
 > Task :remote:compileDebugJavaWithJavac
@@ -49,9 +49,9 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :remote:bundleDebugClassesToCompileJar
 > Task :remote:compileDebugUnitTestJavaWithJavac
 > Task :remote:testDebugUnitTest
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1788431810665.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1788532559528.json
 
-BUILD SUCCESSFUL in 10s
+BUILD SUCCESSFUL in 23s
 20 actionable tasks: 20 executed
 > Task :app:preBuild UP-TO-DATE
 > Task :app:preDebugBuild UP-TO-DATE
@@ -65,21 +65,21 @@ BUILD SUCCESSFUL in 10s
 > Task :app:generateDebugResValues
 > Task :app:mapDebugSourceSetPaths
 > Task :app:generateDebugResources
-> Task :app:packageDebugResources
 > Task :app:mergeDebugResources
+> Task :app:packageDebugResources
 > Task :app:createDebugCompatibleScreenManifests
 > Task :app:extractDeepLinksDebug
 > Task :app:parseDebugLocalResources
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
 > Task :app:mergeDebugShaders
-> Task :app:processDebugManifestForPackage
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
 > Task :app:mergeDebugAssets
 > Task :app:compressDebugAssets
 > Task :app:desugarDebugFileDependencies
 > Task :app:processDebugJavaRes NO-SOURCE
+> Task :app:processDebugManifestForPackage
 > Task :app:checkDebugDuplicateClasses
 > Task :app:mergeExtDexDebug
 > Task :app:mergeDebugJniLibFolders
@@ -87,9 +87,9 @@ BUILD SUCCESSFUL in 10s
 > Task :app:stripDebugDebugSymbols NO-SOURCE
 > Task :app:validateSigningDebug
 > Task :app:writeDebugAppMetadata
-> Task :app:processDebugResources
 > Task :app:writeDebugSigningConfigVersions
 > Task :app:mergeDebugJavaResource
+> Task :app:processDebugResources
 
 > Task :app:compileDebugJavaWithJavac
 Note: Some input files use or override a deprecated API.
@@ -102,9 +102,9 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_3-1788431821208.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_3-1788532583036.json
 
-BUILD SUCCESSFUL in 4s
+BUILD SUCCESSFUL in 5s
 34 actionable tasks: 33 executed, 1 up-to-date
 > Task :remote:preBuild UP-TO-DATE
 > Task :remote:preDebugBuild UP-TO-DATE
@@ -131,23 +131,23 @@ BUILD SUCCESSFUL in 4s
 > Task :remote:compressDebugAssets
 > Task :remote:desugarDebugFileDependencies
 > Task :remote:dexBuilderDebug
-> Task :remote:processDebugJavaRes NO-SOURCE
 > Task :remote:mergeDebugGlobalSynthetics
-> Task :remote:checkDebugDuplicateClasses
-> Task :remote:mergeDebugJavaResource
+> Task :remote:processDebugJavaRes NO-SOURCE
 > Task :remote:mergeDebugJniLibFolders
-> Task :remote:mergeExtDexDebug
-> Task :remote:mergeLibDexDebug
+> Task :remote:checkDebugDuplicateClasses
 > Task :remote:mergeDebugNativeLibs NO-SOURCE
+> Task :remote:mergeLibDexDebug
 > Task :remote:stripDebugDebugSymbols NO-SOURCE
 > Task :remote:validateSigningDebug
 > Task :remote:writeDebugAppMetadata
 > Task :remote:writeDebugSigningConfigVersions
+> Task :remote:mergeDebugJavaResource
 > Task :remote:mergeProjectDexDebug
+> Task :remote:mergeExtDexDebug
 > Task :remote:packageDebug
 > Task :remote:createDebugApkListingFileRedirect
 > Task :remote:assembleDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_5-1788431825777.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_5-1788532588988.json
 
-BUILD SUCCESSFUL in 2s
+BUILD SUCCESSFUL in 39s
 32 actionable tasks: 17 executed, 15 up-to-date
