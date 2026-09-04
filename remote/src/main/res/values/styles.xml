@@ -1,32 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="AppTheme" parent="Theme.Material3Expressive.Light.NoActionBar">
-        <item name="colorPrimary">#006451</item>
-        <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="colorPrimaryContainer">#BFF2E1</item>
-        <item name="colorOnPrimaryContainer">#002119</item>
-        <item name="colorSecondary">#50645C</item>
-        <item name="colorOnSecondary">#FFFFFF</item>
-        <item name="colorSecondaryContainer">#DBEAE1</item>
-        <item name="colorOnSecondaryContainer">#0D1F18</item>
-        <item name="colorTertiary">#42636D</item>
-        <item name="colorOnTertiary">#FFFFFF</item>
-        <item name="colorTertiaryContainer">#CBEAF5</item>
-        <item name="colorOnTertiaryContainer">#001F27</item>
-        <item name="colorError">#BA1A1A</item>
-        <item name="colorOnError">#FFFFFF</item>
-        <item name="colorErrorContainer">#FFDAD6</item>
-        <item name="colorOnErrorContainer">#410002</item>
-        <item name="colorSurface">#F8FAF8</item>
-        <item name="colorOnSurface">#181D1B</item>
-        <item name="colorOnSurfaceVariant">#414945</item>
-        <item name="colorOutline">#717975</item>
-        <item name="colorOutlineVariant">#C1C9C5</item>
+    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#2E7D32</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">#004C3E</item>
-        <item name="android:navigationBarColor">#F8FAF8</item>
-        <item name="android:windowLightNavigationBar">true</item>
-        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:statusBarColor">#075CAA</item>
+        <item name="android:navigationBarColor">#D0D0D0</item>
     </style>
 </resources>
