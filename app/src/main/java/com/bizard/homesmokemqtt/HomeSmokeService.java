@@ -109,13 +109,31 @@ public class HomeSmokeService extends Service {
     }
     public void disconnectBluetooth(){if(isAutoRunning())stopAuto("Bluetooth отключён пользователем");closeBluetooth(true);updateForeground();maybeStopSelf();}
 
-    public boolean selectManual(){if(isAutoRunning())stopAuto("Переход в ручной режим");return sendRaw("a0");}
-    public boolean selectPid(){if(isAutoRunning())stopAuto("Переход в PID режим");return sendRaw("a1");}
+    public boolean selectManual(){
+        if(isAutoRunning())stopAuto("Переход в ручной режим");
+        if(!isBluetoothConnected()){lastError="Ручной режим не выбран: Bluetooth не подключён";emit();return false;}
+        boolean ok=sendRaw("a0");
+        if(!ok){if(lastError==null||lastError.trim().isEmpty())lastError="Ручной режим не выбран: ошибка Bluetooth";emit();}
+        return ok;
+    }
+    public boolean selectPid(){
+        if(isAutoRunning())stopAuto("Переход в PID режим");
+        if(!isBluetoothConnected()){lastError="PID режим не выбран: Bluetooth не подключён";emit();return false;}
+        boolean ok=sendRaw("a1");
+        if(!ok){if(lastError==null||lastError.trim().isEmpty())lastError="PID режим не выбран: ошибка Bluetooth";emit();}
+        return ok;
+    }
     public boolean stopHeating(){
-        main.removeCallbacks(heartbeat);boolean ok=true;
+        main.removeCallbacks(heartbeat);boolean ok;
         if(isAutoRunning()){AutoEngine.Update u=autoEngine.stop("СТОП");ok=sendCommands(u.commands);history.finish("STOP");}
-        else{ok=sendRaw("a3");sendRaw("x0");}
-        autoStatus="ТЭН выключен";updateForeground();emit();maybeStopSelf();return ok;
+        else{boolean stopMode=sendRaw("a3");boolean zeroPower=sendRaw("x0");ok=stopMode&&zeroPower;}
+        if(ok){lastError="";autoStatus="Команда STOP отправлена";}
+        else{
+            autoStatus="STOP не отправлен";
+            if(!isBluetoothConnected())lastError="STOP не отправлен: Bluetooth не подключён";
+            else if(lastError==null||lastError.trim().isEmpty())lastError="STOP не отправлен: ошибка Bluetooth";
+        }
+        updateForeground();emit();maybeStopSelf();return ok;
     }
     public boolean setManualPower(double value){return ProtocolRules.isPercentOrChamberSetpoint(value)&&sendRaw("v"+integer(value));}
     public boolean setChamberSetpoint(double value){return ProtocolRules.isPercentOrChamberSetpoint(value)&&sendRaw("k"+integer(value));}
