@@ -14,6 +14,8 @@ import javax.net.ssl.SSLSocketFactory;
 /** Small MQTT 3.1.1 client used to keep the APK dependency-free. */
 final class MqttClient {
     interface MessageListener { void onMessage(String topic,String payload); }
+    private static final long KEEPALIVE_PING_MS=20000L;
+    private static final long KEEPALIVE_TIMEOUT_MS=65000L;
     private final String host,username,password;
     private final int port;
     private final boolean tls;
@@ -77,7 +79,7 @@ final class MqttClient {
         String payload=new String(body,p,body.length-p,StandardCharsets.UTF_8);MessageListener l=listener;if(l!=null)try{l.onMessage(topic,payload);}catch(Exception ignored){}
         if(qos==1)sendPacket(0x40,new byte[]{(byte)(incomingId>>>8),(byte)incomingId});
     }
-    private void startKeepAlive(){keepAlive=new Thread(()->{while(connected){try{Thread.sleep(20000);synchronized(MqttClient.this){if(connected)sendPacket(0xC0,new byte[0]);}}catch(Exception e){close();break;}}},"HomeSmoke-MQTT-keepalive");keepAlive.start();}
+    private void startKeepAlive(){keepAlive=new Thread(()->{while(connected){try{Thread.sleep(KEEPALIVE_PING_MS);synchronized(MqttClient.this){if(!connected)break;long age=System.currentTimeMillis()-lastPacketAt;if(age>KEEPALIVE_TIMEOUT_MS)throw new IOException("MQTT keepalive timeout");sendPacket(0xC0,new byte[0]);}}catch(Exception e){close();break;}}},"HomeSmoke-MQTT-keepalive");keepAlive.start();}
     private synchronized void sendPacket(int header,byte[] body)throws IOException{if(out==null)throw new IOException("socket закрыт");out.write(header);writeRemaining(out,body.length);out.write(body);out.flush();}
     synchronized void close(){connected=false;Socket s=socket;socket=null;if(s!=null)try{s.close();}catch(Exception ignored){}in=null;out=null;if(reader!=null&&reader!=Thread.currentThread())reader.interrupt();if(keepAlive!=null&&keepAlive!=Thread.currentThread())keepAlive.interrupt();reader=null;keepAlive=null;}
     private static void writeUtf(ByteArrayOutputStream out,String s)throws IOException{byte[] b=s.getBytes(StandardCharsets.UTF_8);out.write((b.length>>>8)&255);out.write(b.length&255);out.write(b);}
