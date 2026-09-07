@@ -12,7 +12,6 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -38,7 +37,7 @@ final class HistoryStore {
 
     List<ChartPoint> readPoints(File f,int max)throws Exception{
         List<ChartPoint> out=new ArrayList<>();try(BufferedReader r=new BufferedReader(new InputStreamReader(new FileInputStream(f),StandardCharsets.UTF_8))){String line;while((line=r.readLine())!=null){if(!line.startsWith("DATA;"))continue;String[] a=line.split(";",9);if(a.length<8)continue;try{out.add(new ChartPoint(Long.parseLong(a[1]),Double.parseDouble(a[3]),Double.parseDouble(a[4]),Double.parseDouble(a[5]),Double.parseDouble(a[6]),Double.parseDouble(a[7])));}catch(Exception ignored){}}}
-        if(max>0&&out.size()>max){int step=Math.max(1,out.size()/max);List<ChartPoint> sampled=new ArrayList<>();for(int i=0;i<out.size();i+=step)sampled.add(out.get(i));if(sampled.get(sampled.size()-1)!=out.get(out.size()-1))sampled.add(out.get(out.size()-1));return sampled;}return out;
+        if(max>1&&out.size()>max){List<ChartPoint> sampled=new ArrayList<>(max);int last=out.size()-1;for(int i=0;i<max;i++){int index=(int)Math.round(i*(last/(double)(max-1)));sampled.add(out.get(index));}return sampled;}return out;
     }
 
     private void append(String s){try(FileOutputStream o=new FileOutputStream(active,true)){o.write(s.getBytes(StandardCharsets.UTF_8));}catch(Exception ignored){}}
