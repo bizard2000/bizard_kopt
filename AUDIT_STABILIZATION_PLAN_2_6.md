@@ -12,7 +12,9 @@ This phase changes Android/Remote/MQTT/CI only. Arduino firmware is frozen and m
 6. Add chamber-temperature tolerance/hold semantics and configurable probe activation timing.
 7. Confirm remote setpoint application from Arduino telemetry before publishing MQTT ACK.
 8. Add automated unit tests for parser, Auto transitions and MQTT command correlation.
-9. Redesign the modern HomeSmoke UI while preserving the right-side navigation model and a permanent STOP action.
+9. Redesign the modern HomeSmoke UI while preserving the navigation model and a permanent STOP action.
 10. Improve Remote health/staleness/Auto visibility.
-11. Keep Android 4 as a separate legacy build using the same core logic where API-compatible.
+11. Android 4 / Legacy is excluded from further development and CI. Main HomeSmoke support starts at Android 6 (`minSdk 23`).
 12. Do not modify any file under `arduino/` in this phase.
+
+Current detailed audit and deferred decisions are recorded in `AUDIT_HOMESMOKE_2_6_12.md`.
