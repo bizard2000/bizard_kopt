@@ -13,6 +13,7 @@ import java.util.UUID;
 final class ProgramRepository {
     private static final String PREF="homesmoke_full";
     private static final String KEY="auto_library_json_v2";
+    private static final String BACKUP_KEY="auto_library_json_v2_backup";
     private static final String OLD_KEY="auto_library_json_v1";
     private final SharedPreferences prefs;
 
@@ -21,13 +22,29 @@ final class ProgramRepository {
     synchronized List<AutoProgram> load(){
         try {
             String raw=prefs.getString(KEY,"");
-            if(raw!=null&&!raw.trim().isEmpty()) return decodeLibrary(raw);
+            if(raw!=null&&!raw.trim().isEmpty()){
+                try{return decodeLibrary(raw);}
+                catch(Exception primary){
+                    String backup=prefs.getString(BACKUP_KEY,"");
+                    if(backup!=null&&!backup.trim().isEmpty()){
+                        try{List<AutoProgram> recovered=decodeLibrary(backup);prefs.edit().putString(KEY,backup).apply();return recovered;}
+                        catch(Exception ignored){}
+                    }
+                    throw primary;
+                }
+            }
             List<AutoProgram> migrated=migrateV1(); save(migrated); return migrated;
         } catch(Exception e){List<AutoProgram> x=new ArrayList<>();x.add(defaultProgram());return x;}
     }
 
     synchronized void save(List<AutoProgram> programs){
-        try {prefs.edit().putString(KEY,encodeLibrary(programs)).apply();}catch(Exception ignored){}
+        try {
+            String encoded=encodeLibrary(programs);
+            String current=prefs.getString(KEY,"");
+            SharedPreferences.Editor editor=prefs.edit();
+            if(current!=null&&!current.trim().isEmpty()&&!current.equals(encoded))editor.putString(BACKUP_KEY,current);
+            editor.putString(KEY,encoded).apply();
+        }catch(Exception ignored){}
     }
 
     synchronized String exportJson(List<AutoProgram> programs)throws Exception{return encodeLibrary(programs);}
