@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -204,9 +205,10 @@ private fun ModernRemoteApp(activity: MainActivity) {
 @androidx.compose.runtime.Composable
 private fun ModernTopBar(activity: MainActivity, snapshot: ModernRemoteSnapshot) {
     TopAppBar(
+        modifier = Modifier.height(60.dp),
         title = {
             Column {
-                Text("HomeSmoke Remote", color = Color.White, fontWeight = FontWeight.Bold)
+                Text("HomeSmoke Remote", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 Text(
                     when (snapshot.page) {
                         ModernRemotePage.MONITOR -> "Удалённое управление"
@@ -272,7 +274,10 @@ private fun ModernNavigation(
 private fun MonitorPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: PaddingValues) {
     var setpoint by rememberSaveable { mutableStateOf("") }
     var technicalExpanded by rememberSaveable { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    LaunchedEffect(Unit) { listState.scrollToItem(0) }
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize().background(Canvas).padding(padding),
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(7.dp),
@@ -334,7 +339,7 @@ private fun MonitorPage(activity: MainActivity, s: ModernRemoteSnapshot, padding
                             onValueChange = {
                                 setpoint = it.filter { c -> c.isDigit() || c == '.' || c == ',' }
                             },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).height(52.dp),
                             singleLine = true,
                             label = { Text("Уставка °C") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -663,7 +668,7 @@ private fun SettingsPage(activity: MainActivity, s: ModernRemoteSnapshot, paddin
                     OutlinedTextField(
                         broker,
                         { broker = it },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
                         label = { Text("MQTT-брокер") },
                         singleLine = true,
                     )
@@ -671,14 +676,14 @@ private fun SettingsPage(activity: MainActivity, s: ModernRemoteSnapshot, paddin
                         OutlinedTextField(
                             port,
                             { port = it.filter(Char::isDigit) },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).height(52.dp),
                             label = { Text("Порт") },
                             singleLine = true,
                         )
                         OutlinedTextField(
                             username,
                             { username = it },
-                            modifier = Modifier.weight(2f),
+                            modifier = Modifier.weight(2f).height(52.dp),
                             label = { Text("Пользователь") },
                             singleLine = true,
                         )
@@ -686,7 +691,7 @@ private fun SettingsPage(activity: MainActivity, s: ModernRemoteSnapshot, paddin
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
                         label = { Text("Пароль") },
                         supportingText = {
                             if (s.passwordConfigured && password.isBlank()) Text("Пароль сохранён; оставьте поле пустым, чтобы сохранить его")
@@ -747,21 +752,21 @@ private fun SettingsPage(activity: MainActivity, s: ModernRemoteSnapshot, paddin
                     OutlinedTextField(
                         statusTopic,
                         { statusTopic = it },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
                         label = { Text("Телеметрия") },
                         singleLine = true,
                     )
                     OutlinedTextField(
                         commandTopic,
                         { commandTopic = it },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
                         label = { Text("Команды") },
                         singleLine = true,
                     )
                     OutlinedTextField(
                         ackTopic,
                         { ackTopic = it },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
                         label = { Text("Подтверждения") },
                         singleLine = true,
                     )
