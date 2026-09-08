@@ -35,7 +35,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SmallTopAppBar
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -50,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.platform.setContent
 import androidx.compose.ui.text.font.FontWeight
@@ -186,7 +187,7 @@ private fun ModernRemoteApp(activity: MainActivity) {
 @OptIn(ExperimentalMaterial3Api::class)
 @androidx.compose.runtime.Composable
 private fun ModernTopBar(activity: MainActivity, snapshot: ModernRemoteSnapshot) {
-    SmallTopAppBar(
+    TopAppBar(
         title = {
             Column {
                 Text("HomeSmoke Remote", color = Color.White, fontWeight = FontWeight.Bold)
@@ -215,7 +216,7 @@ private fun ModernTopBar(activity: MainActivity, snapshot: ModernRemoteSnapshot)
             )
             Spacer(Modifier.width(8.dp))
         },
-        colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Navy),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Navy),
     )
 }
 

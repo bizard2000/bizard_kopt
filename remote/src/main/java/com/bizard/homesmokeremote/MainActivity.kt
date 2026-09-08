@@ -252,7 +252,7 @@ open class MainActivity : Activity() {
     internal fun modernGraphSamples(): List<TelemetryHistoryStore.Sample?> {
         val store = historyStore ?: return emptyList()
         val to = System.currentTimeMillis()
-        return store.query(to - graphWindowMs, to, 900)
+        return store.query(to - graphWindowMs, to, 900) ?: emptyList()
     }
 
     internal fun modernShowMonitor() = showMonitor()
