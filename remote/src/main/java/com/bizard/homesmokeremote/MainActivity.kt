@@ -1,6 +1,5 @@
 package com.bizard.homesmokeremote
 
-import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
 import android.content.SharedPreferences
@@ -28,6 +27,7 @@ import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.ComponentActivity
 import java.text.SimpleDateFormat
 import java.util.ArrayList
 import java.util.Date
@@ -37,7 +37,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /** HomeSmoke Remote — MQTT-only monitor/control with correlated controller ACK. */
-open class MainActivity : Activity() {
+open class MainActivity : ComponentActivity() {
 
     private var prefs: SharedPreferences? = null
     private var secrets: SecretStore? = null
