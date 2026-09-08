@@ -438,6 +438,8 @@ private fun AutoCard(s: ModernRemoteSnapshot) {
 private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: PaddingValues) {
     var camera by remember { mutableStateOf(true) }
     var setpoint by remember { mutableStateOf(true) }
+    var probeK by remember { mutableStateOf(true) }
+    var probeT by remember { mutableStateOf(true) }
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(Canvas).padding(padding),
         contentPadding = PaddingValues(16.dp),
@@ -455,9 +457,16 @@ private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: 
                     Text("Температура", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Text(s.graphSummary, color = Muted, fontSize = 12.sp)
                     AndroidView(
-                        factory = { TemperatureChartView(it) },
+                        factory = {
+                            TemperatureChartView(it).apply {
+                                setSeries(camera, setpoint, probeK, probeT)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth().height(260.dp),
-                        update = { view -> view.setData(activity.modernGraphSamples()) },
+                        update = { view ->
+                            view.setSeries(camera, setpoint, probeK, probeT)
+                            view.setData(activity.modernGraphSamples())
+                        },
                     )
                     Text(s.graphPoint, color = Muted, fontSize = 12.sp)
                     Row(
@@ -466,6 +475,8 @@ private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: 
                     ) {
                         FilterChip(camera, { camera = !camera }, label = { Text("Камера") })
                         FilterChip(setpoint, { setpoint = !setpoint }, label = { Text("Уставка") })
+                        FilterChip(probeK, { probeK = !probeK }, label = { Text("K") })
+                        FilterChip(probeT, { probeT = !probeT }, label = { Text("T") })
                     }
                 }
             }
