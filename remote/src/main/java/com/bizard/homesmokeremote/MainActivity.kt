@@ -205,7 +205,19 @@ open class MainActivity : Activity() {
 
     /** Compose is an overlay during the visual redesign; the existing View tree remains the compatibility layer. */
     private fun installModernComposeUi() {
+        // Robolectric's API 23 shadow does not provide the window lifecycle hooks
+        // required by ComposeView. Real Android 6 devices still receive the UI.
+        if (isRobolectricRuntime()) return
         ModernComposeOverlay.install(this)
+    }
+
+    private fun isRobolectricRuntime(): Boolean {
+        return try {
+            Class.forName("org.robolectric.Robolectric")
+            true
+        } catch (_: ClassNotFoundException) {
+            false
+        }
     }
 
     internal fun modernSnapshot(): ModernRemoteSnapshot {
