@@ -103,12 +103,12 @@ class HistoryActivity : Activity() {
         val titles: LinearLayout = LinearLayout(this)
         titles.setOrientation(LinearLayout.VERTICAL)
         titles.setGravity(Gravity.CENTER_VERTICAL)
-        val title: TextView? = text("Сеансы и журнал", 18, true, Color.WHITE)
-        val sub: TextView? = text("Локальная история Remote", 11, false, Color.rgb(211, 222, 232))
+        val title: TextView? = text("Сеансы и журнал", 18, true, TEXT)
+        val sub: TextView? = text("Локальная история Remote", 11, false, MUTED)
         titles.addView(title)
         titles.addView(sub)
         bar.addView(titles, LinearLayout.LayoutParams(0, -1, 1f))
-        val info: TextView? = text("ⓘ", 22, true, Color.WHITE)
+        val info: TextView? = text("ⓘ", 22, true, TEXT)
         info!!.setGravity(Gravity.CENTER)
         info!!.setContentDescription("Состояние системы")
         info!!.setOnClickListener({ v ->
@@ -554,17 +554,17 @@ class HistoryActivity : Activity() {
     }
 
     companion object {
-        private val NAVY: Int = Color.rgb(9, 47, 73)
-        private val BG: Int = Color.rgb(245, 247, 250)
+        private val NAVY: Int = Color.rgb(255, 255, 255)
+        private val BG: Int = Color.rgb(245, 244, 240)
         private val CARD: Int = Color.WHITE
-        private val TEXT: Int = Color.rgb(21, 31, 47)
-        private val MUTED: Int = Color.rgb(101, 116, 139)
-        private val BORDER: Int = Color.rgb(220, 225, 232)
-        private val GREEN: Int = Color.rgb(35, 151, 83)
-        private val BLUE: Int = Color.rgb(31, 122, 210)
-        private val ORANGE: Int = Color.rgb(231, 138, 7)
+        private val TEXT: Int = Color.rgb(32, 42, 39)
+        private val MUTED: Int = Color.rgb(98, 110, 104)
+        private val BORDER: Int = Color.rgb(226, 229, 224)
+        private val GREEN: Int = Color.rgb(40, 101, 76)
+        private val BLUE: Int = Color.rgb(165, 72, 34)
+        private val ORANGE: Int = Color.rgb(197, 101, 16)
         private val OFF: Int = Color.rgb(116, 129, 145)
-        private val FIELD: Int = Color.rgb(239, 243, 247)
+        private val FIELD: Int = Color.rgb(239, 240, 236)
         private val REQ_CSV: Int = 4101
         private val REQ_JSON: Int = 4102
         private val FILTERS: Array<String> =

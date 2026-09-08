@@ -43,6 +43,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -345,6 +346,32 @@ private fun MonitorPage(activity: MainActivity, s: ModernRemoteSnapshot, padding
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item { ConnectionCard(s) }
+        if (!s.mqttConnected && !s.testRunning) {
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF6E8)),
+                    shape = RoundedCornerShape(14.dp),
+                ) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text("Коптильня не подключена", color = Ink, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Настройте MQTT, чтобы получать телеметрию и управлять нагревом.",
+                            color = Muted,
+                            fontSize = 12.sp,
+                        )
+                        OutlinedButton(
+                            onClick = activity::modernShowSettings,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Настроить MQTT")
+                        }
+                    }
+                }
+            }
+        }
         item {
             Card(colors = CardDefaults.cardColors(containerColor = Card), shape = RoundedCornerShape(12.dp)) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -660,21 +687,6 @@ private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: 
                         ) {
                             Text(scenarios.getOrElse(scenarioIndex) { s.testScenario }, fontSize = 12.sp)
                         }
-                        DropdownMenu(
-                            expanded = scenarioMenuExpanded,
-                            onDismissRequest = { scenarioMenuExpanded = false },
-                        ) {
-                            scenarios.forEachIndexed { index, name ->
-                                DropdownMenuItem(
-                                    text = { Text(name, fontSize = 12.sp) },
-                                    onClick = {
-                                        scenarioIndex = index
-                                        scenarioMenuExpanded = false
-                                        activity.modernSetTestScenario(index)
-                                    },
-                                )
-                            }
-                        }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
@@ -700,6 +712,42 @@ private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: 
                 Text("История сеансов и журнал")
             }
         }
+    }
+    if (scenarioMenuExpanded) {
+        AlertDialog(
+            onDismissRequest = { scenarioMenuExpanded = false },
+            title = { Text("Тестовый сценарий") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    scenarios.forEachIndexed { index, name ->
+                        TextButton(
+                            onClick = {
+                                scenarioIndex = index
+                                scenarioMenuExpanded = false
+                                activity.modernSetTestScenario(index)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    if (index == scenarioIndex) "✓" else "",
+                                    color = Blue,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.width(24.dp),
+                                )
+                                Text(name, color = Ink, fontSize = 14.sp)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { scenarioMenuExpanded = false }) { Text("Закрыть") }
+            },
+        )
     }
 }
 
