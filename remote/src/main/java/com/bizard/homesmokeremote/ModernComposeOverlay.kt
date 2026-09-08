@@ -112,6 +112,9 @@ internal data class ModernRemoteSnapshot(
     val autoConnect: Boolean,
     val keepScreenOn: Boolean,
     val technicalData: Boolean,
+    val notifyConnection: Boolean,
+    val notifySetpoint: Boolean,
+    val notifySession: Boolean,
 )
 
 internal data class ModernSettingsValues(
@@ -227,6 +230,9 @@ private fun ModernTopBar(activity: MainActivity, snapshot: ModernRemoteSnapshot)
                 if (snapshot.mqttConnected) "MQTT онлайн" else "MQTT офлайн",
                 if (snapshot.mqttConnected) Green else Color(0xFF78879A),
             )
+            IconButton(onClick = activity::modernShowSystemStatus) {
+                Text("☷", color = Color.White, fontSize = 21.sp)
+            }
             Spacer(Modifier.width(8.dp))
         },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Navy),
@@ -636,6 +642,9 @@ private fun SettingsPage(activity: MainActivity, s: ModernRemoteSnapshot, paddin
     var autoConnect by rememberSaveable(s.autoConnect) { mutableStateOf(s.autoConnect) }
     var keepScreenOn by rememberSaveable(s.keepScreenOn) { mutableStateOf(s.keepScreenOn) }
     var technicalData by rememberSaveable(s.technicalData) { mutableStateOf(s.technicalData) }
+    var notifyConnection by rememberSaveable(s.notifyConnection) { mutableStateOf(s.notifyConnection) }
+    var notifySetpoint by rememberSaveable(s.notifySetpoint) { mutableStateOf(s.notifySetpoint) }
+    var notifySession by rememberSaveable(s.notifySession) { mutableStateOf(s.notifySession) }
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(Canvas).padding(padding),
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
@@ -692,6 +701,36 @@ private fun SettingsPage(activity: MainActivity, s: ModernRemoteSnapshot, paddin
                         technicalData = it
                         activity.modernSetTechnical(it)
                     }
+                }
+            }
+        }
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Card),
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text("Уведомления", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    SettingSwitch("Потеря и восстановление связи", notifyConnection) {
+                        notifyConnection = it
+                        activity.modernSetNotification("notify_connection", it)
+                    }
+                    SettingSwitch("Камера достигла уставки", notifySetpoint) {
+                        notifySetpoint = it
+                        activity.modernSetNotification("notify_setpoint", it)
+                    }
+                    SettingSwitch("Начало и завершение сеанса", notifySession) {
+                        notifySession = it
+                        activity.modernSetNotification("notify_session", it)
+                    }
+                    Text(
+                        "Уведомления формируются локально по телеметрии; для Android 13+ требуется системное разрешение.",
+                        color = Muted,
+                        fontSize = 10.sp,
+                    )
                 }
             }
         }

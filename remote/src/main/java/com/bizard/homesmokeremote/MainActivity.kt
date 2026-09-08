@@ -2,6 +2,7 @@ package com.bizard.homesmokeremote
 
 import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -265,6 +266,9 @@ open class MainActivity : ComponentActivity() {
             autoConnect = autoConnect != null && autoConnect!!.isChecked(),
             keepScreenOn = keepScreenOn != null && keepScreenOn!!.isChecked(),
             technicalData = showTechnical != null && showTechnical!!.isChecked(),
+            notifyConnection = prefs?.getBoolean("notify_connection", true) ?: true,
+            notifySetpoint = prefs?.getBoolean("notify_setpoint", true) ?: true,
+            notifySession = prefs?.getBoolean("notify_session", false) ?: false,
         )
     }
 
@@ -312,6 +316,12 @@ open class MainActivity : ComponentActivity() {
         showTechnical?.setChecked(enabled)
         applyUiPreferences()
         saveSettings()
+    }
+    internal fun modernSetNotification(key: String, enabled: Boolean) {
+        prefs?.edit()?.putBoolean(key, enabled)?.apply()
+    }
+    internal fun modernShowSystemStatus() {
+        startActivity(Intent(this, SystemStatusActivity::class.java))
     }
     internal fun modernSetTestScenario(index: Int) {
         try {
