@@ -33,6 +33,10 @@ android {
         versionName '2.6.13'
     }
 
+    buildFeatures {
+        buildConfig true
+    }
+
     buildTypes {
         debug {
             signingConfig signingConfigs.stableDebug
