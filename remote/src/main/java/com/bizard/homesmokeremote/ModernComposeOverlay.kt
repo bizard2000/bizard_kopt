@@ -173,14 +173,14 @@ internal object ModernComposeOverlay {
     }
 }
 
-private val Ink = Color(0xFF132238)
-private val Muted = Color(0xFF66758A)
-private val Canvas = Color(0xFFF4F7FB)
-private val Navy = Color(0xFF082F49)
-private val Blue = Color(0xFF1F7AD2)
-private val Green = Color(0xFF239753)
-private val Red = Color(0xFFE52828)
-private val Amber = Color(0xFFE78A07)
+private val Ink = Color(0xFF202A27)
+private val Muted = Color(0xFF626E68)
+private val Canvas = Color(0xFFF5F4F0)
+private val Navy = Color(0xFF202A27)
+private val Blue = Color(0xFFA54822)
+private val Green = Color(0xFF28654C)
+private val Red = Color(0xFFA83434)
+private val Amber = Color(0xFFA54822)
 private val Card = Color.White
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -230,6 +230,7 @@ internal fun ModernRemoteApp(activity: MainActivity) {
                     onMonitor = activity::modernShowMonitor,
                     onGraph = activity::modernShowGraph,
                     onSettings = activity::modernShowSettings,
+                    onHistory = activity::modernShowHistory,
                 )
             },
         ) { padding ->
@@ -258,7 +259,7 @@ private fun ModernTopBar(activity: MainActivity, snapshot: ModernRemoteSnapshot)
                         ModernRemotePage.GRAPH -> "График температуры"
                         ModernRemotePage.SETTINGS -> "Настройки"
                     },
-                    color = Color.White, fontSize = 18.sp, lineHeight = 24.sp,
+                    color = Ink, fontSize = 18.sp, lineHeight = 24.sp,
                     fontWeight = FontWeight.SemiBold, maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -266,14 +267,14 @@ private fun ModernTopBar(activity: MainActivity, snapshot: ModernRemoteSnapshot)
                     if (snapshot.testRunning) "ТЕСТОВЫЕ ДАННЫЕ"
                     else if (snapshot.page == ModernRemotePage.SETTINGS) activity.modernVersion()
                     else if (snapshot.mqttConnected) "MQTT подключён" else "MQTT отключён",
-                    color = Color(0xFFD2E1EE), style = MaterialTheme.typography.bodySmall,
+                    color = Muted, style = MaterialTheme.typography.bodySmall,
                 )
             }
         },
         actions = {
             Box {
                 IconButton(onClick = { menuExpanded = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "История и диагностика", tint = Color.White)
+                    Icon(Icons.Default.MoreVert, contentDescription = "История и диагностика", tint = Ink)
                 }
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                     DropdownMenuItem(
@@ -287,7 +288,12 @@ private fun ModernTopBar(activity: MainActivity, snapshot: ModernRemoteSnapshot)
                 }
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = Navy),
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Card,
+            titleContentColor = Ink,
+            actionIconContentColor = Ink,
+            scrolledContainerColor = Canvas,
+        ),
     )
 }
 
@@ -297,8 +303,9 @@ private fun ModernNavigation(
     onMonitor: () -> Unit,
     onGraph: () -> Unit,
     onSettings: () -> Unit,
+    onHistory: () -> Unit,
 ) {
-    NavigationBar(containerColor = Color.White) {
+    NavigationBar(containerColor = Card) {
         NavigationBarItem(
             page == ModernRemotePage.MONITOR,
             onMonitor,
@@ -316,6 +323,12 @@ private fun ModernNavigation(
             onSettings,
             icon = { Icon(Icons.Default.Settings, contentDescription = null) },
             label = { Text("Настройки") },
+        )
+        NavigationBarItem(
+            false,
+            onHistory,
+            icon = { Icon(Icons.Default.List, contentDescription = null) },
+            label = { Text("История") },
         )
     }
 }
@@ -451,8 +464,16 @@ private fun ConnectionCard(s: ModernRemoteSnapshot) {
                     if (s.technicalData) Text(s.brokerDetail, color = Muted, fontSize = 12.sp)
                 }
                 StatusPill(
-                    if (s.mqttConnected) "ПОДКЛЮЧЕНО" else "ОФЛАЙН",
-                    if (s.mqttConnected) Green else Red,
+                    when {
+                        s.testRunning -> "ТЕСТ"
+                        s.mqttConnected -> "ПОДКЛЮЧЕНО"
+                        else -> "ОФЛАЙН"
+                    },
+                    when {
+                        s.testRunning -> Amber
+                        s.mqttConnected -> Green
+                        else -> Red
+                    },
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -464,7 +485,15 @@ private fun ConnectionCard(s: ModernRemoteSnapshot) {
                         )
                 )
                 Spacer(Modifier.width(6.dp))
-                Text(if (s.technicalData) s.deviceDetail else s.deviceState, color = Muted, fontSize = 12.sp)
+                Text(
+                    when {
+                        s.testRunning -> "Локальная симуляция · связь с коптильней не используется"
+                        s.technicalData -> s.deviceDetail
+                        else -> s.deviceState
+                    },
+                    color = Muted,
+                    fontSize = 12.sp,
+                )
             }
         }
     }
