@@ -185,6 +185,7 @@ open class MainActivity : Activity() {
         loadCommandHistory()
         applyUiPreferences()
         showMonitor()
+        installModernComposeUi()
         wantConnection =
             autoConnect!!.isChecked() &&
                 !broker!!.getText()!!.toString()!!.trim({ it <= ' ' }).isEmpty()
@@ -201,6 +202,122 @@ open class MainActivity : Activity() {
         if (historyStore != null) historyStore!!.close()
         super.onDestroy()
     }
+
+    /** Compose is an overlay during the visual redesign; the existing View tree remains the compatibility layer. */
+    private fun installModernComposeUi() {
+        ModernComposeOverlay.install(this)
+    }
+
+    internal fun modernSnapshot(): ModernRemoteSnapshot {
+        val page = if (graphVisible) ModernRemotePage.GRAPH
+        else if (settings != null && settings!!.getVisibility() == View.GONE) ModernRemotePage.SETTINGS
+        else ModernRemotePage.MONITOR
+        return ModernRemoteSnapshot(
+            page = page,
+            mqttConnected = mqtt != null && mqtt!!.isConnected,
+            brokerState = textOf(brokerState),
+            brokerDetail = textOf(brokerDetail),
+            deviceState = textOf(deviceState),
+            deviceDetail = textOf(deviceDetail),
+            camera = textOf(camera),
+            cameraSummary = textOf(cameraSummary),
+            trend = textOf(tempTrend),
+            probeK = textOf(k),
+            probeT = textOf(t),
+            heater = textOf(power),
+            mode = textOf(mode),
+            autoProgram = textOf(autoProgram),
+            autoStage = textOf(autoStage),
+            autoStatus = textOf(autoStatus),
+            lastCommand = textOf(lastCommand),
+            commandState = textOf(commandState),
+            lastUpdate = textOf(lastUpdate),
+            controlAvailability = textOf(controlAvailability),
+            graphSummary = textOf(graphSummary),
+            graphPoint = textOf(graphPointInfo),
+            testRunning = modernBooleanField("testRunning"),
+            testScenario = modernScenarioField(),
+            broker = textOf(broker),
+            port = textOf(port),
+            statusTopic = textOf(statusTopic),
+            commandTopic = textOf(commandTopic),
+            ackTopic = textOf(ackTopic),
+            username = textOf(user),
+            tls = tls != null && tls!!.isChecked(),
+            autoConnect = autoConnect != null && autoConnect!!.isChecked(),
+            keepScreenOn = keepScreenOn != null && keepScreenOn!!.isChecked(),
+        )
+    }
+
+    internal fun modernGraphSamples(): List<TelemetryHistoryStore.Sample?> {
+        val store = historyStore ?: return emptyList()
+        val to = System.currentTimeMillis()
+        return store.query(to - graphWindowMs, to, 900)
+    }
+
+    internal fun modernShowMonitor() = showMonitor()
+    internal fun modernShowGraph() = showGraph()
+    internal fun modernShowSettings() = showSettings()
+    internal fun modernConnect() {
+        wantConnection = true
+        connectMqtt(true)
+    }
+    internal fun modernDisconnect() {
+        wantConnection = false
+        disconnectInternal(true)
+    }
+    internal fun modernApplySetpoint(value: String) {
+        setInput!!.setText(value)
+        sendSetpoint()
+    }
+    internal fun modernStop() = confirmStop()
+    internal fun modernStartTest() = modernInvokeGraph("startTestScenario")
+    internal fun modernStopTest() = modernInvokeGraph("stopTestScenario", true)
+    internal fun modernSaveSettings(value: ModernSettingsValues) {
+        broker!!.setText(value.broker)
+        port!!.setText(value.port)
+        statusTopic!!.setText(value.statusTopic)
+        commandTopic!!.setText(value.commandTopic)
+        ackTopic!!.setText(value.ackTopic)
+        user!!.setText(value.username)
+        tls!!.setChecked(value.tls)
+        autoConnect!!.setChecked(value.autoConnect)
+        keepScreenOn!!.setChecked(value.keepScreenOn)
+        saveSettings()
+        applyUiPreferences()
+        if (value.autoConnect && value.broker.isNotBlank()) modernConnect()
+    }
+
+    private fun modernInvokeGraph(name: String, vararg args: Any) {
+        try {
+            val types = args.map { if (it is Boolean) Boolean::class.javaPrimitiveType else it.javaClass }.toTypedArray()
+            val method = GraphUxActivity::class.java.getDeclaredMethod(name, *types)
+            method.isAccessible = true
+            method.invoke(this, *args)
+        } catch (_: Exception) {
+            // The monitor screen remains usable when launched outside the graph activity.
+        }
+    }
+
+    private fun modernBooleanField(name: String): Boolean {
+        return try {
+            val field = GraphUxActivity::class.java.getDeclaredField(name)
+            field.isAccessible = true
+            field.getBoolean(this)
+        } catch (_: Exception) { false }
+    }
+
+    private fun modernScenarioField(): String {
+        return try {
+            val indexField = GraphUxActivity::class.java.getDeclaredField("testScenarioIndex")
+            indexField.isAccessible = true
+            val index = indexField.getInt(this)
+            val scenarios = arrayOf("Полный цикл", "Нагрев камеры", "Стабилизация PID", "Auto-программа", "Щуп достигает цели", "Потеря связи")
+            scenarios[index.coerceIn(scenarios.indices)]
+        } catch (_: Exception) { "Полный цикл" }
+    }
+
+    private fun textOf(view: TextView?): String = view?.text?.toString()?.trim().orEmpty().ifBlank { "—" }
 
     private fun buildRoot(): View? {
         val root: LinearLayout = LinearLayout(this)

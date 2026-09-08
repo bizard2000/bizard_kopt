@@ -15,7 +15,7 @@ def run(*args):
     return subprocess.check_output([str(a) for a in args], text=True)
 
 badging = run(build_tools / 'aapt', 'dump', 'badging', apk)
-for expected in ["name='com.bizard.homesmokeremote'", "versionCode='31'", "versionName='2.1.4'", "sdkVersion:'23'", "targetSdkVersion:'35'"]:
+for expected in ["name='com.bizard.homesmokeremote'", "versionCode='32'", "versionName='2.2.0'", "sdkVersion:'23'", "targetSdkVersion:'35'"]:
     assert expected in badging, f'Missing APK metadata: {expected}'
 xmltree = run(build_tools / 'aapt', 'dump', 'xmltree', apk, 'AndroidManifest.xml')
 assert 'activity-alias' in xmltree and 'com.bizard.homesmokeremote.GraphUxActivity' in xmltree
