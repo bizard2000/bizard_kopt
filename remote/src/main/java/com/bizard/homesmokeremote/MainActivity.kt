@@ -255,6 +255,7 @@ open class MainActivity : ComponentActivity() {
             commandTopic = textOf(commandTopic),
             ackTopic = textOf(ackTopic),
             username = textOf(user),
+            passwordConfigured = secrets?.get()?.isNotBlank() == true,
             tls = tls != null && tls!!.isChecked(),
             autoConnect = autoConnect != null && autoConnect!!.isChecked(),
             keepScreenOn = keepScreenOn != null && keepScreenOn!!.isChecked(),
@@ -264,7 +265,23 @@ open class MainActivity : ComponentActivity() {
     internal fun modernGraphSamples(): List<TelemetryHistoryStore.Sample?> {
         val store = historyStore ?: return emptyList()
         val to = System.currentTimeMillis()
-        return store.query(to - graphWindowMs, to, 900) ?: emptyList()
+        val from = if (graphSessionMode) {
+            if (graphSessionStartAt > 0) graphSessionStartAt else to - 60L * 60L * 1000L
+        } else {
+            to - graphWindowMs
+        }
+        return store.query(from, to, 900) ?: emptyList()
+    }
+
+    internal fun modernGraphRangeKey(): String {
+        return if (graphSessionMode) "session" else graphWindowMs.toString()
+    }
+
+    internal fun modernSetGraphRange(windowMs: Long, session: Boolean) {
+        graphSessionMode = session
+        if (!session) graphWindowMs = windowMs
+        saveSettings()
+        if (graphVisible) refreshGraph()
     }
 
     internal fun modernShowMonitor() = showMonitor()
@@ -292,6 +309,7 @@ open class MainActivity : ComponentActivity() {
         commandTopic!!.setText(value.commandTopic)
         ackTopic!!.setText(value.ackTopic)
         user!!.setText(value.username)
+        if (value.password.isNotBlank()) pass!!.setText(value.password)
         tls!!.setChecked(value.tls)
         autoConnect!!.setChecked(value.autoConnect)
         keepScreenOn!!.setChecked(value.keepScreenOn)

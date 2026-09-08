@@ -54,10 +54,14 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 internal enum class ModernRemotePage {
     MONITOR,
@@ -96,6 +100,7 @@ internal data class ModernRemoteSnapshot(
     val commandTopic: String,
     val ackTopic: String,
     val username: String,
+    val passwordConfigured: Boolean,
     val tls: Boolean,
     val autoConnect: Boolean,
     val keepScreenOn: Boolean,
@@ -108,6 +113,7 @@ internal data class ModernSettingsValues(
     val commandTopic: String,
     val ackTopic: String,
     val username: String,
+    val password: String,
     val tls: Boolean,
     val autoConnect: Boolean,
     val keepScreenOn: Boolean,
@@ -440,6 +446,8 @@ private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: 
     var setpoint by remember { mutableStateOf(true) }
     var probeK by remember { mutableStateOf(true) }
     var probeT by remember { mutableStateOf(true) }
+    var selectedPoint by remember { mutableStateOf("Коснитесь графика, чтобы увидеть точные значения.") }
+    val rangeKey = activity.modernGraphRangeKey()
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(Canvas).padding(padding),
         contentPadding = PaddingValues(16.dp),
@@ -456,10 +464,37 @@ private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: 
                 ) {
                     Text("Температура", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Text(s.graphSummary, color = Muted, fontSize = 12.sp)
+                    Row(
+                        Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        val ranges = listOf(
+                            "1ч" to (1L * 60L * 60L * 1000L to false),
+                            "3ч" to (3L * 60L * 60L * 1000L to false),
+                            "6ч" to (6L * 60L * 60L * 1000L to false),
+                            "12ч" to (12L * 60L * 60L * 1000L to false),
+                            "24ч" to (24L * 60L * 60L * 1000L to false),
+                            "Сеанс" to (0L to true),
+                        )
+                        ranges.forEach { (label, value) ->
+                            FilterChip(
+                                selected = rangeKey == if (value.second) "session" else value.first.toString(),
+                                onClick = {
+                                    activity.modernSetGraphRange(value.first, value.second)
+                                    selectedPoint = "Коснитесь графика, чтобы увидеть точные значения."
+                                },
+                                label = { Text(label) },
+                            )
+                        }
+                    }
                     AndroidView(
                         factory = {
                             TemperatureChartView(it).apply {
                                 setSeries(camera, setpoint, probeK, probeT)
+                                setOnSelectionListener { sample ->
+                                    selectedPoint = sample?.let(::modernPointText)
+                                        ?: "Коснитесь графика, чтобы увидеть точные значения."
+                                }
                             }
                         },
                         modifier = Modifier.fillMaxWidth().height(260.dp),
@@ -468,7 +503,7 @@ private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: 
                             view.setData(activity.modernGraphSamples())
                         },
                     )
-                    Text(s.graphPoint, color = Muted, fontSize = 12.sp)
+                    Text(selectedPoint.ifBlank { s.graphPoint }, color = Muted, fontSize = 12.sp)
                     Row(
                         Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -531,6 +566,7 @@ private fun SettingsPage(activity: MainActivity, s: ModernRemoteSnapshot, paddin
     var commandTopic by rememberSaveable(s.commandTopic) { mutableStateOf(s.commandTopic) }
     var ackTopic by rememberSaveable(s.ackTopic) { mutableStateOf(s.ackTopic) }
     var username by rememberSaveable(s.username) { mutableStateOf(s.username) }
+    var password by rememberSaveable { mutableStateOf("") }
     var tls by rememberSaveable(s.tls) { mutableStateOf(s.tls) }
     var autoConnect by rememberSaveable(s.autoConnect) { mutableStateOf(s.autoConnect) }
     var keepScreenOn by rememberSaveable(s.keepScreenOn) { mutableStateOf(s.keepScreenOn) }
@@ -572,6 +608,17 @@ private fun SettingsPage(activity: MainActivity, s: ModernRemoteSnapshot, paddin
                             singleLine = true,
                         )
                     }
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Пароль") },
+                        supportingText = {
+                            if (s.passwordConfigured && password.isBlank()) Text("Пароль сохранён; оставьте поле пустым, чтобы сохранить его")
+                        },
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                    )
                     SettingSwitch("TLS", tls) { tls = it }
                     SettingSwitch("Подключаться автоматически", autoConnect) { autoConnect = it }
                     SettingSwitch("Не выключать экран", keepScreenOn) { keepScreenOn = it }
@@ -624,6 +671,7 @@ private fun SettingsPage(activity: MainActivity, s: ModernRemoteSnapshot, paddin
                                 commandTopic,
                                 ackTopic,
                                 username,
+                                password,
                                 tls,
                                 autoConnect,
                                 keepScreenOn,
@@ -665,4 +713,25 @@ private fun StatusPill(text: String, color: Color) {
             modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
         )
     }
+}
+
+private fun modernPointText(sample: TelemetryHistoryStore.Sample): String {
+    val time = SimpleDateFormat("dd.MM HH:mm:ss", Locale.getDefault()).format(Date(sample.ts))
+    return buildString {
+        append(time)
+        append("\nКамера ")
+        append(modernValue(sample.camera, " °C"))
+        append(" · Уставка ")
+        append(modernValue(sample.setpoint, " °C"))
+        append("\nЩуп K ")
+        append(modernValue(sample.probeK, " °C"))
+        append(" · Щуп T ")
+        append(modernValue(sample.probeT, " °C"))
+        append(" · ТЭН ")
+        append(modernValue(sample.heater, " %"))
+    }
+}
+
+private fun modernValue(value: Double, suffix: String): String {
+    return if (value.isNaN()) "—" else String.format(Locale.getDefault(), "%.1f%s", value, suffix)
 }
