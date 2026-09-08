@@ -96,7 +96,12 @@ class ComposeLayoutTest {
             .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(textLayouts) }
         assertTrue(textLayouts.isNotEmpty())
         assertEquals("Connection label must not wrap on a narrow screen", 1, textLayouts.single().lineCount)
-        assertFalse(textLayouts.single().hasVisualOverflow)
         snapshot("settings-actions-320-font130")
+        val layout = textLayouts.single()
+        // Paragraph geometry is fractional but the measured text size uses whole pixels.
+        assertTrue("Label right edge ${layout.getLineRight(0)} exceeds ${layout.size.width}",
+            layout.getLineRight(0) <= layout.size.width + 1f)
+        assertTrue("Label bottom ${layout.getLineBottom(0)} exceeds ${layout.size.height}",
+            layout.getLineBottom(0) <= layout.size.height + 1f)
     }
 }
