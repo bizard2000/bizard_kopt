@@ -118,7 +118,7 @@ internal object ModernComposeOverlay {
         val compose =
             ComposeView(activity).apply {
                 setViewCompositionStrategy(
-                    ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
+                    ViewCompositionStrategy.DisposeOnDetachedFromWindowOrReleasedFromPool
                 )
                 setContent { ModernRemoteApp(activity) }
             }
