@@ -10,6 +10,8 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.text.TextLayoutResult
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -88,7 +90,13 @@ class ComposeLayoutTest {
         compose.onNodeWithText("Показать").assertIsDisplayed()
         snapshot("settings-320-font130")
         compose.onNodeWithText("Сохранить").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Подключить").assertIsDisplayed()
+        compose.onNodeWithText("Подключить").performScrollTo().assertIsDisplayed()
+        val textLayouts = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText("Подключить", useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(textLayouts) }
+        assertTrue(textLayouts.isNotEmpty())
+        assertEquals("Connection label must not wrap on a narrow screen", 1, textLayouts.single().lineCount)
+        assertFalse(textLayouts.single().hasVisualOverflow)
         snapshot("settings-actions-320-font130")
     }
 }

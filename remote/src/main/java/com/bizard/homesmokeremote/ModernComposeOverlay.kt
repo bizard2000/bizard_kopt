@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -491,7 +493,7 @@ private fun AutoCard(s: ModernRemoteSnapshot) {
                 Spacer(Modifier.width(8.dp))
                 Text(s.autoProgram, color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }
-            Text(s.autoStage, color = Muted, fontSize = 12.sp)
+            if (s.autoStage != "—") Text(s.autoStage, color = Muted, fontSize = 12.sp)
             Text(
                 s.autoStatus,
                 color = if (s.autoStatus.contains("актив", true)) Green else Muted,
@@ -756,51 +758,21 @@ private fun SettingsPage(activity: MainActivity, s: ModernRemoteSnapshot, paddin
             }
         }
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = {
-                        activity.modernSaveSettings(
-                            ModernSettingsValues(
-                                broker,
-                                port,
-                                statusTopic,
-                                commandTopic,
-                                ackTopic,
-                                username,
-                                password,
-                                tls,
-                                autoConnect,
-                                keepScreenOn,
-                            )
-                        )
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = Blue),
-                ) {
-                    Text("Сохранить")
-                }
-                OutlinedButton(onClick = {
-                        activity.modernSaveSettings(
-                            ModernSettingsValues(
-                                broker,
-                                port,
-                                statusTopic,
-                                commandTopic,
-                                ackTopic,
-                                username,
-                                password,
-                                tls,
-                                autoConnect,
-                                keepScreenOn,
-                            ), connect = true
-                        )
-                }, modifier = Modifier.weight(1f)) {
-                    Text("Подключить")
-                }
-            }
-            TextButton(onClick = activity::modernDisconnect, modifier = Modifier.fillMaxWidth()) {
-                Text("Отключить MQTT", color = Red)
-            }
+            SettingsActions(
+                onSave = {
+                    activity.modernSaveSettings(ModernSettingsValues(
+                        broker, port, statusTopic, commandTopic, ackTopic,
+                        username, password, tls, autoConnect, keepScreenOn,
+                    ))
+                },
+                onConnect = {
+                    activity.modernSaveSettings(ModernSettingsValues(
+                        broker, port, statusTopic, commandTopic, ackTopic,
+                        username, password, tls, autoConnect, keepScreenOn,
+                    ), connect = true)
+                },
+                onDisconnect = activity::modernDisconnect,
+            )
         }
         item {
             Card(
@@ -871,6 +843,27 @@ private fun SettingsPage(activity: MainActivity, s: ModernRemoteSnapshot, paddin
             }
         }
 
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun SettingsActions(onSave: () -> Unit, onConnect: () -> Unit, onDisconnect: () -> Unit) {
+    val fontScale = LocalDensity.current.fontScale
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        if (maxWidth < 320.dp || fontScale > 1.15f) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) { Text("Сохранить") }
+                OutlinedButton(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text("Подключить") }
+            }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onSave, modifier = Modifier.weight(1f)) { Text("Сохранить") }
+                OutlinedButton(onClick = onConnect, modifier = Modifier.weight(1f)) { Text("Подключить") }
+            }
+        }
+    }
+    TextButton(onClick = onDisconnect, modifier = Modifier.fillMaxWidth()) {
+        Text("Отключить MQTT", color = Red)
     }
 }
 
