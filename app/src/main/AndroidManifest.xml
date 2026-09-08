@@ -17,9 +17,22 @@
         android:label="Домашняя коптильня"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
+        <provider
+            android:name=".FieldTestLifecycleProvider"
+            android:authorities="${applicationId}.fieldtest.lifecycle"
+            android:exported="false" />
         <activity
             android:name=".ModernHomeSmokeActivity"
             android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".FieldTestActivity"
+            android:exported="true"
+            android:label="HomeSmoke · Полевой тест">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
