@@ -250,17 +250,23 @@ open class MainActivity : ComponentActivity() {
             ackController = textOf(ackController),
             lastUpdate = textOf(lastUpdate),
             controlAvailability = textOf(controlAvailability),
+            controlEnabled = setButton?.isEnabled == true,
+            graphRangeKey = modernGraphRangeKey(),
+            graphCamera = graphCamera?.isChecked != false,
+            graphSetpoint = graphSetpoint?.isChecked != false,
+            graphK = graphK?.isChecked != false,
+            graphT = graphT?.isChecked != false,
             graphSummary = textOf(graphSummary),
             graphPoint = textOf(graphPointInfo),
             testRunning = modernBooleanField("testRunning"),
             testScenario = modernScenarioField(),
             testScenarioIndex = modernScenarioIndex(),
-            broker = textOf(broker),
-            port = textOf(port),
-            statusTopic = textOf(statusTopic),
-            commandTopic = textOf(commandTopic),
-            ackTopic = textOf(ackTopic),
-            username = textOf(user),
+            broker = broker?.text?.toString().orEmpty(),
+            port = port?.text?.toString().orEmpty(),
+            statusTopic = statusTopic?.text?.toString().orEmpty(),
+            commandTopic = commandTopic?.text?.toString().orEmpty(),
+            ackTopic = ackTopic?.text?.toString().orEmpty(),
+            username = user?.text?.toString().orEmpty(),
             passwordConfigured = secrets?.get()?.isNotBlank() == true,
             tls = tls != null && tls!!.isChecked(),
             autoConnect = autoConnect != null && autoConnect!!.isChecked(),
@@ -297,6 +303,21 @@ open class MainActivity : ComponentActivity() {
     internal fun modernShowMonitor() = showMonitor()
     internal fun modernShowGraph() = showGraph()
     internal fun modernShowSettings() = showSettings()
+    internal fun modernShowHistory() {
+        startActivity(Intent(this, HistoryActivity::class.java))
+    }
+    internal fun modernVersion(): String {
+        val info = packageManager.getPackageInfo(packageName, 0)
+        @Suppress("DEPRECATION")
+        return "${info.versionName} · сборка ${info.versionCode}"
+    }
+    internal fun modernSetGraphSeries(camera: Boolean, setpoint: Boolean, k: Boolean, t: Boolean) {
+        graphCamera?.isChecked = camera
+        graphSetpoint?.isChecked = setpoint
+        graphK?.isChecked = k
+        graphT?.isChecked = t
+        saveSettings()
+    }
     internal fun modernConnect() {
         wantConnection = true
         connectMqtt(true)
@@ -340,7 +361,7 @@ open class MainActivity : ComponentActivity() {
             // The compact UI remains usable when the optional test controller is unavailable.
         }
     }
-    internal fun modernSaveSettings(value: ModernSettingsValues) {
+    internal fun modernSaveSettings(value: ModernSettingsValues, connect: Boolean = false) {
         broker!!.setText(value.broker)
         port!!.setText(value.port)
         statusTopic!!.setText(value.statusTopic)
@@ -353,7 +374,7 @@ open class MainActivity : ComponentActivity() {
         keepScreenOn!!.setChecked(value.keepScreenOn)
         saveSettings()
         applyUiPreferences()
-        if (value.autoConnect && value.broker.isNotBlank()) modernConnect()
+        if (connect && value.broker.isNotBlank()) modernConnect()
     }
 
     private fun modernInvokeGraph(name: String, vararg args: Any) {

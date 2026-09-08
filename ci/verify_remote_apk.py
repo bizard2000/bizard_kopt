@@ -7,6 +7,7 @@ import re
 import subprocess
 import sys
 import zipfile
+from remote_version import read_version
 
 apk = Path(sys.argv[1])
 sdk = Path(os.environ.get('ANDROID_HOME') or os.environ['ANDROID_SDK_ROOT'])
@@ -15,7 +16,8 @@ def run(*args):
     return subprocess.check_output([str(a) for a in args], text=True)
 
 badging = run(build_tools / 'aapt', 'dump', 'badging', apk)
-for expected in ["name='com.bizard.homesmokeremote'", "versionCode='35'", "versionName='2.3.0'", "sdkVersion:'23'", "targetSdkVersion:'35'"]:
+version_name, version_code = read_version()
+for expected in ["name='com.bizard.homesmokeremote'", f"versionCode='{version_code}'", f"versionName='{version_name}'", "sdkVersion:'23'", "targetSdkVersion:'35'"]:
     assert expected in badging, f'Missing APK metadata: {expected}'
 xmltree = run(build_tools / 'aapt', 'dump', 'xmltree', apk, 'AndroidManifest.xml')
 assert 'activity-alias' in xmltree and 'com.bizard.homesmokeremote.GraphUxActivity' in xmltree
@@ -33,5 +35,5 @@ with zipfile.ZipFile(apk) as archive:
     assert b'Lkotlin/Metadata;' in dex, 'Kotlin metadata missing from DEX'
     for name in ['MainActivity', 'GraphUxActivity', 'GraphUxFixActivity', 'HistoryActivity', 'SessionDetailActivity', 'SystemStatusActivity', 'RemoteApplication', 'MqttClient', 'SecretStore', 'TelemetryHistoryStore', 'OperationalHistoryStore', 'SessionAnalytics', 'TemperatureChartView']:
         assert f'Lcom/bizard/homesmokeremote/{name};'.encode() in dex, f'Missing DEX class: {name}'
-print(f'Remote 2.1.4 APK verified: Android 6+, package, launcher, Kotlin classes, ZIP and stable signing certificate; {apk.stat().st_size} bytes')
+print(f'Remote {version_name} ({version_code}) APK verified: Android 6+, package, launcher, Kotlin classes, ZIP and stable signing certificate; {apk.stat().st_size} bytes')
 print('SHA-256:', hashlib.sha256(apk.read_bytes()).hexdigest())

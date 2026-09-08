@@ -22,6 +22,35 @@ import org.robolectric.annotation.LooperMode
 @Config(sdk = [23, 35])
 @LooperMode(LooperMode.Mode.PAUSED)
 class KotlinMigrationTest {
+    @Test
+    fun composeBridgePreservesEmptyCredentialsGraphPreferencesAndHistoryRoute() {
+        val context = RuntimeEnvironment.getApplication()
+        context.getSharedPreferences("homesmoke_remote", Context.MODE_PRIVATE)
+            .edit().clear().putBoolean("auto_connect", false).apply()
+        val controller = Robolectric.buildActivity(GraphUxFixActivity::class.java).setup()
+        val activity = controller.get()
+        try {
+            val initial = activity.modernSnapshot()
+            assertEquals("", initial.broker)
+            assertEquals("", initial.username)
+            assertFalse(initial.controlEnabled)
+            activity.modernSaveSettings(ModernSettingsValues(
+                "", "1883", initial.statusTopic, initial.commandTopic, initial.ackTopic,
+                "", "", false, false, false,
+            ))
+            assertEquals("", activity.modernSnapshot().username)
+            activity.modernSetGraphSeries(false, true, false, true)
+            activity.modernSetGraphRange(3_600_000, false)
+            assertFalse(activity.modernSnapshot().graphCamera)
+            assertFalse(activity.modernSnapshot().graphK)
+            assertEquals("3600000", activity.modernSnapshot().graphRangeKey)
+            activity.modernShowHistory()
+            assertEquals(HistoryActivity::class.java.name, shadowOf(activity).nextStartedActivity.component!!.className)
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
     private fun call(activity: Activity, owner: Class<*>, name: String) {
         owner.getDeclaredMethod(name).apply { isAccessible = true }.invoke(activity)
     }
