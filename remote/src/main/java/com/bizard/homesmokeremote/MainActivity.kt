@@ -243,12 +243,17 @@ open class MainActivity : ComponentActivity() {
             autoStatus = textOf(autoStatus),
             lastCommand = textOf(lastCommand),
             commandState = textOf(commandState),
+            commandHistory = textOf(commandHistory),
+            ackRemote = textOf(ackRemote),
+            ackHome = textOf(ackHome),
+            ackController = textOf(ackController),
             lastUpdate = textOf(lastUpdate),
             controlAvailability = textOf(controlAvailability),
             graphSummary = textOf(graphSummary),
             graphPoint = textOf(graphPointInfo),
             testRunning = modernBooleanField("testRunning"),
             testScenario = modernScenarioField(),
+            testScenarioIndex = modernScenarioIndex(),
             broker = textOf(broker),
             port = textOf(port),
             statusTopic = textOf(statusTopic),
@@ -259,6 +264,7 @@ open class MainActivity : ComponentActivity() {
             tls = tls != null && tls!!.isChecked(),
             autoConnect = autoConnect != null && autoConnect!!.isChecked(),
             keepScreenOn = keepScreenOn != null && keepScreenOn!!.isChecked(),
+            technicalData = showTechnical != null && showTechnical!!.isChecked(),
         )
     }
 
@@ -302,6 +308,28 @@ open class MainActivity : ComponentActivity() {
     internal fun modernStop() = confirmStop()
     internal fun modernStartTest() = modernInvokeGraph("startTestScenario")
     internal fun modernStopTest() = modernInvokeGraph("stopTestScenario", true)
+    internal fun modernSetTechnical(enabled: Boolean) {
+        showTechnical?.setChecked(enabled)
+        applyUiPreferences()
+        saveSettings()
+    }
+    internal fun modernSetTestScenario(index: Int) {
+        try {
+            val bounded = index.coerceIn(0, 5)
+            val indexField = GraphUxActivity::class.java.getDeclaredField("testScenarioIndex")
+            indexField.isAccessible = true
+            indexField.setInt(this, bounded)
+            val spinnerField = GraphUxActivity::class.java.getDeclaredField("testScenarioSpinner")
+            spinnerField.isAccessible = true
+            (spinnerField.get(this) as? android.widget.Spinner)?.setSelection(bounded)
+            getSharedPreferences("homesmoke_remote", Context.MODE_PRIVATE)
+                .edit()
+                .putInt("test_scenario", bounded)
+                .apply()
+        } catch (_: Exception) {
+            // The compact UI remains usable when the optional test controller is unavailable.
+        }
+    }
     internal fun modernSaveSettings(value: ModernSettingsValues) {
         broker!!.setText(value.broker)
         port!!.setText(value.port)
@@ -345,6 +373,14 @@ open class MainActivity : ComponentActivity() {
             val scenarios = arrayOf("Полный цикл", "Нагрев камеры", "Стабилизация PID", "Auto-программа", "Щуп достигает цели", "Потеря связи")
             scenarios[index.coerceIn(scenarios.indices)]
         } catch (_: Exception) { "Полный цикл" }
+    }
+
+    private fun modernScenarioIndex(): Int {
+        return try {
+            val indexField = GraphUxActivity::class.java.getDeclaredField("testScenarioIndex")
+            indexField.isAccessible = true
+            indexField.getInt(this).coerceIn(0, 5)
+        } catch (_: Exception) { 0 }
     }
 
     private fun textOf(view: TextView?): String = view?.text?.toString()?.trim().orEmpty().ifBlank { "—" }

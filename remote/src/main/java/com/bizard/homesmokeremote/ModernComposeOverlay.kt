@@ -25,6 +25,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -88,12 +90,17 @@ internal data class ModernRemoteSnapshot(
     val autoStatus: String,
     val lastCommand: String,
     val commandState: String,
+    val commandHistory: String,
+    val ackRemote: String,
+    val ackHome: String,
+    val ackController: String,
     val lastUpdate: String,
     val controlAvailability: String,
     val graphSummary: String,
     val graphPoint: String,
     val testRunning: Boolean,
     val testScenario: String,
+    val testScenarioIndex: Int,
     val broker: String,
     val port: String,
     val statusTopic: String,
@@ -104,6 +111,7 @@ internal data class ModernRemoteSnapshot(
     val tls: Boolean,
     val autoConnect: Boolean,
     val keepScreenOn: Boolean,
+    val technicalData: Boolean,
 )
 
 internal data class ModernSettingsValues(
@@ -257,39 +265,40 @@ private fun ModernNavigation(
 @androidx.compose.runtime.Composable
 private fun MonitorPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: PaddingValues) {
     var setpoint by rememberSaveable { mutableStateOf("") }
+    var technicalExpanded by rememberSaveable { mutableStateOf(false) }
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(Canvas).padding(padding),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         item { ConnectionCard(s) }
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = Navy),
-                shape = RoundedCornerShape(26.dp),
+                shape = RoundedCornerShape(16.dp),
             ) {
-                Column(Modifier.fillMaxWidth().padding(22.dp)) {
-                    Text("Камера", color = Color(0xFFB7C8D8), fontSize = 14.sp)
+                Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp)) {
+                    Text("Камера", color = Color(0xFFB7C8D8), fontSize = 12.sp)
                     Text(
                         s.camera,
                         color = Color.White,
-                        fontSize = 48.sp,
+                        fontSize = 38.sp,
                         fontWeight = FontWeight.Bold,
                     )
-                    Text(s.cameraSummary, color = Color(0xFF8ED0FF), fontSize = 14.sp)
-                    Spacer(Modifier.height(6.dp))
+                    Text(s.cameraSummary, color = Color(0xFF8ED0FF), fontSize = 12.sp)
+                    Spacer(Modifier.height(2.dp))
                     Text(s.trend, color = Color(0xFFB7C8D8), fontSize = 12.sp)
                 }
             }
         }
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 MetricCard("Щуп K", s.probeK, Modifier.weight(1f))
                 MetricCard("Щуп T", s.probeT, Modifier.weight(1f))
             }
         }
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 MetricCard("ТЭН", s.heater, Modifier.weight(1f), Amber)
                 MetricCard("Режим", s.mode, Modifier.weight(1f), Blue)
             }
@@ -297,21 +306,21 @@ private fun MonitorPage(activity: MainActivity, s: ModernRemoteSnapshot, padding
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = Card),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(14.dp),
             ) {
                 Column(
-                    Modifier.fillMaxWidth().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    Modifier.fillMaxWidth().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp),
                 ) {
                     Text(
                         "Управление нагревом",
                         color = Ink,
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                     )
-                    Text(s.controlAvailability, color = Muted, fontSize = 12.sp)
+                    Text(s.controlAvailability, color = Muted, fontSize = 11.sp)
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         OutlinedTextField(
@@ -329,15 +338,16 @@ private fun MonitorPage(activity: MainActivity, s: ModernRemoteSnapshot, padding
                             enabled = setpoint.isNotBlank(),
                             colors = ButtonDefaults.buttonColors(containerColor = Blue),
                         ) {
-                            Text("Применить")
+                            Text("Применить", fontSize = 12.sp)
                         }
                     }
                     Button(
                         onClick = activity::modernStop,
                         modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(vertical = 8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Red),
                     ) {
-                        Text("STOP · выключить нагрев")
+                        Text("STOP · выключить нагрев", fontSize = 12.sp)
                     }
                 }
             }
@@ -345,20 +355,30 @@ private fun MonitorPage(activity: MainActivity, s: ModernRemoteSnapshot, padding
         item { AutoCard(s) }
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Card),
-                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF0F6)),
+                shape = RoundedCornerShape(14.dp),
             ) {
-                Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text("Последняя команда", color = Muted, fontSize = 12.sp)
-                    Text(
-                        s.lastCommand,
-                        color = Ink,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(s.commandState, color = Muted, fontSize = 12.sp)
-                    HorizontalDivider(Modifier.padding(vertical = 10.dp), color = Color(0xFFE4EAF1))
-                    Text(s.lastUpdate, color = Muted, fontSize = 12.sp)
+                Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Диагностика и команды", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            Text(s.commandState, color = Muted, fontSize = 11.sp, maxLines = 1)
+                        }
+                        TextButton(onClick = { technicalExpanded = !technicalExpanded }) {
+                            Text(if (technicalExpanded) "Скрыть" else "Подробно", fontSize = 12.sp)
+                        }
+                    }
+                    if (technicalExpanded) {
+                        AckFlow(s)
+                        HorizontalDivider(Modifier.padding(vertical = 5.dp), color = Color(0xFFD7E0E9))
+                        Text("Последняя команда контроллера", color = Muted, fontSize = 11.sp)
+                        Text(s.lastCommand, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text("История Remote", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 5.dp))
+                        Text(s.commandHistory, color = Ink, fontSize = 11.sp, maxLines = 4)
+                        Text(s.lastUpdate, color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 5.dp))
+                    } else {
+                        Text("Последняя команда: ${s.lastCommand}", color = Muted, fontSize = 11.sp, maxLines = 1)
+                    }
                 }
             }
         }
@@ -369,16 +389,16 @@ private fun MonitorPage(activity: MainActivity, s: ModernRemoteSnapshot, padding
 private fun ConnectionCard(s: ModernRemoteSnapshot) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Card),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(14.dp),
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Связь", color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text(s.brokerDetail, color = Muted, fontSize = 12.sp)
+                    Text("Связь", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(s.brokerDetail, color = Muted, fontSize = 11.sp, maxLines = 1)
                 }
                 StatusPill(
                     if (s.mqttConnected) "ПОДКЛЮЧЕНО" else "ОФЛАЙН",
@@ -387,14 +407,14 @@ private fun ConnectionCard(s: ModernRemoteSnapshot) {
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    Modifier.size(10.dp)
+                    Modifier.size(8.dp)
                         .background(
                             if (s.deviceState.contains("онлайн", true)) Green else Amber,
                             CircleShape,
                         )
                 )
-                Spacer(Modifier.width(8.dp))
-                Text(s.deviceDetail, color = Muted, fontSize = 13.sp)
+                Spacer(Modifier.width(6.dp))
+                Text(s.deviceDetail, color = Muted, fontSize = 11.sp, maxLines = 1)
             }
         }
     }
@@ -405,12 +425,12 @@ private fun MetricCard(title: String, value: String, modifier: Modifier, accent:
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = Card),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(12.dp),
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(title, color = Muted, fontSize = 12.sp)
-            Spacer(Modifier.height(5.dp))
-            Text(value, color = accent, fontSize = 21.sp, fontWeight = FontWeight.Bold)
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 9.dp)) {
+            Text(title, color = Muted, fontSize = 11.sp)
+            Spacer(Modifier.height(2.dp))
+            Text(value, color = accent, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         }
     }
 }
@@ -419,24 +439,43 @@ private fun MetricCard(title: String, value: String, modifier: Modifier, accent:
 private fun AutoCard(s: ModernRemoteSnapshot) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF4FF)),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(14.dp),
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(16.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("AUTO", color = Blue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.width(8.dp))
-                Text(s.autoProgram, color = Ink, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text(s.autoProgram, color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             }
-            Text(s.autoStage, color = Muted, fontSize = 13.sp)
+            Text(s.autoStage, color = Muted, fontSize = 11.sp, maxLines = 1)
             Text(
                 s.autoStatus,
                 color = if (s.autoStatus.contains("актив", true)) Green else Muted,
-                fontSize = 13.sp,
+                fontSize = 11.sp,
+                maxLines = 1,
             )
         }
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun AckFlow(s: ModernRemoteSnapshot) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        AckPill(s.ackRemote, Modifier.weight(1f))
+        Text("›", color = Muted, modifier = Modifier.padding(horizontal = 3.dp))
+        AckPill(s.ackHome, Modifier.weight(1.2f))
+        Text("›", color = Muted, modifier = Modifier.padding(horizontal = 3.dp))
+        AckPill(s.ackController, Modifier.weight(1f))
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun AckPill(label: String, modifier: Modifier) {
+    Surface(modifier = modifier, shape = RoundedCornerShape(8.dp), color = Navy) {
+        Text(label, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.padding(horizontal = 4.dp, vertical = 5.dp))
     }
 }
 
@@ -447,26 +486,31 @@ private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: 
     var probeK by remember { mutableStateOf(true) }
     var probeT by remember { mutableStateOf(true) }
     var selectedPoint by remember { mutableStateOf("Коснитесь графика, чтобы увидеть точные значения.") }
+    var scenarioIndex by rememberSaveable(s.testScenarioIndex) { mutableStateOf(s.testScenarioIndex) }
+    var scenarioMenuExpanded by remember { mutableStateOf(false) }
+    val scenarios = listOf("Полный цикл", "Нагрев камеры", "Стабилизация PID", "Auto-программа", "Щуп достигает цели", "Потеря связи")
     val rangeKey = activity.modernGraphRangeKey()
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(Canvas).padding(padding),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = Card),
-                shape = RoundedCornerShape(22.dp),
+                shape = RoundedCornerShape(14.dp),
             ) {
                 Column(
-                    Modifier.fillMaxWidth().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    Modifier.fillMaxWidth().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp),
                 ) {
-                    Text("Температура", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text(s.graphSummary, color = Muted, fontSize = 12.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Температура", color = Ink, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Text(s.graphSummary, color = Muted, fontSize = 10.sp, maxLines = 1)
+                    }
                     Row(
                         Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
                     ) {
                         val ranges = listOf(
                             "1ч" to (1L * 60L * 60L * 1000L to false),
@@ -483,7 +527,8 @@ private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: 
                                     activity.modernSetGraphRange(value.first, value.second)
                                     selectedPoint = "Коснитесь графика, чтобы увидеть точные значения."
                                 },
-                                label = { Text(label) },
+                                modifier = Modifier.height(32.dp),
+                                label = { Text(label, fontSize = 11.sp) },
                             )
                         }
                     }
@@ -497,21 +542,21 @@ private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: 
                                 }
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().height(260.dp),
+                        modifier = Modifier.fillMaxWidth().height(220.dp),
                         update = { view ->
                             view.setSeries(camera, setpoint, probeK, probeT)
                             view.setData(activity.modernGraphSamples())
                         },
                     )
-                    Text(selectedPoint.ifBlank { s.graphPoint }, color = Muted, fontSize = 12.sp)
+                    Text(selectedPoint.ifBlank { s.graphPoint }, color = Muted, fontSize = 11.sp)
                     Row(
                         Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
                     ) {
-                        FilterChip(camera, { camera = !camera }, label = { Text("Камера") })
-                        FilterChip(setpoint, { setpoint = !setpoint }, label = { Text("Уставка") })
-                        FilterChip(probeK, { probeK = !probeK }, label = { Text("K") })
-                        FilterChip(probeT, { probeT = !probeT }, label = { Text("T") })
+                        FilterChip(camera, { camera = !camera }, modifier = Modifier.height(32.dp), label = { Text("Камера", fontSize = 11.sp) })
+                        FilterChip(setpoint, { setpoint = !setpoint }, modifier = Modifier.height(32.dp), label = { Text("Уставка", fontSize = 11.sp) })
+                        FilterChip(probeK, { probeK = !probeK }, modifier = Modifier.height(32.dp), label = { Text("K", fontSize = 11.sp) })
+                        FilterChip(probeT, { probeT = !probeT }, modifier = Modifier.height(32.dp), label = { Text("T", fontSize = 11.sp) })
                     }
                 }
             }
@@ -519,37 +564,57 @@ private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: 
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF6E8)),
-                shape = RoundedCornerShape(22.dp),
+                shape = RoundedCornerShape(14.dp),
             ) {
                 Column(
-                    Modifier.fillMaxWidth().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    Modifier.fillMaxWidth().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Text(
-                        "Полевой тест",
-                        color = Ink,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Text("Полевой тест", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     Text(
                         if (s.testRunning) "Тест выполняется · ${s.testScenario}"
                         else "Проверьте связь и телеметрию перед запуском",
                         color = Muted,
-                        fontSize = 13.sp,
+                        fontSize = 11.sp,
                     )
+                    Box {
+                        OutlinedButton(
+                            onClick = { scenarioMenuExpanded = true },
+                            enabled = !s.testRunning,
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        ) {
+                            Text(scenarios.getOrElse(scenarioIndex) { s.testScenario }, fontSize = 12.sp)
+                        }
+                        DropdownMenu(
+                            expanded = scenarioMenuExpanded,
+                            onDismissRequest = { scenarioMenuExpanded = false },
+                        ) {
+                            scenarios.forEachIndexed { index, name ->
+                                DropdownMenuItem(
+                                    text = { Text(name, fontSize = 12.sp) },
+                                    onClick = {
+                                        scenarioIndex = index
+                                        scenarioMenuExpanded = false
+                                        activity.modernSetTestScenario(index)
+                                    },
+                                )
+                            }
+                        }
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = activity::modernStartTest,
                             enabled = !s.testRunning,
                             colors = ButtonDefaults.buttonColors(containerColor = Blue),
                         ) {
-                            Text("Запустить")
+                            Text("Запустить", fontSize = 12.sp)
                         }
                         OutlinedButton(
                             onClick = activity::modernStopTest,
                             enabled = s.testRunning,
                         ) {
-                            Text("Остановить")
+                            Text("Остановить", fontSize = 12.sp)
                         }
                     }
                 }
@@ -570,21 +635,22 @@ private fun SettingsPage(activity: MainActivity, s: ModernRemoteSnapshot, paddin
     var tls by rememberSaveable(s.tls) { mutableStateOf(s.tls) }
     var autoConnect by rememberSaveable(s.autoConnect) { mutableStateOf(s.autoConnect) }
     var keepScreenOn by rememberSaveable(s.keepScreenOn) { mutableStateOf(s.keepScreenOn) }
+    var technicalData by rememberSaveable(s.technicalData) { mutableStateOf(s.technicalData) }
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(Canvas).padding(padding),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = Card),
-                shape = RoundedCornerShape(22.dp),
+                shape = RoundedCornerShape(14.dp),
             ) {
                 Column(
-                    Modifier.fillMaxWidth().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    Modifier.fillMaxWidth().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp),
                 ) {
-                    Text("Подключение", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text("Подключение", color = Ink, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                     OutlinedTextField(
                         broker,
                         { broker = it },
@@ -622,19 +688,23 @@ private fun SettingsPage(activity: MainActivity, s: ModernRemoteSnapshot, paddin
                     SettingSwitch("TLS", tls) { tls = it }
                     SettingSwitch("Подключаться автоматически", autoConnect) { autoConnect = it }
                     SettingSwitch("Не выключать экран", keepScreenOn) { keepScreenOn = it }
+                    SettingSwitch("Показывать технические данные", technicalData) {
+                        technicalData = it
+                        activity.modernSetTechnical(it)
+                    }
                 }
             }
         }
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = Card),
-                shape = RoundedCornerShape(22.dp),
+                shape = RoundedCornerShape(14.dp),
             ) {
                 Column(
-                    Modifier.fillMaxWidth().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    Modifier.fillMaxWidth().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp),
                 ) {
-                    Text("Топики MQTT", color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("Топики MQTT", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     OutlinedTextField(
                         statusTopic,
                         { statusTopic = it },
