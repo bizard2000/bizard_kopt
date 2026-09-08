@@ -1,9 +1,9 @@
 package com.bizard.homesmokeremote
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.view.ViewGroup
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -25,6 +25,7 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ComposeLayoutTest {
     @get:Rule val compose = createAndroidComposeRule<GraphUxFixActivity>()
+    private lateinit var renderedView: ComposeView
 
     private fun start(fontScale: Float = 1f) {
         compose.runOnUiThread {
@@ -36,6 +37,7 @@ class ComposeLayoutTest {
                     }
                 }
             }
+            renderedView = view
             compose.activity.addContentView(view, ViewGroup.LayoutParams(-1, -1))
         }
         compose.waitForIdle()
@@ -44,8 +46,12 @@ class ComposeLayoutTest {
     private fun snapshot(name: String) {
         val target = File("build/compose-screens/$name.png")
         target.parentFile!!.mkdirs()
-        target.outputStream().use {
-            compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
+        // Robolectric has no hardware window redraw callback for PixelCopy.
+        // Draw the measured, attached ComposeView through its native Canvas instead.
+        compose.runOnIdle {
+            val bitmap = Bitmap.createBitmap(renderedView.width, renderedView.height, Bitmap.Config.ARGB_8888)
+            renderedView.draw(Canvas(bitmap))
+            target.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         }
     }
 
