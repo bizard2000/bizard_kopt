@@ -23,9 +23,16 @@ if __name__ == "__main__":
         ["git", "diff", "--name-only", "HEAD^", "HEAD", "--", "remote/src/main", "remote/build.gradle"],
         text=True,
     ).strip()
+    published = subprocess.run(
+        ["git", "cat-file", "-e", f"HEAD^:dist/HomeSmoke_Remote_{previous_name}_Android6plus.apk"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    ).returncode == 0
     if changed:
-        assert code > previous_code, "Remote changed: increment versionCode before publishing"
-        assert name != previous_name, "Remote changed: increment visible versionName before publishing"
+        # Failed, unpublished candidates can be repaired under the reserved version.
+        assert code >= previous_code, "Remote versionCode must never decrease"
+        if published:
+            assert code > previous_code, "Remote changed: increment versionCode before publishing"
+            assert name != previous_name, "Remote changed: increment visible versionName before publishing"
     print(f"HomeSmoke Remote {name} (build {code})")
     if os.environ.get("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a") as output:

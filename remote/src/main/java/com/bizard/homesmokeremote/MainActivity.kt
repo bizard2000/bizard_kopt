@@ -250,7 +250,7 @@ open class MainActivity : ComponentActivity() {
             ackController = textOf(ackController),
             lastUpdate = textOf(lastUpdate),
             controlAvailability = textOf(controlAvailability),
-            controlEnabled = setButton?.isEnabled == true,
+            controlEnabled = mqtt?.isConnected == true && isTelemetryFresh,
             graphRangeKey = modernGraphRangeKey(),
             graphCamera = graphCamera?.isChecked != false,
             graphSetpoint = graphSetpoint?.isChecked != false,

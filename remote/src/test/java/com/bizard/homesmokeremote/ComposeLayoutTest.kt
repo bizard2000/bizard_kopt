@@ -1,9 +1,12 @@
 package com.bizard.homesmokeremote
 
 import android.graphics.Bitmap
+import android.view.ViewGroup
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.Density
@@ -24,10 +27,16 @@ class ComposeLayoutTest {
     @get:Rule val compose = createAndroidComposeRule<GraphUxFixActivity>()
 
     private fun start(fontScale: Float = 1f) {
-        compose.setContent {
-            CompositionLocalProvider(LocalDensity provides Density(1f, fontScale)) {
-                ModernRemoteApp(compose.activity)
+        compose.runOnUiThread {
+            val view = ComposeView(compose.activity).apply {
+                setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+                setContent {
+                    CompositionLocalProvider(LocalDensity provides Density(1f, fontScale)) {
+                        ModernRemoteApp(compose.activity)
+                    }
+                }
             }
+            compose.activity.addContentView(view, ViewGroup.LayoutParams(-1, -1))
         }
         compose.waitForIdle()
     }
