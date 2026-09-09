@@ -362,30 +362,32 @@ private fun ModernNavigation(
     onSettings: () -> Unit,
     onHistory: () -> Unit,
 ) {
+    val fontScale = LocalDensity.current.fontScale
+    val labelStyle = TextStyle(fontSize = if (fontScale > 1.15f) 10.sp else 12.sp)
     NavigationBar(containerColor = Card) {
         NavigationBarItem(
             page == ModernRemotePage.MONITOR,
             onMonitor,
             icon = { Icon(Icons.Default.Home, contentDescription = null) },
-            label = { Text("Монитор") },
+            label = { Text("Монитор", style = labelStyle, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
         )
         NavigationBarItem(
             page == ModernRemotePage.GRAPH,
             onGraph,
             icon = { Icon(androidx.compose.ui.res.painterResource(R.drawable.ic_chart), contentDescription = null) },
-            label = { Text("График") },
+            label = { Text("График", style = labelStyle, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
         )
         NavigationBarItem(
             page == ModernRemotePage.SETTINGS,
             onSettings,
             icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-            label = { Text("Настройки") },
+            label = { Text("Настройки", style = labelStyle, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
         )
         NavigationBarItem(
             false,
             onHistory,
             icon = { Icon(Icons.Default.List, contentDescription = null) },
-            label = { Text("История") },
+            label = { Text("История", style = labelStyle, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
         )
     }
 }

@@ -93,6 +93,12 @@ class ComposeLayoutTest {
         compose.onNodeWithText("MQTT-брокер").assertIsDisplayed()
         compose.onNodeWithText("1883").assertIsDisplayed()
         compose.onNodeWithText("Показать").assertIsDisplayed()
+        val settingsLabels = compose.onAllNodesWithText("Настройки", useUnmergedTree = true)
+        settingsLabels.assertCountEquals(2)
+        val navigationLayout = mutableListOf<TextLayoutResult>()
+        settingsLabels[1].performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(navigationLayout) }
+        assertTrue(navigationLayout.isNotEmpty())
+        assertEquals("Bottom navigation label must stay on one line", 1, navigationLayout.single().lineCount)
         snapshot("settings-320-font130")
         compose.onNodeWithText("Сохранить").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Подключить").performScrollTo().assertIsDisplayed()
