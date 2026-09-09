@@ -18,6 +18,11 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
         <provider
+            android:name=".HomeSmokeUiPolishProvider"
+            android:authorities="${applicationId}.ui.polish"
+            android:exported="false"
+            android:initOrder="50" />
+        <provider
             android:name=".FieldTestLifecycleProvider"
             android:authorities="${applicationId}.fieldtest.lifecycle"
             android:exported="false" />
