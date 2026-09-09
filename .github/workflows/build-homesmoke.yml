@@ -97,9 +97,9 @@ jobs:
           grep -q 'KEEPALIVE_TIMEOUT_MS' app/src/main/java/com/bizard/homesmokemqtt/MqttClient.java
           grep -q 'auto_library_json_v2_backup' app/src/main/java/com/bizard/homesmokemqtt/ProgramRepository.java
           grep -q 'expiresWithoutAnyTelemetry' app/src/test/java/com/bizard/homesmokemqtt/CommandAckManagerTest.java
-          grep -q 'Android 4 / Legacy is excluded' AUDIT_STABILIZATION_PLAN_2_6.md
-          test -f AUDIT_HOMESMOKE_2_6_12.md
-          test -f FIELD_TEST_HOMESMOKE_2_6_16.md
+          grep -q 'Android 4 / Legacy is excluded' docs/audits/AUDIT_STABILIZATION_PLAN_2_6.md
+          test -f docs/audits/AUDIT_HOMESMOKE_2_6_12.md
+          test -f docs/testing/FIELD_TEST_HOMESMOKE_2_6_16.md
           grep -E "minSdk|versionCode|versionName" app/build.gradle
 
       - name: Build HomeSmoke 2.6.16 Android 6+
@@ -125,8 +125,7 @@ jobs:
           grep -q 'ResponsiveConnectionFields' remote/src/main/java/com/bizard/homesmokeremote/ModernComposeOverlay.kt
           grep -q 'ResponsiveTestActions' remote/src/main/java/com/bizard/homesmokeremote/ModernComposeOverlay.kt
           grep -q 'narrowMonitorAndGraphActionsRemainUsable' remote/src/test/java/com/bizard/homesmokeremote/ComposeLayoutTest.kt
-          test ! -f ci/apply_remote_246.py
-          test ! -f ci/fix_remote_246_tests.py
+          test -f archive/ci-migrations/README.md
           test "$(find remote/src/main -name '*.java' | wc -l)" -eq 0
           test "$(find remote/src/main -name '*.kt' | wc -l)" -eq 15
           for cls in MainActivity GraphUxActivity GraphUxFixActivity HistoryActivity SessionDetailActivity SystemStatusActivity RemoteApplication RemoteTheme MqttClient SecretStore TelemetryHistoryStore OperationalHistoryStore SessionAnalytics TemperatureChartView; do
@@ -152,7 +151,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          cat core-test.log app-test.log remote-test.log app-build.log remote-build.log > dist/build.log
+          cat core-test.log app-test.log remote-test.log app-build.log remote-build.log > build.log
           rm -f dist/HomeSmoke_FULL_2.6.*_Android6plus.apk dist/HomeSmoke_FULL_2.6.*_Android6plus.bin
           rm -f dist/HomeSmoke_Remote_2.*_Android5plus.apk dist/HomeSmoke_Remote_2.*_Android5plus.bin
           # Keep previous Android 6+ Remote APKs available for comparison and rollback.
@@ -161,6 +160,7 @@ jobs:
           cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.16_Android6plus.bin
           cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_${{ steps.remote_version.outputs.name }}_Android6plus.apk
           cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_${{ steps.remote_version.outputs.name }}_Android6plus.bin
+          (cd dist && sha256sum HomeSmoke_FULL_2.6.16_Android6plus.apk HomeSmoke_Remote_${{ steps.remote_version.outputs.name }}_Android6plus.apk > SHA256SUMS.txt)
           git config user.name "github-actions[bot]"
           git config user.email "4189826+github-actions[bot]@users.noreply.github.com"
           git add -A dist
@@ -175,6 +175,7 @@ jobs:
           path: |
             dist/HomeSmoke_FULL_2.6.16_Android6plus.apk
             dist/HomeSmoke_FULL_2.6.16_Android6plus.bin
+            dist/SHA256SUMS.txt
           if-no-files-found: error
 
       - name: Upload HomeSmoke Remote 2.4.6 Compose
@@ -184,6 +185,7 @@ jobs:
           path: |
             dist/HomeSmoke_Remote_${{ steps.remote_version.outputs.name }}_Android6plus.apk
             dist/HomeSmoke_Remote_${{ steps.remote_version.outputs.name }}_Android6plus.bin
+            dist/SHA256SUMS.txt
           if-no-files-found: error
 
       - name: Upload Remote test reports and rendered screens
@@ -195,4 +197,5 @@ jobs:
             remote/build/reports/tests/
             remote/build/test-results/
             remote/build/compose-screens/
+            build.log
           if-no-files-found: warn

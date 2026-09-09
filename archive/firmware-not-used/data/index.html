@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Умная коптильня - Панель управления</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="uPlot.min.css">
+    <!-- ИСПРАВЛЕНО: Удален дублирующий manifest -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" href="data:,">
+    <!-- Дополнительно: предотвращаем кэширование в режиме разработки -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+<body>
+    <!-- Боковая панель навигации -->
+    <nav id="sidebar">
+        <div class="logo">
+            <i class="fas fa-fire"></i>
+            <span>Умная коптильня</span>
+        </div>
+        <div class="nav-items">
+            <a href="#monitoring" class="nav-item active" data-section="monitoring">
+                <i class="fas fa-chart-line"></i>
+                <span>Мониторинг</span>
+            </a>
+            <a href="#programs" class="nav-item" data-section="programs">
+                <i class="fas fa-list-alt"></i>
+                <span>Программы</span>
+            </a>
+            <a href="#pid" class="nav-item" data-section="pid">
+                <i class="fas fa-sliders-h"></i>
+                <span>Настройка PID</span>
+            </a>
+            <a href="#network" class="nav-item" data-section="network">
+                <i class="fas fa-wifi"></i>
+                <span>Сеть</span>
+            </a>
+            <a href="#ota" class="nav-item" data-section="ota">
+                <i class="fas fa-upload"></i>
+                <span>Обновление</span>
+            </a>
+            <a href="#log" class="nav-item" data-section="log">
+                <i class="fas fa-history"></i>
+                <span>Журнал</span>
+            </a>
+        </div>
+        <div class="system-info">
+            <div class="wifi-status">
+                <i class="fas fa-wifi"></i>
+                <span id="wifi-rssi">-- dBm</span>
+            </div>
+            <div class="version">v1.0.0</div>
+        </div>
+    </nav>
+
+    <!-- Основное содержимое -->
+    <main id="main-content">
+        <!-- Шапка -->
+        <header id="header">
+            <div class="header-left">
+                <div class="status-indicator">
+                    <span class="status-label">СТАТУС:</span>
+                    <span id="process-status" class="status-value idle">ОЖИДАНИЕ</span>
+                </div>
+                <div class="header-controls">
+                    <button id="start-btn" class="btn btn-success">
+                        <i class="fas fa-play"></i> СТАРТ
+                    </button>
+                    <button id="pause-btn" class="btn btn-warning" disabled>
+                        <i class="fas fa-pause"></i> ПАУЗА
+                    </button>
+                    <button id="stop-btn" class="btn btn-danger" disabled>
+                        <i class="fas fa-stop"></i> СТОП
+                    </button>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="current-time" id="current-time">
+                    <i class="far fa-clock"></i> <span>--:--:--</span>
+                </div>
+                <div class="process-timer" id="process-timer">
+                    <i class="fas fa-hourglass-half"></i> <span>00:00:00</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Разделы (только активный показывается) -->
+        <section id="monitoring" class="section active">
+            <!-- Главные показатели -->
+            <div class="main-metrics">
+                <div class="metric-tile primary">
+                    <div class="metric-label">T° КАМЕРЫ</div>
+                    <div class="metric-value" id="temp-chamber">--.- °C</div>
+                    <div class="metric-target">Цель: <span id="temp-chamber-target">--.- °C</span></div>
+                    <div class="metric-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="chamber-progress"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="metric-tile">
+                    <div class="metric-label">T° ПРОДУКТА 1</div>
+                    <div class="metric-value" id="temp-product1">--.- °C</div>
+                    <div class="metric-target">Цель: <span id="temp-product1-target">--.- °C</span></div>
+                    <div class="metric-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="product1-progress"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="metric-tile">
+                    <div class="metric-label">ТАЙМЕР</div>
+                    <div class="metric-value" id="stage-timer">00:00:00</div>
+                    <div class="metric-target">Этап: <span id="current-stage">1/--</span></div>
+                    <div class="metric-info" id="stage-info">Сушка</div>
+                </div>
+            </div>
+
+            <!-- График и статус устройств -->
+            <div class="monitoring-bottom">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-chart-area"></i> График процесса</h3>
+                        <div class="chart-controls">
+                            <button class="btn-icon" id="zoom-in"><i class="fas fa-search-plus"></i></button>
+                            <button class="btn-icon" id="zoom-out"><i class="fas fa-search-minus"></i></button>
+                            <button class="btn-icon" id="reset-zoom"><i class="fas fa-expand-arrows-alt"></i></button>
+                        </div>
+                    </div>
+                    <div id="process-chart"></div>
+                    <div class="chart-legend" id="chart-legend"></div>
+                </div>
+                
+                <div class="devices-panel">
+                    <h3><i class="fas fa-cogs"></i> Исполнительные устройства</h3>
+                    <div class="devices-grid">
+                        <div class="device-card" data-device="heater">
+                            <div class="device-icon">
+                                <i class="fas fa-fire"></i>
+                            </div>
+                            <div class="device-info">
+                                <div class="device-name">ТЭН</div>
+                                <div class="device-status off">ВЫКЛ</div>
+                                <div class="device-details" id="heater-details">--</div>
+                            </div>
+                        </div>
+                        
+                        <div class="device-card" data-device="fan">
+                            <div class="device-icon">
+                                <i class="fas fa-fan"></i>
+                            </div>
+                            <div class="device-info">
+                                <div class="device-name">ВЕНТИЛЯТОР</div>
+                                <div class="device-status off">ВЫКЛ</div>
+                                <div class="device-details" id="fan-details">--</div>
+                            </div>
+                        </div>
+                        
+                        <div class="device-card" data-device="smoke_damper">
+                            <div class="device-icon">
+                                <i class="fas fa-smoking"></i>
+                            </div>
+                            <div class="device-info">
+                                <div class="device-name">ЗАСЛОНКА ДЫМА</div>
+                                <div class="device-status off">ЗАКРЫТА</div>
+                                <div class="device-details">--</div>
+                            </div>
+                        </div>
+                        
+                        <div class="device-card" data-device="vent_damper">
+                            <div class="device-icon">
+                                <i class="fas fa-wind"></i>
+                            </div>
+                            <div class="device-info">
+                                <div class="device-name">ЗАСЛОНКА ВЕНТ.</div>
+                                <div class="device-status off">ЗАКРЫТА</div>
+                                <div class="device-details">--</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="program-info">
+                        <h4><i class="fas fa-list-ol"></i> Текущая программа</h4>
+                        <div id="current-program">Не выбрана</div>
+                        <div id="next-stage-info">Следующий этап: --</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Раздел: Программы (скрыт по умолчанию) -->
+        <section id="programs" class="section">
+            <!-- ... полный редактор программ ... -->
+        </section>
+
+        <!-- Раздел: Настройка PID (скрыт по умолчанию) -->
+        <section id="pid" class="section">
+            <!-- ... форма настройки PID ... -->
+        </section>
+
+        <!-- Раздел: Сеть (скрыт по умолчанию) -->
+        <section id="network" class="section">
+            <!-- ... сетевые настройки ... -->
+        </section>
+
+        <!-- Раздел: Обновление (скрыт по умолчанию) -->
+        <section id="ota" class="section">
+            <!-- ... форма OTA ... -->
+        </section>
+
+        <!-- Раздел: Журнал (скрыт по умолчанию) -->
+        <section id="log" class="section">
+            <!-- ... таблица журнала ... -->
+        </section>
+    </main>
+
+    <!-- Service Worker Registration с улучшенной обработкой -->
+    <script>
+        // Отключаем Service Worker для локальной разработки, чтобы избежать проблем с кэшированием
+        if ('serviceWorker' in navigator && location.hostname !== 'localhost' && !location.hostname.startsWith('192.168.')) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker зарегистрирован: ', registration.scope);
+                        
+                        // Проверка обновлений
+                        registration.addEventListener('updatefound', function() {
+                            var newWorker = registration.installing;
+                            console.log('Обнаружено обновление ServiceWorker');
+                            
+                            newWorker.addEventListener('statechange', function() {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('Новая версия доступна. Перезагрузите страницу.');
+                                }
+                            });
+                        });
+                    })
+                    .catch(function(err) {
+                        console.log('Ошибка регистрации ServiceWorker: ', err);
+                    });
+                    
+                // Периодическая проверка обновлений
+                navigator.serviceWorker.addEventListener('controllerchange', function() {
+                    console.log('ServiceWorker обновился, перезагружаем страницу');
+                    window.location.reload();
+                });
+            });
+        } else {
+            console.log('ServiceWorker отключен для локальной разработки');
+        }
+    </script>
+
+    <!-- ИСПРАВЛЕНО: Порядок загрузки скриптов - сначала библиотека, затем основной код -->
+    <script src="uPlot.iife.min.js"></script>
+    <script src="app.js"></script>
+    
+    <!-- Дополнительный скрипт для принудительного обновления при обнаружении новой версии -->
+    <script>
+        // Принудительное обновление кэша при каждой загрузке в режиме разработки
+        if (location.hostname.startsWith('192.168.')) {
+            window.addEventListener('load', function() {
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        command: 'update'
+                    });
+                }
+            });
+        }
+    </script>
+</body>
+</html>
