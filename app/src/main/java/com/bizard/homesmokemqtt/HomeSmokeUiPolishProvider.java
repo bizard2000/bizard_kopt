@@ -18,7 +18,9 @@ import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 
 /**
@@ -33,6 +35,7 @@ public final class HomeSmokeUiPolishProvider extends ContentProvider {
     private static final int OLD_ORANGE = Color.rgb(239, 108, 0);
 
     private final Map<Activity, ViewTreeObserver.OnGlobalLayoutListener> listeners = new WeakHashMap<>();
+    private final Set<View> polished = Collections.newSetFromMap(new WeakHashMap<>());
 
     @Override
     public boolean onCreate() {
@@ -87,9 +90,11 @@ public final class HomeSmokeUiPolishProvider extends ContentProvider {
 
     private void polishTree(View view, HomeSmokeTheme.Palette palette) {
         if (view instanceof Spinner) {
-            polishSpinner((Spinner) view, palette);
+            Spinner spinner = (Spinner) view;
+            if (polished.add(view)) polishSpinnerGeometry(spinner, palette);
+            polishSpinnerSelection(spinner, palette);
         } else if (view instanceof ProgressBar) {
-            polishProgress((ProgressBar) view, palette);
+            if (polished.add(view)) polishProgress((ProgressBar) view, palette);
         } else if (view instanceof TextView) {
             repairVersionLabel((TextView) view);
         }
@@ -102,17 +107,18 @@ public final class HomeSmokeUiPolishProvider extends ContentProvider {
         }
     }
 
-    private void polishSpinner(Spinner spinner, HomeSmokeTheme.Palette palette) {
+    private void polishSpinnerGeometry(Spinner spinner, HomeSmokeTheme.Palette palette) {
         spinner.setBackground(roundStroke(palette.surfaceAlt, 12, palette.border, 1, spinner));
         spinner.setPopupBackgroundDrawable(round(palette.surface, 12, spinner));
         spinner.setPadding(dp(spinner, 12), 0, dp(spinner, 10), 0);
+    }
 
+    private void polishSpinnerSelection(Spinner spinner, HomeSmokeTheme.Palette palette) {
         View selected = spinner.getSelectedView();
         if (selected instanceof TextView) {
             TextView text = (TextView) selected;
-            text.setTextColor(palette.text);
-            text.setTextSize(15);
-            text.setPadding(dp(spinner, 4), 0, dp(spinner, 4), 0);
+            if (text.getCurrentTextColor() != palette.text) text.setTextColor(palette.text);
+            if (text.getTextSize() != dp(spinner, 15)) text.setTextSize(15);
         }
     }
 
