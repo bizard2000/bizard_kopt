@@ -103,8 +103,8 @@ jobs:
           grep -q "androidx.compose.material3:material3" remote/build.gradle
           test -f remote/src/main/java/com/bizard/homesmokeremote/ModernComposeOverlay.kt
           test "$(find remote/src/main -name '*.java' | wc -l)" -eq 0
-          test "$(find remote/src/main -name '*.kt' | wc -l)" -eq 14
-          for cls in MainActivity GraphUxActivity GraphUxFixActivity HistoryActivity SessionDetailActivity SystemStatusActivity RemoteApplication MqttClient SecretStore TelemetryHistoryStore OperationalHistoryStore SessionAnalytics TemperatureChartView; do
+          test "$(find remote/src/main -name '*.kt' | wc -l)" -eq 15
+          for cls in MainActivity GraphUxActivity GraphUxFixActivity HistoryActivity SessionDetailActivity SystemStatusActivity RemoteApplication RemoteTheme MqttClient SecretStore TelemetryHistoryStore OperationalHistoryStore SessionAnalytics TemperatureChartView; do
             test -f "remote/src/main/java/com/bizard/homesmokeremote/$cls.kt"
           done
           grep -E "minSdk|versionCode|versionName" remote/build.gradle
