@@ -115,10 +115,10 @@ public final class HomeSmokeUiPolishProvider extends ContentProvider {
 
     private void polishSpinnerSelection(Spinner spinner, HomeSmokeTheme.Palette palette) {
         View selected = spinner.getSelectedView();
-        if (selected instanceof TextView) {
+        if (selected instanceof TextView && polished.add(selected)) {
             TextView text = (TextView) selected;
-            if (text.getCurrentTextColor() != palette.text) text.setTextColor(palette.text);
-            if (text.getTextSize() != dp(spinner, 15)) text.setTextSize(15);
+            text.setTextColor(palette.text);
+            text.setTextSize(15);
         }
     }
 
