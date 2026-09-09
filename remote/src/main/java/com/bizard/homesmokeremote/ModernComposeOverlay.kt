@@ -439,29 +439,12 @@ private fun MonitorPage(activity: MainActivity, s: ModernRemoteSnapshot, padding
                         fontWeight = FontWeight.Bold,
                     )
                     Text(s.controlAvailability, color = Muted, fontSize = 12.sp)
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        OutlinedTextField(
-                            value = setpoint,
-                            onValueChange = {
-                                setpoint = it.filter { c -> c.isDigit() || c == '.' || c == ',' }
-                            },
-                            modifier = Modifier.weight(1f).heightIn(min = 56.dp),
-                            singleLine = true,
-                            enabled = s.controlEnabled,
-                            label = { Text("Уставка °C") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        )
-                        Button(
-                            onClick = { activity.modernApplySetpoint(setpoint) },
-                            enabled = s.controlEnabled && setpoint.replace(',', '.').toDoubleOrNull()?.isFinite() == true,
-                            colors = ButtonDefaults.buttonColors(containerColor = Blue),
-                        ) {
-                            Text("Применить", fontSize = 12.sp)
-                        }
-                    }
+                    ResponsiveSetpointControl(
+                        value = setpoint,
+                        enabled = s.controlEnabled,
+                        onValueChange = { setpoint = it },
+                        onApply = { activity.modernApplySetpoint(setpoint) },
+                    )
                     Button(
                         onClick = activity::modernStop,
                         enabled = s.controlEnabled,
@@ -505,6 +488,149 @@ private fun MonitorPage(activity: MainActivity, s: ModernRemoteSnapshot, padding
                         Text("Последняя команда: ${s.lastCommand}", color = Muted, fontSize = 12.sp)
                     }
                 }
+            }
+        }
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun ResponsiveSetpointControl(
+    value: String,
+    enabled: Boolean,
+    onValueChange: (String) -> Unit,
+    onApply: () -> Unit,
+) {
+    val fontScale = LocalDensity.current.fontScale
+    val canApply = enabled && value.replace(',', '.').toDoubleOrNull()?.isFinite() == true
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val stacked = maxWidth < 340.dp || fontScale > 1.15f
+        val field: @androidx.compose.runtime.Composable (Modifier) -> Unit = { modifier ->
+            OutlinedTextField(
+                value = value,
+                onValueChange = { raw ->
+                    onValueChange(raw.filter { c -> c.isDigit() || c == '.' || c == ',' })
+                },
+                modifier = modifier.heightIn(min = 56.dp),
+                singleLine = true,
+                enabled = enabled,
+                label = { Text("Уставка °C") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            )
+        }
+        val apply: @androidx.compose.runtime.Composable (Modifier) -> Unit = { modifier ->
+            Button(
+                onClick = onApply,
+                enabled = canApply,
+                modifier = modifier.heightIn(min = 48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Blue),
+            ) {
+                Text("Применить", maxLines = 1, softWrap = false, fontSize = 12.sp)
+            }
+        }
+        if (stacked) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                field(Modifier.fillMaxWidth())
+                apply(Modifier.fillMaxWidth())
+            }
+        } else {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                field(Modifier.weight(1f))
+                apply(Modifier)
+            }
+        }
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun ResponsiveTestActions(
+    running: Boolean,
+    onStart: () -> Unit,
+    onStop: () -> Unit,
+) {
+    val fontScale = LocalDensity.current.fontScale
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val stacked = maxWidth < 300.dp || fontScale > 1.15f
+        val start: @androidx.compose.runtime.Composable (Modifier) -> Unit = { modifier ->
+            Button(
+                onClick = onStart,
+                enabled = !running,
+                modifier = modifier.heightIn(min = 48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Blue),
+            ) {
+                Text("Запустить", maxLines = 1, softWrap = false, fontSize = 12.sp)
+            }
+        }
+        val stop: @androidx.compose.runtime.Composable (Modifier) -> Unit = { modifier ->
+            OutlinedButton(
+                onClick = onStop,
+                enabled = running,
+                modifier = modifier.heightIn(min = 48.dp),
+            ) {
+                Text("Остановить", maxLines = 1, softWrap = false, fontSize = 12.sp)
+            }
+        }
+        if (stacked) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                start(Modifier.fillMaxWidth())
+                stop(Modifier.fillMaxWidth())
+            }
+        } else {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                start(Modifier.weight(1f))
+                stop(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun ResponsiveConnectionFields(
+    port: String,
+    username: String,
+    onPortChange: (String) -> Unit,
+    onUsernameChange: (String) -> Unit,
+) {
+    val fontScale = LocalDensity.current.fontScale
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val stacked = maxWidth < 340.dp || fontScale > 1.15f
+        val portField: @androidx.compose.runtime.Composable (Modifier) -> Unit = { modifier ->
+            OutlinedTextField(
+                port,
+                onPortChange,
+                modifier = modifier.heightIn(min = 56.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                label = { Text("Порт") },
+                singleLine = true,
+            )
+        }
+        val userField: @androidx.compose.runtime.Composable (Modifier) -> Unit = { modifier ->
+            OutlinedTextField(
+                username,
+                onUsernameChange,
+                modifier = modifier.heightIn(min = 56.dp),
+                label = { Text("Пользователь") },
+                singleLine = true,
+            )
+        }
+        if (stacked) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                portField(Modifier.fillMaxWidth())
+                userField(Modifier.fillMaxWidth())
+            }
+        } else {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                portField(Modifier.weight(1f))
+                userField(Modifier.weight(2f))
             }
         }
     }
@@ -735,21 +861,11 @@ private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: 
                             Text(scenarios.getOrElse(scenarioIndex) { s.testScenario }, fontSize = 12.sp)
                         }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = activity::modernStartTest,
-                            enabled = !s.testRunning,
-                            colors = ButtonDefaults.buttonColors(containerColor = Blue),
-                        ) {
-                            Text("Запустить", fontSize = 12.sp)
-                        }
-                        OutlinedButton(
-                            onClick = activity::modernStopTest,
-                            enabled = s.testRunning,
-                        ) {
-                            Text("Остановить", fontSize = 12.sp)
-                        }
-                    }
+                    ResponsiveTestActions(
+                        running = s.testRunning,
+                        onStart = activity::modernStartTest,
+                        onStop = activity::modernStopTest,
+                    )
                     }
                 }
             }
@@ -838,23 +954,12 @@ private fun SettingsPage(activity: MainActivity, s: ModernRemoteSnapshot, paddin
                         label = { Text("MQTT-брокер") },
                         singleLine = true,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedTextField(
-                            port,
-                            { port = it.filter(Char::isDigit) },
-                            modifier = Modifier.weight(1f).heightIn(min = 56.dp),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            label = { Text("Порт") },
-                            singleLine = true,
-                        )
-                        OutlinedTextField(
-                            username,
-                            { username = it },
-                            modifier = Modifier.weight(2f).heightIn(min = 56.dp),
-                            label = { Text("Пользователь") },
-                            singleLine = true,
-                        )
-                    }
+                    ResponsiveConnectionFields(
+                        port = port,
+                        username = username,
+                        onPortChange = { port = it.filter(Char::isDigit) },
+                        onUsernameChange = { username = it },
+                    )
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },

@@ -92,6 +92,8 @@ class ComposeLayoutTest {
         nextPage("Настройки")
         compose.onNodeWithText("MQTT-брокер").assertIsDisplayed()
         compose.onNodeWithText("1883").assertIsDisplayed()
+        compose.onNodeWithText("Порт").assertIsDisplayed()
+        compose.onNodeWithText("Пользователь").assertIsDisplayed()
         compose.onNodeWithText("Показать").assertIsDisplayed()
         val settingsLabels = compose.onAllNodesWithText("Настройки", useUnmergedTree = true)
         settingsLabels.assertCountEquals(2)
@@ -100,8 +102,9 @@ class ComposeLayoutTest {
         assertTrue(navigationLayout.isNotEmpty())
         assertEquals("Bottom navigation label must stay on one line", 1, navigationLayout.single().lineCount)
         snapshot("settings-320-font130")
-        compose.onNodeWithText("Сохранить").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Подключить").performScrollTo().assertIsDisplayed()
+        compose.onNode(hasScrollToIndexAction()).performScrollToIndex(1)
+        compose.onNodeWithText("Сохранить").assertIsDisplayed()
+        compose.onNodeWithText("Подключить").assertIsDisplayed()
         val textLayouts = mutableListOf<TextLayoutResult>()
         compose.onNodeWithText("Подключить", useUnmergedTree = true)
             .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(textLayouts) }
@@ -114,5 +117,30 @@ class ComposeLayoutTest {
             layout.getLineRight(0) <= layout.size.width + 1f)
         assertTrue("Label bottom ${layout.getLineBottom(0)} exceeds ${layout.size.height}",
             layout.getLineBottom(0) <= layout.size.height + 1f)
+    }
+
+    @Test @Config(qualifiers = "w320dp-h720dp-mdpi")
+    fun narrowMonitorAndGraphActionsRemainUsable() {
+        start(1.3f)
+        compose.onNodeWithText("Уставка °C").assertIsDisplayed()
+        compose.onNodeWithText("Применить").performScrollTo().assertIsDisplayed()
+        val applyLayout = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText("Применить", useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(applyLayout) }
+        assertTrue(applyLayout.isNotEmpty())
+        assertEquals("Setpoint action label must stay on one line", 1, applyLayout.single().lineCount)
+        snapshot("monitor-320-font130")
+
+        nextPage("График")
+        compose.onNode(hasScrollToIndexAction()).performScrollToIndex(1)
+        compose.onNodeWithText("Тестовые сценарии · открыть").assertIsDisplayed().performClick()
+        compose.onNodeWithText("Запустить").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Остановить").performScrollTo().assertIsDisplayed()
+        val startLayout = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText("Запустить", useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(startLayout) }
+        assertTrue(startLayout.isNotEmpty())
+        assertEquals("Test action label must stay on one line", 1, startLayout.single().lineCount)
+        snapshot("graph-actions-320-font130")
     }
 }
