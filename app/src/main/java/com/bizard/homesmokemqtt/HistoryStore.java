@@ -24,9 +24,16 @@ final class HistoryStore {
 
     HistoryStore(Context c){dir=new File(c.getFilesDir(),"history");if(!dir.exists())dir.mkdirs();}
 
-    synchronized void start(AutoProgram p){
-        String stamp=new SimpleDateFormat("yyyyMMdd_HHmmss",Locale.US).format(new Date());active=new File(dir,stamp+"_"+safeName(p==null?"Auto":p.name)+".csv");lastTelemetryWrite=0;
-        append("kind;timestamp;stage;chamber;setpoint;probeK;probeT;power;message\n");event("START",0,p==null?"Auto":p.name);
+    synchronized void start(AutoProgram p){startSession("AUTO",p==null?"Auto":p.name);}
+    synchronized void startManual(String mode){
+        String kind="PID".equalsIgnoreCase(mode)?"PID":"MANUAL";
+        startSession(kind,"PID".equals(kind)?"PID режим":"Ручной режим");
+    }
+    synchronized void startSession(String kind,String name){
+        if(active!=null)finish("REPLACED");
+        String stamp=new SimpleDateFormat("yyyyMMdd_HHmmss",Locale.US).format(new Date());
+        active=new File(dir,stamp+"_"+safeName(kind)+"_"+safeName(name)+".csv");lastTelemetryWrite=0;
+        append("kind;timestamp;stage;chamber;setpoint;probeK;probeT;power;message\n");event("START",0,name);
     }
     synchronized void event(String kind,int stage,String message){if(active==null)return;append(kind+";"+System.currentTimeMillis()+";"+stage+";;;;;;\""+esc(message)+"\"\n");}
     synchronized void telemetry(Telemetry t,int stage,String message){if(active==null||t==null)return;if(t.receivedAtMs-lastTelemetryWrite<5000)return;lastTelemetryWrite=t.receivedAtMs;append("DATA;"+t.receivedAtMs+";"+stage+";"+t.chamber+";"+t.chamberSetpoint+";"+t.probeK+";"+t.probeT+";"+t.heaterPower+";\""+esc(message)+"\"\n");}

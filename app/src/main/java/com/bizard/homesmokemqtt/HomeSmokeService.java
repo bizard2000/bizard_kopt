@@ -134,6 +134,7 @@ public class HomeSmokeService extends Service {
         if(isAutoRunning())stopAuto("Переход в ручной режим");
         if(!isBluetoothConnected()){lastError="Ручной режим не выбран: Bluetooth не подключён";emit();return false;}
         boolean ok=sendRaw("a0");
+        if(ok){history.startManual("MANUAL");history.event("MODE",0,"Ручной режим");}
         if(!ok){if(lastError==null||lastError.trim().isEmpty())lastError="Ручной режим не выбран: ошибка Bluetooth";emit();}
         return ok;
     }
@@ -141,13 +142,14 @@ public class HomeSmokeService extends Service {
         if(isAutoRunning())stopAuto("Переход в PID режим");
         if(!isBluetoothConnected()){lastError="PID режим не выбран: Bluetooth не подключён";emit();return false;}
         boolean ok=sendRaw("a1");
+        if(ok){history.startManual("PID");history.event("MODE",0,"PID режим");}
         if(!ok){if(lastError==null||lastError.trim().isEmpty())lastError="PID режим не выбран: ошибка Bluetooth";emit();}
         return ok;
     }
     public boolean stopHeating(){
         clearAutoDelivery();boolean ok;
         if(isAutoRunning()){AutoEngine.Update u=autoEngine.stop("СТОП");ok=sendCommands(u.commands);history.finish("STOP");}
-        else ok=sendRaw("a3");
+        else {ok=sendRaw("a3");history.finish("STOP");}
         if(ok){lastError="";autoStatus="Команда STOP отправлена";}
         else{
             autoStatus="STOP не отправлен";
@@ -222,7 +224,7 @@ public class HomeSmokeService extends Service {
                     history.telemetry(t,autoEngine.getStageIndex()+1,autoStatus);
                     if(autoEngine.getState()!=AutoEngine.State.RUNNING){clearAutoDelivery();history.finish(autoStatus);updateForeground();maybeStopSelf();}
                 }else history.telemetry(t,autoEngine.getStageIndex()+1,autoStatus);
-            }
+            }else history.telemetry(t,0,t.mode==1?"PID":"Ручной режим");
             publishTelemetry(t);main.post(this::emit);
         }catch(Exception e){lastError="Пакет Arduino: "+safe(e);main.post(this::emit);}
     }
@@ -271,7 +273,7 @@ public class HomeSmokeService extends Service {
 
     private void abortAuto(String reason){clearAutoDelivery();AutoEngine.Update u=autoEngine.stop(reason);sendCommands(u.commands);autoStatus=reason;history.finish(reason);updateForeground();main.post(()->{emit();maybeStopSelf();});}
     private void closeBluetooth(boolean update){closeBluetoothInternal();bluetoothName="";ackManager.failAll("bluetooth_disconnected",this::publishCommandAck);if(update)emit();}
-    private void closeBluetoothInternal(){latest=null;BluetoothSocket s=btSocket;btSocket=null;if(s!=null)try{s.close();}catch(Exception ignored){}Thread t=btThread;btThread=null;if(t!=null&&t!=Thread.currentThread())t.interrupt();}
+    private void closeBluetoothInternal(){history.finish("BLUETOOTH_DISCONNECTED");latest=null;BluetoothSocket s=btSocket;btSocket=null;if(s!=null)try{s.close();}catch(Exception ignored){}Thread t=btThread;btThread=null;if(t!=null&&t!=Thread.currentThread())t.interrupt();}
 
     private void updateForeground(){
         boolean need=isBluetoothConnected()||isAutoRunning();

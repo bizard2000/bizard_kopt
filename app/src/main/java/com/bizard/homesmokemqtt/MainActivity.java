@@ -615,7 +615,7 @@ public class MainActivity extends Activity implements HomeSmokeService.Listener 
         LinearLayout p=page();
         List<File> files=historyStore.list();
         if(files.isEmpty()){
-            p.addView(center("История Auto пока пуста",16,false),margins(10,24,10,8));
+            p.addView(center("История пока пуста",16,false),margins(10,24,10,8));
             setPage(p);
             return;
         }

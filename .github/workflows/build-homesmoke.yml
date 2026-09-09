@@ -55,12 +55,12 @@ jobs:
           set -o pipefail
           gradle :remote:testDebugUnitTest --stacktrace 2>&1 | tee remote-test.log
 
-      - name: Verify HomeSmoke 2.6.16 installed Arduino protocol and UI polish
+      - name: Verify HomeSmoke 2.6.17 installed Arduino protocol, history and UI
         shell: bash
         run: |
           grep -q "minSdk 23" app/build.gradle
-          grep -q "versionCode 26" app/build.gradle
-          grep -q "versionName '2.6.16'" app/build.gradle
+          grep -q "versionCode 27" app/build.gradle
+          grep -q "versionName '2.6.17'" app/build.gradle
           grep -q "org.jetbrains.kotlin.android" build.gradle
           grep -q "org.jetbrains.kotlin.android" app/build.gradle
           grep -q "testImplementation 'junit:junit:4.13.2'" app/build.gradle
@@ -100,9 +100,12 @@ jobs:
           grep -q 'Android 4 / Legacy is excluded' docs/audits/AUDIT_STABILIZATION_PLAN_2_6.md
           test -f docs/audits/AUDIT_HOMESMOKE_2_6_12.md
           test -f docs/testing/FIELD_TEST_HOMESMOKE_2_6_16.md
+          test -f docs/testing/FIELD_TEST_HOMESMOKE_2_6_17.md
+          grep -q 'startManual' app/src/main/java/com/bizard/homesmokemqtt/HistoryStore.java
+          grep -q 'history.telemetry(t,0' app/src/main/java/com/bizard/homesmokemqtt/HomeSmokeService.java
           grep -E "minSdk|versionCode|versionName" app/build.gradle
 
-      - name: Build HomeSmoke 2.6.16 Android 6+
+      - name: Build HomeSmoke 2.6.17 Android 6+
         shell: bash
         run: |
           set -o pipefail
@@ -156,25 +159,25 @@ jobs:
           rm -f dist/HomeSmoke_Remote_2.*_Android5plus.apk dist/HomeSmoke_Remote_2.*_Android5plus.bin
           # Keep previous Android 6+ Remote APKs available for comparison and rollback.
           rm -f dist/*Android4plus.apk dist/*Android4plus.bin
-          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.16_Android6plus.apk
-          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.16_Android6plus.bin
+          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.17_Android6plus.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.17_Android6plus.bin
           cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_${{ steps.remote_version.outputs.name }}_Android6plus.apk
           cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_${{ steps.remote_version.outputs.name }}_Android6plus.bin
-          (cd dist && sha256sum HomeSmoke_FULL_2.6.16_Android6plus.apk HomeSmoke_Remote_${{ steps.remote_version.outputs.name }}_Android6plus.apk > SHA256SUMS.txt)
+          (cd dist && sha256sum HomeSmoke_FULL_2.6.17_Android6plus.apk HomeSmoke_Remote_${{ steps.remote_version.outputs.name }}_Android6plus.apk > SHA256SUMS.txt)
           git config user.name "github-actions[bot]"
           git config user.email "4189826+github-actions[bot]@users.noreply.github.com"
           git add -A dist
-          git commit -m "CI: publish HomeSmoke 2.6.16 and Remote ${{ steps.remote_version.outputs.name }} Compose [skip ci]" || true
+          git commit -m "CI: publish HomeSmoke 2.6.17 and Remote ${{ steps.remote_version.outputs.name }} Compose [skip ci]" || true
           git pull --rebase origin homesmoke-native
           git push origin homesmoke-native
 
-      - name: Upload HomeSmoke 2.6.16 installed Arduino protocol build
+      - name: Upload HomeSmoke 2.6.17 installed Arduino protocol build
         uses: actions/upload-artifact@v4
         with:
-          name: HomeSmoke_FULL_2.6.16_Android6plus
+          name: HomeSmoke_FULL_2.6.17_Android6plus
           path: |
-            dist/HomeSmoke_FULL_2.6.16_Android6plus.apk
-            dist/HomeSmoke_FULL_2.6.16_Android6plus.bin
+            dist/HomeSmoke_FULL_2.6.17_Android6plus.apk
+            dist/HomeSmoke_FULL_2.6.17_Android6plus.bin
             dist/SHA256SUMS.txt
           if-no-files-found: error
 
