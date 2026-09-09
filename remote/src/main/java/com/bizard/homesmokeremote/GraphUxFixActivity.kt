@@ -115,7 +115,7 @@ class GraphUxFixActivity : GraphUxActivity() {
                 0,
                 Math.min(TEST_SCENARIOS!!.size - 1, scenarioSpinner!!.getSelectedItemPosition()),
             )
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, RemoteTheme.dialogTheme(this))
             .setTitle("Сценарий теста")!!
             .setSingleChoiceItems(
                 TEST_SCENARIOS,

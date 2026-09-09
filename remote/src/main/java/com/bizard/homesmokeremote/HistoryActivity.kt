@@ -30,6 +30,7 @@ import org.json.JSONObject
 
 /** Local sessions, operational journal, filters and per-session export. */
 class HistoryActivity : Activity() {
+    private lateinit var palette: RemotePalette
     private var telemetry: TelemetryHistoryStore? = null
     private var ops: OperationalHistoryStore? = null
     private var prefs: SharedPreferences? = null
@@ -40,6 +41,7 @@ class HistoryActivity : Activity() {
 
     protected override fun onCreate(state: Bundle?) {
         super.onCreate(state)
+        palette = RemoteTheme.palette(this)
         prefs = getSharedPreferences("homesmoke_remote", Context.MODE_PRIVATE)
         telemetry = TelemetryHistoryStore(this)
         ops = OperationalHistoryStore(this)
@@ -141,14 +143,7 @@ class HistoryActivity : Activity() {
             i
         })
         root!!.requestApplyInsets()
-        getWindow()!!.setStatusBarColor(NAVY)
-        getWindow()!!.setNavigationBarColor(BG)
-        if (Build.VERSION.SDK_INT >= 23) {
-            getWindow()!!.getDecorView()!!.setSystemUiVisibility(
-                getWindow()!!.getDecorView()!!.getSystemUiVisibility() or
-                    View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-            )
-        }
+        RemoteTheme.applySystemBars(this, palette.dark)
     }
 
     private fun buildSessions(page: LinearLayout?) {
@@ -192,7 +187,7 @@ class HistoryActivity : Activity() {
         header.addView(text(s!!.title(), 16, true, TEXT), LinearLayout.LayoutParams(0, -2, 1f))
         val chipText: String = if (test) "ТЕСТ" else (if (s!!.active()) "АКТИВЕН" else "ЗАВЕРШЁН")
         val chipColor: Int = if (test) ORANGE else (if (s!!.active()) GREEN else OFF)
-        val chip: TextView? = text(chipText, 10, true, Color.WHITE)
+        val chip: TextView? = text(chipText, 10, true, ON_ACCENT)
         chip!!.setGravity(Gravity.CENTER)
         chip!!.setPadding(dp(8), dp(4), dp(8), dp(4))
         chip!!.setBackground(round(chipColor, 12))
@@ -285,7 +280,7 @@ class HistoryActivity : Activity() {
         filterBar!!.removeAllViews()
         for (filter: String? in FILTERS!!) {
             val selected: Boolean = filter == eventFilter
-            val chip: TextView? = text(filter, 11, true, if (selected) Color.WHITE else MUTED)
+            val chip: TextView? = text(filter, 11, true, if (selected) ON_ACCENT else MUTED)
             chip!!.setGravity(Gravity.CENTER)
             chip!!.setPadding(dp(10), dp(6), dp(10), dp(6))
             chip!!.setBackground(round(if (selected) BLUE else FIELD, 13))
@@ -336,7 +331,7 @@ class HistoryActivity : Activity() {
     }
 
     private fun confirmClearJournal() {
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, RemoteTheme.dialogTheme(this))
             .setTitle("Очистить журнал?")!!
             .setMessage("Сеансы и их сводки останутся. Будут удалены только события Remote.")!!
             .setPositiveButton(
@@ -352,7 +347,7 @@ class HistoryActivity : Activity() {
     }
 
     private fun eventColor(type: String?): Int {
-        if ("error" == type) return Color.rgb(190, 40, 40)
+        if ("error" == type) return palette.red
         if ("connection" == type || "test" == type) return ORANGE
         if ("command" == type) return BLUE
         if ("session" == type) return GREEN
@@ -519,7 +514,7 @@ class HistoryActivity : Activity() {
         b.setText(s)
         b.setTextSize(12f)
         b.setTypeface(Typeface.DEFAULT_BOLD)
-        b.setTextColor(Color.WHITE)
+        b.setTextColor(ON_ACCENT)
         b.setAllCaps(false)
         b.setGravity(Gravity.CENTER)
         b.setPadding(dp(4), 0, dp(4), 0)
@@ -559,18 +554,20 @@ class HistoryActivity : Activity() {
         return Math.round(v * getResources()!!.getDisplayMetrics()!!.density)
     }
 
+    private val NAVY: Int get() = palette.topBar
+    private val BG: Int get() = palette.background
+    private val CARD: Int get() = palette.surface
+    private val TEXT: Int get() = palette.ink
+    private val MUTED: Int get() = palette.muted
+    private val BORDER: Int get() = palette.outline
+    private val GREEN: Int get() = palette.green
+    private val BLUE: Int get() = palette.primary
+    private val ORANGE: Int get() = palette.orange
+    private val OFF: Int get() = palette.off
+    private val FIELD: Int get() = palette.surfaceVariant
+    private val ON_ACCENT: Int get() = if (palette.dark) Color.rgb(31, 25, 22) else Color.WHITE
+
     companion object {
-        private val NAVY: Int = Color.rgb(255, 255, 255)
-        private val BG: Int = Color.rgb(245, 244, 240)
-        private val CARD: Int = Color.WHITE
-        private val TEXT: Int = Color.rgb(32, 42, 39)
-        private val MUTED: Int = Color.rgb(98, 110, 104)
-        private val BORDER: Int = Color.rgb(226, 229, 224)
-        private val GREEN: Int = Color.rgb(40, 101, 76)
-        private val BLUE: Int = Color.rgb(165, 72, 34)
-        private val ORANGE: Int = Color.rgb(197, 101, 16)
-        private val OFF: Int = Color.rgb(116, 129, 145)
-        private val FIELD: Int = Color.rgb(239, 240, 236)
         private val REQ_CSV: Int = 4101
         private val REQ_JSON: Int = 4102
         private val FILTERS: Array<String> =

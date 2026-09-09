@@ -16,6 +16,7 @@ import java.util.Locale
 internal class TemperatureChartView(context: Context?) : View(context) {
 
     private val density: Float
+    private var themePalette: RemotePalette = RemoteTheme.palette(getContext())
     private val gridPaint: Paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val axisPaint: Paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val linePaint: Paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -39,21 +40,32 @@ internal class TemperatureChartView(context: Context?) : View(context) {
 
     init {
         density = getResources()!!.getDisplayMetrics()!!.density
-        setBackgroundColor(Color.WHITE)
-        gridPaint.setColor(GRID)
         gridPaint.setStrokeWidth(dp(1f))
-        axisPaint.setColor(MUTED)
         axisPaint.setTextSize(sp(10f))
         linePaint.setStyle(Paint.Style.STROKE)
         linePaint.setStrokeWidth(dp(2f))
         linePaint.setStrokeCap(Paint.Cap.ROUND)
         linePaint.setStrokeJoin(Paint.Join.ROUND)
-        selectedPaint.setColor(Color.rgb(151, 164, 180))
         selectedPaint.setStrokeWidth(dp(1f))
-        sessionPaint.setColor(SESSION)
         sessionPaint.setStrokeWidth(dp(1f))
         sessionPaint.setPathEffect(DashPathEffect(floatArrayOf(dp(3f), dp(4f)), 0f))
+        applyThemeColors()
         setClickable(true)
+    }
+
+    fun setDarkTheme(darkTheme: Boolean) {
+        if (themePalette.dark == darkTheme) return
+        themePalette = RemoteTheme.palette(darkTheme)
+        applyThemeColors()
+        invalidate()
+    }
+
+    private fun applyThemeColors() {
+        setBackgroundColor(themePalette.surface)
+        gridPaint.setColor(GRID)
+        axisPaint.setColor(MUTED)
+        selectedPaint.setColor(themePalette.outline)
+        sessionPaint.setColor(SESSION)
     }
 
     fun setData(samples: List<TelemetryHistoryStore.Sample?>?) {
@@ -479,18 +491,21 @@ internal class TemperatureChartView(context: Context?) : View(context) {
         return v * getResources()!!.getDisplayMetrics()!!.scaledDensity
     }
 
+    private val CAMERA: Int
+        get() = if (themePalette.dark) Color.rgb(126, 196, 232) else Color.rgb(32, 74, 82)
+    private val SETPOINT: Int
+        get() = if (themePalette.dark) Color.rgb(232, 137, 95) else Color.rgb(165, 72, 34)
+    private val PROBE_K: Int
+        get() = if (themePalette.dark) Color.rgb(116, 198, 157) else Color.rgb(40, 101, 76)
+    private val PROBE_T: Int
+        get() = if (themePalette.dark) Color.rgb(194, 157, 238) else Color.rgb(126, 87, 194)
+    private val HEATER: Int get() = themePalette.orange
+    private val GRID: Int get() = themePalette.outline
+    private val MUTED: Int get() = themePalette.muted
+    private val TEXT: Int get() = themePalette.ink
+    private val SESSION: Int get() = themePalette.off
+
     companion object {
-
-        private val CAMERA: Int = Color.rgb(9, 47, 73)
-        private val SETPOINT: Int = Color.rgb(31, 122, 210)
-        private val PROBE_K: Int = Color.rgb(35, 151, 83)
-        private val PROBE_T: Int = Color.rgb(126, 87, 194)
-        private val HEATER: Int = Color.rgb(231, 138, 7)
-        private val GRID: Int = Color.rgb(226, 231, 237)
-        private val MUTED: Int = Color.rgb(101, 116, 139)
-        private val TEXT: Int = Color.rgb(21, 31, 47)
-        private val SESSION: Int = Color.rgb(170, 181, 194)
-
         private fun include(min: Double, max: Double, v: Double): DoubleArray? {
             var min = min
             var max = max

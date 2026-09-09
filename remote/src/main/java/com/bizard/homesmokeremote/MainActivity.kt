@@ -176,6 +176,7 @@ open class MainActivity : ComponentActivity() {
 
     protected override fun onCreate(b: Bundle?) {
         super.onCreate(b)
+        RemoteTheme.applySystemBars(this)
         prefs = getSharedPreferences("homesmoke_remote", Context.MODE_PRIVATE)
         secrets = SecretStore(this)
         historyStore = TelemetryHistoryStore(this)
@@ -275,6 +276,7 @@ open class MainActivity : ComponentActivity() {
             notifyConnection = prefs?.getBoolean("notify_connection", true) ?: true,
             notifySetpoint = prefs?.getBoolean("notify_setpoint", true) ?: true,
             notifySession = prefs?.getBoolean("notify_session", false) ?: false,
+            themeMode = RemoteTheme.mode(this).value,
         )
     }
 
@@ -340,6 +342,13 @@ open class MainActivity : ComponentActivity() {
     }
     internal fun modernSetNotification(key: String, enabled: Boolean) {
         prefs?.edit()?.putBoolean(key, enabled)?.apply()
+    }
+    internal fun modernSetTheme(mode: RemoteThemeMode) {
+        RemoteTheme.setMode(this, mode)
+        RemoteTheme.applySystemBars(this)
+    }
+    internal fun modernApplySystemBars(darkTheme: Boolean) {
+        RemoteTheme.applySystemBars(this, darkTheme)
     }
     internal fun modernShowSystemStatus() {
         startActivity(Intent(this, SystemStatusActivity::class.java))
@@ -1264,7 +1273,7 @@ open class MainActivity : ComponentActivity() {
             toast("Нет свежей телеметрии от коптильни")
             return
         }
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(this, RemoteTheme.dialogTheme(this))
             .setTitle("Удалённый STOP")!!
             .setMessage("Выключить нагрев на коптильне?")!!
             .setPositiveButton("STOP", { d, w -> sendStop() })!!
@@ -1848,8 +1857,7 @@ open class MainActivity : ComponentActivity() {
             i
         })
         root!!.requestApplyInsets()
-        getWindow()!!.setStatusBarColor(NAVY)
-        getWindow()!!.setNavigationBarColor(BG)
+        RemoteTheme.applySystemBars(this)
     }
 
     private fun page(): LinearLayout? {

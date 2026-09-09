@@ -44,6 +44,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,6 +52,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.isSystemInDarkTheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
@@ -63,11 +66,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -140,6 +147,7 @@ internal data class ModernRemoteSnapshot(
     val notifyConnection: Boolean,
     val notifySetpoint: Boolean,
     val notifySession: Boolean,
+    val themeMode: String,
 )
 
 internal data class ModernSettingsValues(
@@ -174,15 +182,29 @@ internal object ModernComposeOverlay {
     }
 }
 
-private val Ink = Color(0xFF202A27)
-private val Muted = Color(0xFF626E68)
-private val Canvas = Color(0xFFF5F4F0)
-private val Navy = Color(0xFF202A27)
-private val Blue = Color(0xFFA54822)
-private val Green = Color(0xFF28654C)
-private val Red = Color(0xFFA83434)
-private val Amber = Color(0xFFA54822)
-private val Card = Color.White
+private val LocalRemotePalette = staticCompositionLocalOf { RemoteTheme.palette(false) }
+private val Ink: Color
+    @androidx.compose.runtime.Composable @ReadOnlyComposable get() = Color(LocalRemotePalette.current.ink)
+private val Muted: Color
+    @androidx.compose.runtime.Composable @ReadOnlyComposable get() = Color(LocalRemotePalette.current.muted)
+private val Canvas: Color
+    @androidx.compose.runtime.Composable @ReadOnlyComposable get() = Color(LocalRemotePalette.current.background)
+private val Navy: Color
+    @androidx.compose.runtime.Composable @ReadOnlyComposable get() = Color(LocalRemotePalette.current.ink)
+private val Blue: Color
+    @androidx.compose.runtime.Composable @ReadOnlyComposable get() = Color(LocalRemotePalette.current.primary)
+private val Green: Color
+    @androidx.compose.runtime.Composable @ReadOnlyComposable get() = Color(LocalRemotePalette.current.green)
+private val Red: Color
+    @androidx.compose.runtime.Composable @ReadOnlyComposable get() = Color(LocalRemotePalette.current.red)
+private val Amber: Color
+    @androidx.compose.runtime.Composable @ReadOnlyComposable get() = Color(LocalRemotePalette.current.orange)
+private val Card: Color
+    @androidx.compose.runtime.Composable @ReadOnlyComposable get() = Color(LocalRemotePalette.current.surface)
+private val InfoSurface: Color
+    @androidx.compose.runtime.Composable @ReadOnlyComposable get() = Color(LocalRemotePalette.current.infoSurface)
+private val WarningSurface: Color
+    @androidx.compose.runtime.Composable @ReadOnlyComposable get() = Color(LocalRemotePalette.current.warningSurface)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @androidx.compose.runtime.Composable
@@ -195,6 +217,55 @@ internal fun ModernRemoteApp(activity: MainActivity) {
         }
     }
     val pageState = rememberSaveableStateHolder()
+    val systemDark = isSystemInDarkTheme()
+    val darkTheme =
+        when (RemoteThemeMode.from(snapshot.themeMode)) {
+            RemoteThemeMode.DARK -> true
+            RemoteThemeMode.LIGHT -> false
+            RemoteThemeMode.SYSTEM -> systemDark
+        }
+    val palette = RemoteTheme.palette(darkTheme)
+    val colors =
+        if (darkTheme) {
+            darkColorScheme(
+                primary = Color(palette.primary),
+                onPrimary = Color(0xFF351208),
+                secondary = Color(palette.muted),
+                background = Color(palette.background),
+                onBackground = Color(palette.ink),
+                surface = Color(palette.surface),
+                onSurface = Color(palette.ink),
+                onSurfaceVariant = Color(palette.muted),
+                primaryContainer = Color(0xFF63331F),
+                onPrimaryContainer = Color(0xFFFFDBCC),
+                secondaryContainer = Color(palette.surfaceVariant),
+                onSecondaryContainer = Color(palette.ink),
+                surfaceVariant = Color(palette.surfaceVariant),
+                surfaceTint = Color(palette.primary),
+                outline = Color(palette.outline),
+                error = Color(palette.red),
+            )
+        } else {
+            lightColorScheme(
+                primary = Color(palette.primary),
+                secondary = Color(palette.ink),
+                background = Color(palette.background),
+                onBackground = Color(palette.ink),
+                surface = Color(palette.surface),
+                onSurface = Color(palette.ink),
+                onSurfaceVariant = Color(palette.muted),
+                primaryContainer = Color(0xFFF6E4DB),
+                onPrimaryContainer = Color(0xFF55200E),
+                secondaryContainer = Color(palette.infoSurface),
+                onSecondaryContainer = Color(palette.ink),
+                surfaceVariant = Color(palette.surfaceVariant),
+                surfaceTint = Color(palette.primary),
+                outline = Color(palette.outline),
+                error = Color(palette.red),
+            )
+        }
+    SideEffect { activity.modernApplySystemBars(darkTheme) }
+    CompositionLocalProvider(LocalRemotePalette provides palette) {
     MaterialTheme(
         typography = Typography(
             bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 22.sp),
@@ -204,23 +275,7 @@ internal fun ModernRemoteApp(activity: MainActivity) {
             labelMedium = TextStyle(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium),
             labelSmall = TextStyle(fontSize = 12.sp, lineHeight = 16.sp),
         ),
-        colorScheme =
-            androidx.compose.material3.lightColorScheme(
-                primary = Blue,
-                secondary = Navy,
-                background = Canvas,
-                surface = Card,
-                onSurface = Ink,
-                onSurfaceVariant = Muted,
-                primaryContainer = Color(0xFFE3EFFA),
-                onPrimaryContainer = Navy,
-                secondaryContainer = Color(0xFFE3EFFA),
-                onSecondaryContainer = Navy,
-                surfaceVariant = Color(0xFFEAF0F6),
-                surfaceTint = Blue,
-                outline = Color(0xFF7B8898),
-                error = Red,
-            )
+        colorScheme = colors,
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize().background(Canvas).imePadding(),
@@ -243,6 +298,7 @@ internal fun ModernRemoteApp(activity: MainActivity) {
                 }
             }
         }
+    }
     }
 }
 
@@ -353,7 +409,7 @@ private fun MonitorPage(activity: MainActivity, s: ModernRemoteSnapshot, padding
                     Text(s.camera, color = Navy, fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.Bold)
                     Text(s.cameraSummary, color = Blue, style = MaterialTheme.typography.bodyMedium)
                     Text(s.trend, color = Muted, style = MaterialTheme.typography.bodySmall)
-                    HorizontalDivider(color = Color(0xFFE2E8EF))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = .45f))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         MetricCard("Щуп K", s.probeK, Modifier.weight(1f))
                         MetricCard("Щуп T", s.probeT, Modifier.weight(1f))
@@ -419,7 +475,7 @@ private fun MonitorPage(activity: MainActivity, s: ModernRemoteSnapshot, padding
         item { AutoCard(s) }
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF0F6)),
+                colors = CardDefaults.cardColors(containerColor = InfoSurface),
                 shape = RoundedCornerShape(14.dp),
             ) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 9.dp)) {
@@ -434,7 +490,10 @@ private fun MonitorPage(activity: MainActivity, s: ModernRemoteSnapshot, padding
                     }
                     if (technicalExpanded) {
                         AckFlow(s)
-                        HorizontalDivider(Modifier.padding(vertical = 5.dp), color = Color(0xFFD7E0E9))
+                        HorizontalDivider(
+                            Modifier.padding(vertical = 5.dp),
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = .45f),
+                        )
                         Text("Последняя команда контроллера", color = Muted, fontSize = 12.sp)
                         Text(s.lastCommand, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                         Text("История Remote", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
@@ -520,7 +579,7 @@ private fun MetricCard(title: String, value: String, modifier: Modifier, accent:
 @androidx.compose.runtime.Composable
 private fun AutoCard(s: ModernRemoteSnapshot) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF4FF)),
+        colors = CardDefaults.cardColors(containerColor = InfoSurface),
         shape = RoundedCornerShape(14.dp),
     ) {
         Column(
@@ -564,6 +623,7 @@ private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: 
     var rangeKey by rememberSaveable(s.graphRangeKey) { mutableStateOf(s.graphRangeKey) }
     var testExpanded by rememberSaveable { mutableStateOf(false) }
     val samples = activity.modernGraphSamples()
+    val darkTheme = LocalRemotePalette.current.dark
     LaunchedEffect(camera, setpoint, probeK, probeT) {
         activity.modernSetGraphSeries(camera, setpoint, probeK, probeT)
     }
@@ -616,6 +676,7 @@ private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: 
                     } else AndroidView(
                         factory = {
                             TemperatureChartView(it).apply {
+                                setDarkTheme(darkTheme)
                                 setSeries(camera, setpoint, probeK, probeT)
                                 setOnSelectionListener { sample ->
                                     selectedPoint = sample?.let(::modernPointText)
@@ -625,6 +686,7 @@ private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: 
                         },
                         modifier = Modifier.fillMaxWidth().height(220.dp),
                         update = { view ->
+                            view.setDarkTheme(darkTheme)
                             view.setSeries(camera, setpoint, probeK, probeT)
                             view.setData(samples)
                         },
@@ -644,7 +706,7 @@ private fun GraphPage(activity: MainActivity, s: ModernRemoteSnapshot, padding: 
         }
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF6E8)),
+                colors = CardDefaults.cardColors(containerColor = WarningSurface),
                 shape = RoundedCornerShape(14.dp),
             ) {
                 Column(
@@ -835,6 +897,12 @@ private fun SettingsPage(activity: MainActivity, s: ModernRemoteSnapshot, paddin
             )
         }
         item {
+            ThemeChooser(
+                selected = RemoteThemeMode.from(s.themeMode),
+                onSelected = activity::modernSetTheme,
+            )
+        }
+        item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = Card),
                 shape = RoundedCornerShape(14.dp),
@@ -903,6 +971,46 @@ private fun SettingsPage(activity: MainActivity, s: ModernRemoteSnapshot, paddin
             }
         }
 
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun ThemeChooser(
+    selected: RemoteThemeMode,
+    onSelected: (RemoteThemeMode) -> Unit,
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Card),
+        shape = RoundedCornerShape(14.dp),
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text("Оформление", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "Тема применяется сразу и сохраняется после перезапуска.",
+                color = Muted,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(
+                    RemoteThemeMode.SYSTEM to "Системная",
+                    RemoteThemeMode.LIGHT to "Светлая",
+                    RemoteThemeMode.DARK to "Тёмная",
+                ).forEach { (mode, label) ->
+                    FilterChip(
+                        selected = selected == mode,
+                        onClick = { onSelected(mode) },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                        label = { Text(label) },
+                    )
+                }
+            }
+        }
     }
 }
 

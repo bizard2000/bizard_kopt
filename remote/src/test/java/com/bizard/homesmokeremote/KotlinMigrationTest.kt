@@ -23,6 +23,30 @@ import org.robolectric.annotation.LooperMode
 @LooperMode(LooperMode.Mode.PAUSED)
 class KotlinMigrationTest {
     @Test
+    fun themeSelectionPersistsAndIsVisibleToComposeAndClassicScreens() {
+        val context = RuntimeEnvironment.getApplication()
+        val prefs = context.getSharedPreferences("homesmoke_remote", Context.MODE_PRIVATE)
+        prefs.edit().clear().putBoolean("auto_connect", false).apply()
+        assertEquals(RemoteThemeMode.SYSTEM, RemoteTheme.mode(context))
+
+        RemoteTheme.setMode(context, RemoteThemeMode.DARK)
+        assertEquals(RemoteThemeMode.DARK, RemoteTheme.mode(context))
+        assertTrue(RemoteTheme.isDark(context))
+        assertTrue(RemoteTheme.palette(context).dark)
+
+        val controller = Robolectric.buildActivity(GraphUxFixActivity::class.java).setup()
+        val activity = controller.get()
+        try {
+            assertEquals(RemoteThemeMode.DARK.value, activity.modernSnapshot().themeMode)
+            activity.modernSetTheme(RemoteThemeMode.LIGHT)
+            assertEquals(RemoteThemeMode.LIGHT.value, activity.modernSnapshot().themeMode)
+            assertFalse(RemoteTheme.isDark(activity))
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test
     fun composeBridgePreservesEmptyCredentialsGraphPreferencesAndHistoryRoute() {
         val context = RuntimeEnvironment.getApplication()
         context.getSharedPreferences("homesmoke_remote", Context.MODE_PRIVATE)

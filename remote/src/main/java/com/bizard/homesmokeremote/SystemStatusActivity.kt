@@ -26,6 +26,7 @@ import org.json.JSONObject
 
 /** Read-only diagnostics assembled from Remote runtime state and local stores. */
 class SystemStatusActivity : Activity() {
+    private lateinit var palette: RemotePalette
     private var prefs: SharedPreferences? = null
     private var telemetry: TelemetryHistoryStore? = null
     private var ops: OperationalHistoryStore? = null
@@ -45,6 +46,7 @@ class SystemStatusActivity : Activity() {
 
     protected override fun onCreate(state: Bundle?) {
         super.onCreate(state)
+        palette = RemoteTheme.palette(this)
         prefs = getSharedPreferences("homesmoke_remote", Context.MODE_PRIVATE)
         telemetry = TelemetryHistoryStore(this)
         ops = OperationalHistoryStore(this)
@@ -297,14 +299,7 @@ class SystemStatusActivity : Activity() {
             i
         })
         root!!.requestApplyInsets()
-        getWindow()!!.setStatusBarColor(NAVY)
-        getWindow()!!.setNavigationBarColor(BG)
-        if (Build.VERSION.SDK_INT >= 23) {
-            getWindow()!!.getDecorView()!!.setSystemUiVisibility(
-                getWindow()!!.getDecorView()!!.getSystemUiVisibility() or
-                    View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-            )
-        }
+        RemoteTheme.applySystemBars(this, palette.dark)
     }
 
     private fun card(): LinearLayout? {
@@ -354,15 +349,16 @@ class SystemStatusActivity : Activity() {
         return Math.round(v * getResources()!!.getDisplayMetrics()!!.density)
     }
 
+    private val NAVY: Int get() = palette.topBar
+    private val BG: Int get() = palette.background
+    private val CARD: Int get() = palette.surface
+    private val TEXT: Int get() = palette.ink
+    private val MUTED: Int get() = palette.muted
+    private val BORDER: Int get() = palette.outline
+    private val GREEN: Int get() = palette.green
+    private val ORANGE: Int get() = palette.orange
+
     companion object {
-        private val NAVY: Int = Color.WHITE
-        private val BG: Int = Color.rgb(245, 244, 240)
-        private val CARD: Int = Color.WHITE
-        private val TEXT: Int = Color.rgb(32, 42, 39)
-        private val MUTED: Int = Color.rgb(98, 110, 104)
-        private val BORDER: Int = Color.rgb(226, 229, 224)
-        private val GREEN: Int = Color.rgb(40, 101, 76)
-        private val ORANGE: Int = Color.rgb(197, 101, 16)
         private val LIVE_MS: Long = 10000L
         private val HISTORY_MS: Long = 24L * 60L * 60L * 1000L
 
