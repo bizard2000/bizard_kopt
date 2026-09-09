@@ -345,33 +345,7 @@ private fun MonitorPage(activity: MainActivity, s: ModernRemoteSnapshot, padding
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        item { ConnectionCard(s) }
-        if (!s.mqttConnected && !s.testRunning) {
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF6E8)),
-                    shape = RoundedCornerShape(14.dp),
-                ) {
-                    Column(
-                        Modifier.fillMaxWidth().padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Text("Коптильня не подключена", color = Ink, fontWeight = FontWeight.Bold)
-                        Text(
-                            "Настройте MQTT, чтобы получать телеметрию и управлять нагревом.",
-                            color = Muted,
-                            fontSize = 12.sp,
-                        )
-                        OutlinedButton(
-                            onClick = activity::modernShowSettings,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text("Настроить MQTT")
-                        }
-                    }
-                }
-            }
-        }
+        item { ConnectionCard(activity, s) }
         item {
             Card(colors = CardDefaults.cardColors(containerColor = Card), shape = RoundedCornerShape(12.dp)) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -476,7 +450,7 @@ private fun MonitorPage(activity: MainActivity, s: ModernRemoteSnapshot, padding
 }
 
 @androidx.compose.runtime.Composable
-private fun ConnectionCard(s: ModernRemoteSnapshot) {
+private fun ConnectionCard(activity: MainActivity, s: ModernRemoteSnapshot) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Card),
         shape = RoundedCornerShape(14.dp),
@@ -521,6 +495,15 @@ private fun ConnectionCard(s: ModernRemoteSnapshot) {
                     color = Muted,
                     fontSize = 12.sp,
                 )
+            }
+            if (!s.mqttConnected && !s.testRunning) {
+                OutlinedButton(
+                    onClick = activity::modernShowSettings,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                ) {
+                    Text("Настроить MQTT", fontSize = 12.sp)
+                }
             }
         }
     }

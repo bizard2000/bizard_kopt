@@ -95,15 +95,15 @@ class SystemStatusActivity : Activity() {
         bar.setGravity(Gravity.CENTER_VERTICAL)
         bar.setPadding(dp(8), 0, dp(10), 0)
         bar.setBackgroundColor(NAVY)
-        val back: TextView? = text("‹", 34, false, Color.WHITE)
+        val back: TextView? = text("‹", 34, false, TEXT)
         back!!.setGravity(Gravity.CENTER)
         back!!.setOnClickListener({ v -> finish() })
         bar.addView(back, LinearLayout.LayoutParams(dp(44), dp(46)))
         val titles: LinearLayout = LinearLayout(this)
         titles.setOrientation(LinearLayout.VERTICAL)
         titles.setGravity(Gravity.CENTER_VERTICAL)
-        titles.addView(text("Состояние системы", 18, true, Color.WHITE))
-        titles.addView(text("Диагностика HomeSmoke Remote", 11, false, Color.rgb(211, 222, 232)))
+        titles.addView(text("Состояние системы", 18, true, TEXT))
+        titles.addView(text("Диагностика HomeSmoke Remote", 11, false, MUTED))
         bar.addView(titles, LinearLayout.LayoutParams(0, -1, 1f))
         return bar
     }
@@ -299,6 +299,12 @@ class SystemStatusActivity : Activity() {
         root!!.requestApplyInsets()
         getWindow()!!.setStatusBarColor(NAVY)
         getWindow()!!.setNavigationBarColor(BG)
+        if (Build.VERSION.SDK_INT >= 23) {
+            getWindow()!!.getDecorView()!!.setSystemUiVisibility(
+                getWindow()!!.getDecorView()!!.getSystemUiVisibility() or
+                    View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            )
+        }
     }
 
     private fun card(): LinearLayout? {
@@ -349,14 +355,14 @@ class SystemStatusActivity : Activity() {
     }
 
     companion object {
-        private val NAVY: Int = Color.rgb(9, 47, 73)
-        private val BG: Int = Color.rgb(245, 247, 250)
+        private val NAVY: Int = Color.WHITE
+        private val BG: Int = Color.rgb(245, 244, 240)
         private val CARD: Int = Color.WHITE
-        private val TEXT: Int = Color.rgb(21, 31, 47)
-        private val MUTED: Int = Color.rgb(101, 116, 139)
-        private val BORDER: Int = Color.rgb(220, 225, 232)
-        private val GREEN: Int = Color.rgb(35, 151, 83)
-        private val ORANGE: Int = Color.rgb(231, 138, 7)
+        private val TEXT: Int = Color.rgb(32, 42, 39)
+        private val MUTED: Int = Color.rgb(98, 110, 104)
+        private val BORDER: Int = Color.rgb(226, 229, 224)
+        private val GREEN: Int = Color.rgb(40, 101, 76)
+        private val ORANGE: Int = Color.rgb(197, 101, 16)
         private val LIVE_MS: Long = 10000L
         private val HISTORY_MS: Long = 24L * 60L * 60L * 1000L
 
