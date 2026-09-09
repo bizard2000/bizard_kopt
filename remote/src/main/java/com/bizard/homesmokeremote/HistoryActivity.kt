@@ -96,7 +96,7 @@ class HistoryActivity : Activity() {
         bar.setGravity(Gravity.CENTER_VERTICAL)
         bar.setPadding(dp(8), 0, dp(8), 0)
         bar.setBackgroundColor(NAVY)
-        val back: TextView? = text("‹", 34, false, Color.WHITE)
+        val back: TextView? = text("‹", 34, false, TEXT)
         back!!.setGravity(Gravity.CENTER)
         back!!.setOnClickListener({ v -> finish() })
         bar.addView(back, LinearLayout.LayoutParams(dp(44), dp(46)))
@@ -143,6 +143,12 @@ class HistoryActivity : Activity() {
         root!!.requestApplyInsets()
         getWindow()!!.setStatusBarColor(NAVY)
         getWindow()!!.setNavigationBarColor(BG)
+        if (Build.VERSION.SDK_INT >= 23) {
+            getWindow()!!.getDecorView()!!.setSystemUiVisibility(
+                getWindow()!!.getDecorView()!!.getSystemUiVisibility() or
+                    View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            )
+        }
     }
 
     private fun buildSessions(page: LinearLayout?) {
