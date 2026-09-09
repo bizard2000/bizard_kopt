@@ -28,4 +28,4 @@ Before changing anything, read `PROJECT_STATUS.md`, `docs/DECISIONS.md`, and `CH
 
 ## Current priority
 
-Do not start another redesign. First complete real-device testing of HomeSmoke 2.6.17 and Remote 2.4.6, then fix only reproduced issues in priority order from `PROJECT_STATUS.md`.
+Do not start another redesign. First complete real-device testing of HomeSmoke 2.6.18 and Remote 2.4.6, then fix only reproduced issues in priority order from `PROJECT_STATUS.md`.

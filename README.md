@@ -4,7 +4,7 @@
 
 | Приложение | Модуль | Текущая версия | Назначение |
 |---|---|---:|---|
-| HomeSmoke | `app/` | 2.6.17 (27) | Bluetooth-связь с установленной Arduino, Android Auto, PID/ручной режим, история и диагностика |
+| HomeSmoke | `app/` | 2.6.18 (28) | Bluetooth-связь с установленной Arduino, Android Auto, PID/ручной режим, история и диагностика |
 | HomeSmoke Remote | `remote/` | 2.4.6 (44) | Удалённый мониторинг и команды через MQTT, Kotlin + Jetpack Compose |
 | Общее ядро | `core/` | — | Разбор телеметрии, правила протокола и логика Android Auto |
 

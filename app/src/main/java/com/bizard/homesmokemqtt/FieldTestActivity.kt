@@ -22,7 +22,7 @@ import android.widget.Toast
 import java.io.File
 
 /**
- * Kotlin field-test console for HomeSmoke 2.6.17.
+ * Kotlin field-test console for HomeSmoke 2.6.18.
  * It binds read-only to HomeSmokeService and records observable Android-side state.
  */
 class FieldTestActivity : Activity() {
@@ -112,7 +112,7 @@ class FieldTestActivity : Activity() {
             setTextColor(Color.rgb(15, 23, 42))
         })
         root.addView(TextView(this).apply {
-            text = "Kotlin-диагностика 2.6.17. Проверьте отдельные истории для ручного режима, PID и Auto. Нажмите «Начать журнал», затем перед каждым реальным действием ставьте соответствующую метку. Экран можно сворачивать и открывать основное HomeSmoke или Remote, но не закрывайте его из списка последних приложений до завершения теста."
+            text = "Kotlin-диагностика 2.6.18. Сначала проверьте новую иконку, затем отдельные истории для ручного режима, PID и Auto. Нажмите «Начать журнал», затем перед каждым реальным действием ставьте соответствующую метку. Экран можно сворачивать и открывать основное HomeSmoke или Remote, но не закрывайте его из списка последних приложений до завершения теста."
             textSize = 14f
             setTextColor(Color.rgb(71, 85, 105))
             setPadding(0, dp(8), 0, dp(12))

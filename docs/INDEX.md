@@ -9,6 +9,7 @@
 | [`protocol/COMMAND_PROTOCOL_HOMESMOKE.md`](protocol/COMMAND_PROTOCOL_HOMESMOKE.md) | Подтверждённый протокол установленной Arduino |
 | [`testing/FIELD_TEST_HOMESMOKE_2_6_16.md`](testing/FIELD_TEST_HOMESMOKE_2_6_16.md) | Полевой тест HomeSmoke 2.6.16 |
 | [`testing/FIELD_TEST_HOMESMOKE_2_6_17.md`](testing/FIELD_TEST_HOMESMOKE_2_6_17.md) | Полевой тест истории и графиков HomeSmoke 2.6.17 |
+| [`testing/FIELD_TEST_HOMESMOKE_2_6_18.md`](testing/FIELD_TEST_HOMESMOKE_2_6_18.md) | Проверка иконки и истории HomeSmoke 2.6.18 |
 | [`audits/AUDIT_HOMESMOKE_2_6_16.md`](audits/AUDIT_HOMESMOKE_2_6_16.md) | Аудит изменения протокола 2.6.16 |
 | [`audits/AUDIT_HOMESMOKE_2_6_12.md`](audits/AUDIT_HOMESMOKE_2_6_12.md) | Предыдущий технический аудит |
 | [`audits/AUDIT_STABILIZATION_PLAN_2_6.md`](audits/AUDIT_STABILIZATION_PLAN_2_6.md) | План стабилизации серии 2.6 |

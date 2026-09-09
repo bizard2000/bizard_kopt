@@ -14,7 +14,9 @@
     <application
         android:name=".HomeSmokeApplication"
         android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
         android:label="Домашняя коптильня"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
         <provider
