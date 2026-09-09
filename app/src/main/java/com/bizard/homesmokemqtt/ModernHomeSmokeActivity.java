@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.ViewTreeObserver;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -38,39 +39,52 @@ public class ModernHomeSmokeActivity extends MainActivity {
     private static final int OLD_GREEN = Color.rgb(46, 125, 50);
     private static final int OLD_RED = Color.rgb(198, 40, 40);
     private static final int OLD_ORANGE = Color.rgb(239, 108, 0);
+    private static final String THEME_CARD_TAG = "homesmoke_theme_card";
 
-    private static final int APP_BAR = Color.rgb(15, 39, 68);
-    private static final int PRIMARY = Color.rgb(37, 99, 235);
-    private static final int PRIMARY_DARK = Color.rgb(29, 78, 216);
-    private static final int BACKGROUND = Color.rgb(245, 247, 250);
-    private static final int SURFACE = Color.WHITE;
-    private static final int SURFACE_ALT = Color.rgb(248, 250, 252);
-    private static final int BORDER = Color.rgb(226, 232, 240);
-    private static final int TEXT = Color.rgb(15, 23, 42);
-    private static final int MUTED = Color.rgb(100, 116, 139);
-    private static final int SUCCESS = Color.rgb(22, 163, 74);
-    private static final int WARNING = Color.rgb(245, 158, 11);
-    private static final int DANGER = Color.rgb(220, 38, 38);
-    private static final int DANGER_SOFT = Color.rgb(254, 242, 242);
-    private static final int NEUTRAL_SOFT = Color.rgb(241, 245, 249);
-    private static final int EDIT_SOFT = Color.rgb(219, 234, 254);
-    private static final int EDIT_TEXT = Color.rgb(30, 64, 175);
-    private static final int COPY_SOFT = Color.rgb(254, 243, 199);
-    private static final int COPY_TEXT = Color.rgb(146, 64, 14);
+    private int APP_BAR;
+    private int PRIMARY;
+    private int PRIMARY_DARK;
+    private int BACKGROUND;
+    private int SURFACE;
+    private int SURFACE_ALT;
+    private int BORDER;
+    private int TEXT;
+    private int MUTED;
+    private int SUCCESS;
+    private int WARNING;
+    private int DANGER;
+    private int DANGER_SOFT;
+    private int NEUTRAL_SOFT;
+    private int EDIT_SOFT;
+    private int EDIT_TEXT;
+    private int COPY_SOFT;
+    private int COPY_TEXT;
+    private int HINT;
+    private int UNCHECKED;
+    private boolean darkTheme;
 
     private final Set<View> styled = Collections.newSetFromMap(new WeakHashMap<>());
     private ViewTreeObserver.OnGlobalLayoutListener layoutListener;
 
     @Override
     protected void onCreate(Bundle state) {
+        HomeSmokeTheme.applyActivityTheme(this);
+        loadPalette();
         super.onCreate(state);
-        getWindow().setStatusBarColor(APP_BAR);
-        getWindow().setNavigationBarColor(BACKGROUND);
+        HomeSmokeTheme.applySystemBars(this, darkTheme);
 
         final View root = getWindow().getDecorView();
         layoutListener = () -> styleTree(root);
         root.getViewTreeObserver().addOnGlobalLayoutListener(layoutListener);
         root.post(() -> styleTree(root));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (HomeSmokeTheme.isDark(this) != darkTheme) {
+            recreate();
+        }
     }
 
     @Override
@@ -81,6 +95,31 @@ public class ModernHomeSmokeActivity extends MainActivity {
         }
         styled.clear();
         super.onDestroy();
+    }
+
+    private void loadPalette() {
+        HomeSmokeTheme.Palette p = HomeSmokeTheme.palette(this);
+        darkTheme = p.dark;
+        APP_BAR = p.appBar;
+        PRIMARY = p.primary;
+        PRIMARY_DARK = p.primaryText;
+        BACKGROUND = p.background;
+        SURFACE = p.surface;
+        SURFACE_ALT = p.surfaceAlt;
+        BORDER = p.border;
+        TEXT = p.text;
+        MUTED = p.muted;
+        SUCCESS = p.success;
+        WARNING = p.warning;
+        DANGER = p.danger;
+        DANGER_SOFT = p.dangerSoft;
+        NEUTRAL_SOFT = p.neutralSoft;
+        EDIT_SOFT = p.editSoft;
+        EDIT_TEXT = p.editText;
+        COPY_SOFT = p.copySoft;
+        COPY_TEXT = p.copyText;
+        HINT = p.hint;
+        UNCHECKED = p.unchecked;
     }
 
     private void styleTree(View view) {
@@ -122,6 +161,7 @@ public class ModernHomeSmokeActivity extends MainActivity {
         if (view instanceof ScrollView) {
             ScrollView scroll = (ScrollView) view;
             scroll.setSaveEnabled(false);
+            scroll.setBackgroundColor(BACKGROUND);
             scroll.post(() -> scroll.scrollTo(0, 0));
         }
         if (view instanceof TextView) {
@@ -140,6 +180,8 @@ public class ModernHomeSmokeActivity extends MainActivity {
                 layout.setBackgroundColor(BACKGROUND);
             } else if (color == OLD_BLUE || color == OLD_BLUE_DARK) {
                 layout.setBackgroundColor(APP_BAR);
+            } else if (color == Color.WHITE) {
+                layout.setBackgroundColor(SURFACE);
             }
         }
 
@@ -199,10 +241,8 @@ public class ModernHomeSmokeActivity extends MainActivity {
         else if (color == OLD_ORANGE) text.setTextColor(WARNING);
 
         String value = text.getText() == null ? "" : text.getText().toString();
-        if ("HomeSmoke 2.6.2".equals(value)
-                || "HomeSmoke 2.6.3".equals(value)
-                || "HomeSmoke 2.6.4".equals(value)) {
-            text.setText("HomeSmoke 2.6.5");
+        if (value.startsWith("HomeSmoke 2.6.") && !"HomeSmoke 2.6.14".equals(value)) {
+            text.setText("HomeSmoke 2.6.14");
             text.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         } else if ("История Auto пока пуста".equals(value)) {
             text.setText("История пока пуста\nПосле запуска Auto-программы здесь появятся записи и графики температуры.");
@@ -233,7 +273,7 @@ public class ModernHomeSmokeActivity extends MainActivity {
 
     private void styleEditText(EditText field) {
         field.setTextColor(TEXT);
-        field.setHintTextColor(Color.rgb(148, 163, 184));
+        field.setHintTextColor(HINT);
         field.setTextSize(15);
         field.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
         field.setBackground(fieldDrawable());
@@ -268,6 +308,11 @@ public class ModernHomeSmokeActivity extends MainActivity {
         box.setMinimumHeight(dp(40));
         box.setSingleLine(false);
         box.setButtonTintList(checkTint());
+
+        CharSequence label = box.getText();
+        if (label != null && "Не выключать экран при открытом приложении".contentEquals(label)) {
+            box.post(() -> ensureThemeCard(box));
+        }
     }
 
     private void refreshCheckBoxAppearance(CheckBox box) {
@@ -280,6 +325,7 @@ public class ModernHomeSmokeActivity extends MainActivity {
         if (box.getStateListAnimator() != null) box.setStateListAnimator(null);
         if (box.getElevation() != 0f) box.setElevation(0f);
         if (box.getCurrentTextColor() != TEXT) box.setTextColor(ColorStateList.valueOf(TEXT));
+        box.setButtonTintList(checkTint());
     }
 
     private ColorStateList checkTint() {
@@ -288,7 +334,67 @@ public class ModernHomeSmokeActivity extends MainActivity {
                         new int[]{android.R.attr.state_checked},
                         new int[]{}
                 },
-                new int[]{PRIMARY, Color.rgb(148, 163, 184)});
+                new int[]{PRIMARY, UNCHECKED});
+    }
+
+    private void ensureThemeCard(CheckBox anchor) {
+        ViewParent rawParent = anchor.getParent();
+        if (!(rawParent instanceof LinearLayout)) return;
+        LinearLayout parent = (LinearLayout) rawParent;
+        for (int i = 0; i < parent.getChildCount(); i++) {
+            if (THEME_CARD_TAG.equals(parent.getChildAt(i).getTag())) return;
+        }
+
+        int anchorIndex = parent.indexOfChild(anchor);
+        if (anchorIndex < 0) return;
+
+        LinearLayout card = new LinearLayout(this);
+        card.setTag(THEME_CARD_TAG);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(14), dp(16), dp(14));
+        card.setBackground(cardDrawable());
+        card.setElevation(dp(1));
+
+        TextView title = new TextView(this);
+        title.setText("Оформление");
+        title.setTextSize(15);
+        title.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        title.setTextColor(MUTED);
+        card.addView(title);
+
+        TextView description = new TextView(this);
+        description.setText("Системная тема автоматически следует настройке Android.");
+        description.setTextSize(13);
+        description.setTextColor(MUTED);
+        description.setPadding(0, dp(6), 0, dp(10));
+        card.addView(description);
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        addThemeButton(row, "Системная", HomeSmokeTheme.Mode.SYSTEM);
+        addThemeButton(row, "Светлая", HomeSmokeTheme.Mode.LIGHT);
+        addThemeButton(row, "Тёмная", HomeSmokeTheme.Mode.DARK);
+        card.addView(row, new LinearLayout.LayoutParams(-1, dp(46)));
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.setMargins(dp(10), dp(5), dp(10), dp(5));
+        parent.addView(card, anchorIndex, lp);
+    }
+
+    private void addThemeButton(LinearLayout row, String label, HomeSmokeTheme.Mode mode) {
+        Button button = new Button(this);
+        button.setText(label);
+        button.setTag(mode);
+        button.setOnClickListener(v -> {
+            if (HomeSmokeTheme.mode(this) == mode) return;
+            HomeSmokeTheme.setMode(this, mode);
+            recreate();
+        });
+        styleThemeButton(button, mode);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(44), 1f);
+        lp.setMargins(dp(3), 0, dp(3), 0);
+        row.addView(button, lp);
     }
 
     private void styleButton(Button button) {
@@ -303,6 +409,12 @@ public class ModernHomeSmokeActivity extends MainActivity {
         button.setTextSize(14);
         button.setMinHeight(dp(44));
         button.setPadding(dp(12), 0, dp(12), 0);
+
+        Object tag = button.getTag();
+        if (tag instanceof HomeSmokeTheme.Mode) {
+            styleThemeButton(button, (HomeSmokeTheme.Mode) tag);
+            return;
+        }
 
         String label = normalizeDynamicLabel(button);
         String upper = label.toUpperCase(Locale.ROOT);
@@ -348,6 +460,19 @@ public class ModernHomeSmokeActivity extends MainActivity {
         }
     }
 
+    private void styleThemeButton(Button button, HomeSmokeTheme.Mode mode) {
+        boolean selected = HomeSmokeTheme.mode(this) == mode;
+        button.setAllCaps(false);
+        button.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        button.setTextSize(12);
+        button.setSingleLine(true);
+        button.setGravity(Gravity.CENTER);
+        button.setMinHeight(dp(44));
+        button.setPadding(dp(5), 0, dp(5), 0);
+        if (selected) solidButton(button, PRIMARY, 12);
+        else softButton(button, NEUTRAL_SOFT, TEXT, 12);
+    }
+
     private String normalizeDynamicLabel(Button button) {
         String label = button.getText() == null ? "" : button.getText().toString().trim();
         if (label.equals("Программы") || label.equals("Auto")) {
@@ -358,6 +483,12 @@ public class ModernHomeSmokeActivity extends MainActivity {
     }
 
     private void refreshDynamicButtonAppearance(Button button) {
+        Object tag = button.getTag();
+        if (tag instanceof HomeSmokeTheme.Mode) {
+            styleThemeButton(button, (HomeSmokeTheme.Mode) tag);
+            return;
+        }
+
         String label = normalizeDynamicLabel(button);
         String upper = label.toUpperCase(Locale.ROOT);
 

@@ -19,4 +19,16 @@
         <item name="android:buttonStyle">@style/HomeSmokeButton</item>
         <item name="android:checkboxStyle">@style/HomeSmokeCheckBox</item>
     </style>
+
+    <style name="AppThemeDark" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:colorAccent">#60A5FA</item>
+        <item name="android:windowBackground">#0B1220</item>
+        <item name="android:navigationBarColor">#0B1220</item>
+        <item name="android:statusBarColor">#0F172A</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:buttonStyle">@style/HomeSmokeButton</item>
+        <item name="android:checkboxStyle">@style/HomeSmokeCheckBox</item>
+    </style>
 </resources>
