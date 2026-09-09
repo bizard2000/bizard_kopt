@@ -2,7 +2,7 @@
 
 Формат основан на Keep a Changelog. Версии HomeSmoke и HomeSmoke Remote ведутся раздельно.
 
-## [Unreleased] — порядок в репозитории
+## [Repository maintenance] — 2026-09-09
 
 - Добавлены `README.md`, `PROJECT_STATUS.md`, `AGENTS.md`, журнал решений и техническая ревизия.
 - Документы разложены по `docs/`; неактивные прошивки и одноразовые миграции перенесены в `archive/`.
