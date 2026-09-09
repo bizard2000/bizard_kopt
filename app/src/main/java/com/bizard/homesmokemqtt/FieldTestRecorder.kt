@@ -148,6 +148,7 @@ object FieldTestRecorder {
                 appendLine("exportedAt=${System.currentTimeMillis()}")
                 appendLine("protocolChanged=false")
                 appendLine("arduinoFirmwareChanged=false")
+                appendLine("controllerProfile=installed_legacy")
             }
             addBytes(zip, "meta.txt", meta.toByteArray(Charsets.UTF_8))
             val historyDir = File(c.filesDir, "history")

@@ -7,6 +7,8 @@ Restored from the AIA source:
 - original modes `a0`, `a1`, `a2`;
 - original setpoint/power commands `k...` and `v...`;
 - original PID coefficient commands `p...`, `i...`, `d...`, `z...` with x100 scaling;
+- Android-hosted Auto for the installed legacy Arduino: one `a1` at start and only `k<setpoint>` on stage changes; the old internal Arduino Auto command `a2` is not used;
+- telemetry-confirmed PID mode and chamber setpoint with bounded retries; no `x1`, `x0` or `h` commands and no Arduino reflashing required;
 - monitor/settings/PID screens and separate send button for every PID coefficient;
 - probe K/T visibility and keep-screen-on settings;
 - right-side sliding menu behavior restored from SidebarV2;

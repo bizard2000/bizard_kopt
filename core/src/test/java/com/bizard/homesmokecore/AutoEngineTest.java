@@ -18,7 +18,19 @@ public class AutoEngineTest {
 
     @Test public void movesAcrossDisabledStages(){
         AutoProgram p=new AutoProgram();p.stages.get(0).holdMs=0;p.stages.get(0).stableSeconds=0;p.stages.get(0).chamberTarget=40;p.stages.get(1).enabled=false;p.stages.get(2).enabled=true;p.stages.get(2).holdMs=0;p.stages.get(2).stableSeconds=0;p.stages.get(2).chamberTarget=60;
-        AutoEngine e=new AutoEngine();e.start(p,0);AutoEngine.Update u=e.onTelemetry(t(40,20,20,1000),1000);assertEquals(2,e.getStageIndex());assertTrue(u.commands.contains("k60"));
+        AutoEngine e=new AutoEngine();e.start(p,0);AutoEngine.Update u=e.onTelemetry(t(40,20,20,1000),1000);assertEquals(2,e.getStageIndex());assertArrayEquals(new String[]{"k60"},u.commands.toArray(new String[0]));
+    }
+
+    @Test public void usesOnlyConfirmedLegacyControllerCommands(){
+        AutoProgram p=new AutoProgram();p.stages.get(0).chamberTarget=55;
+        AutoEngine e=new AutoEngine();
+        AutoEngine.Update start=e.start(p,0);
+        assertArrayEquals(new String[]{"a1","k55"},start.commands.toArray(new String[0]));
+        AutoEngine.Update stop=e.stop("test");
+        assertArrayEquals(new String[]{"a3"},stop.commands.toArray(new String[0]));
+        assertFalse(start.commands.contains("x1"));
+        assertFalse(start.commands.contains("h"));
+        assertFalse(stop.commands.contains("x0"));
     }
 
     @Test(expected=IllegalArgumentException.class) public void rejectsDecimalChamberSetpointForFrozenArduinoProtocol(){AutoProgram p=new AutoProgram();p.stages.get(0).chamberTarget=40.5;new AutoEngine().start(p,0);}

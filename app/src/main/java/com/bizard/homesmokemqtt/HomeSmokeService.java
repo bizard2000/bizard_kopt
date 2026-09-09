@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -53,7 +54,22 @@ public class HomeSmokeService extends Service {
     private static final String TERMINATOR="\\0";
     private static final int NOTIFY_ID=260;
     private static final String CHANNEL="homesmoke_control";
-    private static final long HEARTBEAT_MS=2000L,COMMAND_MAX_AGE_MS=120000L;
+    private static final long COMMAND_MAX_AGE_MS=120000L;
+    private static final long AUTO_RETRY_MS=1500L,AUTO_ACK_TIMEOUT_MS=6000L,COMMAND_GAP_MS=80L;
+    private static final int AUTO_MAX_SEND_ATTEMPTS=3;
+
+    private static final class AutoDelivery {
+        final List<String> commands;
+        final double expectedSetpoint;
+        final long minTelemetrySequence,deadlineMs;
+        int attempts=1;
+        long nextRetryMs;
+        AutoDelivery(List<String> commands,double expectedSetpoint,long minTelemetrySequence,long nowMs){
+            this.commands=new ArrayList<>();for(String command:commands)if(!"a1".equals(command))this.commands.add(command);
+            this.expectedSetpoint=expectedSetpoint;this.minTelemetrySequence=minTelemetrySequence;
+            this.nextRetryMs=nowMs+AUTO_RETRY_MS;this.deadlineMs=nowMs+AUTO_ACK_TIMEOUT_MS;
+        }
+    }
 
     public final class LocalBinder extends Binder { public HomeSmokeService getService(){return HomeSmokeService.this;} }
     private final IBinder binder=new LocalBinder();
@@ -61,6 +77,7 @@ public class HomeSmokeService extends Service {
     private final StringBuilder rx=new StringBuilder();
     private final AutoEngine autoEngine=new AutoEngine();
     private final CommandAckManager ackManager=new CommandAckManager();
+    private final Object autoDeliveryLock=new Object();
 
     private SharedPreferences prefs;
     private SecretStore secrets;
@@ -73,9 +90,11 @@ public class HomeSmokeService extends Service {
     private int mqttBackoffSec=5;
     private Listener listener;
     private volatile Telemetry latest;
+    private volatile long telemetrySequence=0L;
+    private AutoDelivery pendingAutoDelivery;
     private String bluetoothName="",mqttState="MQTT отключен",autoStatus="Auto выключено",lastError="";
 
-    private final Runnable heartbeat=new Runnable(){@Override public void run(){if(autoEngine.getState()!=AutoEngine.State.RUNNING)return;if(!sendRaw("h")){abortAuto("Bluetooth потерян");return;}main.postDelayed(this,HEARTBEAT_MS);}};
+    private final Runnable autoDeliveryWatchdog=this::checkAutoDelivery;
     private final Runnable mqttReconnect=new Runnable(){@Override public void run(){if(mqttWanted&&!isMqttConnected()&&!mqttConnecting)connectMqtt();}};
     private final Runnable mqttHealth=new Runnable(){@Override public void run(){if(mqttWanted&&!isMqttConnected()&&!mqttConnecting)connectMqtt();main.postDelayed(this,5000L);}};
     private final Runnable ackTimeoutSweep=()->ackManager.expire(SystemClock.elapsedRealtime(),this::publishCommandAck);
@@ -104,7 +123,7 @@ public class HomeSmokeService extends Service {
                 main.post(()->{lastError="";updateForeground();emit();});readLoop(s.getInputStream());
             }catch(Exception e){main.post(()->{lastError="Bluetooth: "+safe(e);emit();});}
             finally{
-                closeBluetoothInternal();if(autoEngine.getState()==AutoEngine.State.RUNNING)abortAuto("Bluetooth соединение потеряно");ackManager.failAll("bluetooth_disconnected",this::publishCommandAck);
+                closeBluetoothInternal();if(autoEngine.getState()==AutoEngine.State.RUNNING){lastError="Bluetooth потерян: Arduino может сохранять последнюю PID-уставку";abortAuto(lastError);}ackManager.failAll("bluetooth_disconnected",this::publishCommandAck);
                 main.post(()->{updateForeground();emit();maybeStopSelf();});
             }
         },"HomeSmoke-Bluetooth");btThread.start();
@@ -126,9 +145,9 @@ public class HomeSmokeService extends Service {
         return ok;
     }
     public boolean stopHeating(){
-        main.removeCallbacks(heartbeat);boolean ok;
+        clearAutoDelivery();boolean ok;
         if(isAutoRunning()){AutoEngine.Update u=autoEngine.stop("СТОП");ok=sendCommands(u.commands);history.finish("STOP");}
-        else{boolean stopMode=sendRaw("a3");boolean zeroPower=sendRaw("x0");ok=stopMode&&zeroPower;}
+        else ok=sendRaw("a3");
         if(ok){lastError="";autoStatus="Команда STOP отправлена";}
         else{
             autoStatus="STOP не отправлен";
@@ -143,13 +162,14 @@ public class HomeSmokeService extends Service {
 
     public boolean startAuto(AutoProgram program){
         if(!isBluetoothConnected()){lastError="Для Auto нужен Bluetooth";emit();return false;}
+        if(isAutoRunning()){lastError="Auto уже выполняется";emit();return false;}
         try{
             startService(new Intent(this,HomeSmokeService.class));AutoEngine.Update u=autoEngine.start(program,SystemClock.elapsedRealtime());
-            if(!sendCommands(u.commands)){autoEngine.stop("Ошибка запуска");sendRaw("a3");sendRaw("x0");return false;}
-            history.start(program);history.event("STAGE",autoEngine.getStageIndex()+1,u.message);autoStatus=u.message;updateForeground();main.removeCallbacks(heartbeat);main.postDelayed(heartbeat,HEARTBEAT_MS);emit();return true;
+            if(!beginAutoDelivery(u.commands)){autoEngine.stop("Ошибка запуска");sendRaw("a3");return false;}
+            history.start(program);history.event("STAGE",autoEngine.getStageIndex()+1,u.message);updateForeground();emit();return true;
         }catch(Exception e){lastError=safe(e);emit();return false;}
     }
-    public void stopAuto(String reason){main.removeCallbacks(heartbeat);AutoEngine.Update u=autoEngine.stop(reason);sendCommands(u.commands);autoStatus=reason;history.finish(reason);updateForeground();emit();maybeStopSelf();}
+    public void stopAuto(String reason){clearAutoDelivery();AutoEngine.Update u=autoEngine.stop(reason);sendCommands(u.commands);autoStatus=reason;history.finish(reason);updateForeground();emit();maybeStopSelf();}
 
     public void configureMqtt(String host,String port,String status,String command,String ack,String user,String pass,boolean tls,boolean autoConnect){prefs.edit().putString("broker",trim(host)).putString("port",trim(port)).putString("topic",trim(status)).putString("cmd_topic",trim(command)).putString("ack_topic",trim(ack)).putString("user",user==null?"":user).putBoolean("tls",tls).putBoolean("mqtt_auto",autoConnect).apply();secrets.put(pass==null?"":pass);}
     public void startMqtt(){startService(new Intent(this,HomeSmokeService.class));mqttWanted=true;mqttBackoffSec=5;connectMqtt();}
@@ -181,7 +201,7 @@ public class HomeSmokeService extends Service {
                 double v=o.getDouble("value");if(!ProtocolRules.isPercentOrChamberSetpoint(v)){publishAck(requestId,cmd,false,"integer_setpoint_0_100_required",v);return;}
                 if(isAutoRunning()){publishAck(requestId,cmd,false,"android_auto_running",v);return;}if(!isBluetoothConnected()){publishAck(requestId,cmd,false,"bluetooth_not_connected",v);return;}if(latest==null||latest.mode!=1){publishAck(requestId,cmd,false,"pid_mode_required",v);return;}
                 if(sendRaw("k"+integer(v))){ackManager.track(requestId,v,SystemClock.elapsedRealtime());main.postDelayed(ackTimeoutSweep,CommandAckManager.TIMEOUT_MS+250L);publishAck(requestId,cmd,true,"accepted_waiting_controller",v);}else publishAck(requestId,cmd,false,"bluetooth_send_error",v);
-            }else if("stop".equals(cmd)){stopHeating();publishAck(requestId,cmd,true,"stop_sent",Double.NaN);}else publishAck(requestId,cmd,false,"unsupported_command",Double.NaN);
+            }else if("stop".equals(cmd)){boolean ok=stopHeating();publishAck(requestId,cmd,ok,ok?"stop_sent":"stop_send_error",Double.NaN);}else publishAck(requestId,cmd,false,"unsupported_command",Double.NaN);
         }catch(Exception e){publishAck("unknown","unknown",false,"bad_command",Double.NaN);}
     }
 
@@ -189,21 +209,67 @@ public class HomeSmokeService extends Service {
     private void extractFrames(){while(true){int end=rx.indexOf("end");if(end<0){if(rx.length()>8192)rx.delete(0,rx.length()-4096);return;}String frame=rx.substring(0,end+3);rx.delete(0,end+3);while(rx.length()>0&&(rx.charAt(0)=='\r'||rx.charAt(0)=='\n'))rx.deleteCharAt(0);processFrame(frame);}}
     private void processFrame(String frame){
         try{
-            Telemetry t=TelemetryParser.parse(frame,System.currentTimeMillis());latest=t;lastError="";long now=SystemClock.elapsedRealtime();ackManager.onTelemetry(t,now,this::publishCommandAck);
-            if(autoEngine.getState()==AutoEngine.State.RUNNING){int oldStage=autoEngine.getStageIndex();AutoEngine.Update u=autoEngine.onTelemetry(t,now);autoStatus=u.message;if(!u.commands.isEmpty())sendCommands(u.commands);if(autoEngine.getStageIndex()!=oldStage&&autoEngine.getState()==AutoEngine.State.RUNNING)history.event("STAGE",autoEngine.getStageIndex()+1,u.message);history.telemetry(t,autoEngine.getStageIndex()+1,autoStatus);if(autoEngine.getState()!=AutoEngine.State.RUNNING){main.removeCallbacks(heartbeat);history.finish(autoStatus);updateForeground();maybeStopSelf();}}
+            Telemetry t=TelemetryParser.parse(frame,System.currentTimeMillis());latest=t;telemetrySequence++;lastError="";long now=SystemClock.elapsedRealtime();ackManager.onTelemetry(t,now,this::publishCommandAck);
+            if(autoEngine.getState()==AutoEngine.State.RUNNING){
+                if(confirmAutoDelivery(t)){
+                    int oldStage=autoEngine.getStageIndex();AutoEngine.Update u=autoEngine.onTelemetry(t,now);autoStatus=u.message;
+                    if(!u.commands.isEmpty()){
+                        if(autoEngine.getState()==AutoEngine.State.RUNNING){
+                            if(!beginAutoDelivery(u.commands)){abortAuto("Команда этапа не отправлена");}
+                        }else sendCommands(u.commands);
+                    }
+                    if(autoEngine.getStageIndex()!=oldStage&&autoEngine.getState()==AutoEngine.State.RUNNING)history.event("STAGE",autoEngine.getStageIndex()+1,u.message);
+                    history.telemetry(t,autoEngine.getStageIndex()+1,autoStatus);
+                    if(autoEngine.getState()!=AutoEngine.State.RUNNING){clearAutoDelivery();history.finish(autoStatus);updateForeground();maybeStopSelf();}
+                }else history.telemetry(t,autoEngine.getStageIndex()+1,autoStatus);
+            }
             publishTelemetry(t);main.post(this::emit);
         }catch(Exception e){lastError="Пакет Arduino: "+safe(e);main.post(this::emit);}
     }
 
-    private boolean sendCommands(List<String> commands){for(String c:commands)if(!sendRaw(c))return false;return true;}
-    private boolean sendRaw(String command){BluetoothSocket s=btSocket;if(s==null||!s.isConnected())return false;try{synchronized(this){s.getOutputStream().write((command+TERMINATOR).getBytes(StandardCharsets.UTF_8));s.getOutputStream().flush();}return true;}catch(Exception e){lastError="Bluetooth send: "+safe(e);closeBluetoothInternal();main.post(this::emit);return false;}}
+    private boolean beginAutoDelivery(List<String> commands){
+        if(commands==null||commands.isEmpty()||autoEngine.getCurrentStage()==null)return false;
+        long now=SystemClock.elapsedRealtime();AutoDelivery delivery=new AutoDelivery(commands,autoEngine.getCurrentStage().chamberTarget,telemetrySequence,now);
+        synchronized(autoDeliveryLock){pendingAutoDelivery=delivery;}
+        autoStatus="Ожидание Arduino: PID, "+integer(delivery.expectedSetpoint)+"°C";
+        FieldTestRecorder.record("AUTO_COMMAND_PENDING","commands="+commands+" setpoint="+delivery.expectedSetpoint);
+        if(!sendCommands(commands)){clearAutoDelivery();return false;}
+        main.removeCallbacks(autoDeliveryWatchdog);main.postDelayed(autoDeliveryWatchdog,AUTO_RETRY_MS);return true;
+    }
+    private boolean confirmAutoDelivery(Telemetry t){
+        AutoDelivery delivery;
+        synchronized(autoDeliveryLock){
+            delivery=pendingAutoDelivery;
+            if(delivery==null)return true;
+            if(telemetrySequence<=delivery.minTelemetrySequence||t.mode!=1||Double.isNaN(t.chamberSetpoint)||Double.isInfinite(t.chamberSetpoint)||Math.abs(t.chamberSetpoint-delivery.expectedSetpoint)>=0.01)return false;
+            pendingAutoDelivery=null;
+        }
+        main.removeCallbacks(autoDeliveryWatchdog);
+        FieldTestRecorder.record("AUTO_COMMAND_ACK","mode="+t.mode+" setpoint="+t.chamberSetpoint+" attempts="+delivery.attempts);
+        return true;
+    }
+    private void checkAutoDelivery(){
+        AutoDelivery delivery;boolean retry=false,failed=false;long now=SystemClock.elapsedRealtime();
+        synchronized(autoDeliveryLock){
+            delivery=pendingAutoDelivery;
+            if(delivery==null||autoEngine.getState()!=AutoEngine.State.RUNNING)return;
+            if(now>=delivery.deadlineMs||(delivery.attempts>=AUTO_MAX_SEND_ATTEMPTS&&now>=delivery.nextRetryMs)){pendingAutoDelivery=null;failed=true;}
+            else if(now>=delivery.nextRetryMs){delivery.attempts++;delivery.nextRetryMs=now+AUTO_RETRY_MS;retry=true;}
+        }
+        if(failed){FieldTestRecorder.record("AUTO_COMMAND_FAILED","setpoint="+delivery.expectedSetpoint+" attempts="+delivery.attempts);lastError="Arduino не подтвердила PID/уставку";abortAuto(lastError);return;}
+        if(retry){FieldTestRecorder.record("AUTO_COMMAND_RETRY","commands="+delivery.commands+" attempt="+delivery.attempts);if(!sendCommands(delivery.commands)){clearAutoDelivery();abortAuto("Ошибка повторной отправки Auto");return;}}
+        main.postDelayed(autoDeliveryWatchdog,Math.min(AUTO_RETRY_MS,Math.max(250L,delivery.nextRetryMs-SystemClock.elapsedRealtime())));
+    }
+    private void clearAutoDelivery(){synchronized(autoDeliveryLock){pendingAutoDelivery=null;}main.removeCallbacks(autoDeliveryWatchdog);}
+    private boolean sendCommands(List<String> commands){for(int i=0;i<commands.size();i++){if(!sendRaw(commands.get(i)))return false;if(i+1<commands.size())SystemClock.sleep(COMMAND_GAP_MS);}return true;}
+    private boolean sendRaw(String command){BluetoothSocket s=btSocket;if(s==null||!s.isConnected())return false;try{FieldTestRecorder.record("BT_TX",command);synchronized(this){s.getOutputStream().write((command+TERMINATOR).getBytes(StandardCharsets.UTF_8));s.getOutputStream().flush();}return true;}catch(Exception e){FieldTestRecorder.record("BT_TX_ERROR",command+" "+safe(e));lastError="Bluetooth send: "+safe(e);closeBluetoothInternal();main.post(this::emit);return false;}}
 
     private void publishTelemetry(Telemetry t){MqttClient m=mqtt;if(m==null||!m.isConnected())return;try{JSONObject o=new JSONObject();o.put("v",2);o.put("device_id",deviceId());o.put("ts",t.receivedAtMs);o.put("temp_ds",t.chamber);o.put("temp_tip_k",t.probeK);o.put("temp_tip_t",t.probeT);o.put("temp_k",t.chamberSetpoint);o.put("temp_p",t.productSetpoint);o.put("heater_power",t.heaterPower);o.put("mode",t.mode);o.put("last_command",t.lastCommand);o.put("status",t.lastCommand);o.put("kP",t.kP);o.put("kI",t.kI);o.put("kD",t.kD);o.put("zP",t.zP);o.put("android_auto_running",isAutoRunning());o.put("android_auto_stage",autoEngine.getStageIndex()+1);AutoProgram p=autoEngine.getProgram();o.put("android_auto_program",p==null?"":p.name);o.put("android_auto_status",autoStatus);o.put("chamber_ready",autoEngine.isChamberReady());o.put("hold_ms",autoEngine.getAccumulatedHoldMs());m.publish(statusTopic(),o.toString(),true,0);}catch(Exception e){mqttTransportFailure(m,"MQTT publish: "+safe(e));}}
     private void publishCommandAck(String requestId,double value,boolean ok,String reason){publishAck(requestId,"set_temp",ok,reason,value);}
     private void publishAck(String id,String cmd,boolean ok,String state,double value){MqttClient m=mqtt;if(m==null||!m.isConnected())return;try{JSONObject o=new JSONObject();o.put("v",2);o.put("id",id);o.put("device_id",deviceId());o.put("ts",System.currentTimeMillis());o.put("cmd",cmd);o.put("ok",ok);o.put("state",state);o.put("message",state);if(!Double.isNaN(value))o.put("value",value);m.publish(ackTopic(),o.toString(),false,0);}catch(Exception e){mqttTransportFailure(m,"MQTT ACK: "+safe(e));}}
     private void mqttTransportFailure(MqttClient failed,String message){if(failed==null)return;failed.close();if(mqtt!=failed)return;mqtt=null;mqttState=message;main.post(()->{emit();scheduleMqttReconnect();});}
 
-    private void abortAuto(String reason){main.removeCallbacks(heartbeat);AutoEngine.Update u=autoEngine.stop(reason);sendCommands(u.commands);autoStatus=reason;history.finish(reason);updateForeground();main.post(()->{emit();maybeStopSelf();});}
+    private void abortAuto(String reason){clearAutoDelivery();AutoEngine.Update u=autoEngine.stop(reason);sendCommands(u.commands);autoStatus=reason;history.finish(reason);updateForeground();main.post(()->{emit();maybeStopSelf();});}
     private void closeBluetooth(boolean update){closeBluetoothInternal();bluetoothName="";ackManager.failAll("bluetooth_disconnected",this::publishCommandAck);if(update)emit();}
     private void closeBluetoothInternal(){latest=null;BluetoothSocket s=btSocket;btSocket=null;if(s!=null)try{s.close();}catch(Exception ignored){}Thread t=btThread;btThread=null;if(t!=null&&t!=Thread.currentThread())t.interrupt();}
 
@@ -226,5 +292,5 @@ public class HomeSmokeService extends Service {
     private void ensureDeviceId(){if(prefs.getString("device_id","").trim().isEmpty())prefs.edit().putString("device_id",UUID.randomUUID().toString().substring(0,8)).apply();}
     private static String integer(double v){return String.valueOf((int)Math.rint(v));}private static String trim(String s){return s==null?"":s.trim();}private static String safe(Exception e){String m=e.getMessage();return m==null?e.getClass().getSimpleName():m;}
 
-    @Override public void onDestroy(){main.removeCallbacks(heartbeat);main.removeCallbacks(mqttReconnect);main.removeCallbacks(mqttHealth);main.removeCallbacks(ackTimeoutSweep);mqttWanted=false;mqttAttempt++;mqttConnecting=false;if(isAutoRunning()){sendRaw("a3");sendRaw("x0");history.finish("SERVICE_DESTROYED");}closeBluetoothInternal();MqttClient m=mqtt;mqtt=null;if(m!=null)m.close();super.onDestroy();}
+    @Override public void onDestroy(){clearAutoDelivery();main.removeCallbacks(mqttReconnect);main.removeCallbacks(mqttHealth);main.removeCallbacks(ackTimeoutSweep);mqttWanted=false;mqttAttempt++;mqttConnecting=false;if(isAutoRunning()){sendRaw("a3");history.finish("SERVICE_DESTROYED");}closeBluetoothInternal();MqttClient m=mqtt;mqtt=null;if(m!=null)m.close();super.onDestroy();}
 }

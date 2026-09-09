@@ -302,7 +302,7 @@ public class MainActivity extends Activity implements HomeSmokeService.Listener 
         setPageTitle("Авто программы",true);
         programs=programRepo.load();
         LinearLayout p=page();
-        TextView intro=text("До 4 этапов. Выдержка считается только пока температура камеры находится в заданном диапазоне. При выходе из допуска таймер автоматически ставится на паузу.",14,false);
+        TextView intro=text("До 4 этапов. Выдержка считается только пока температура камеры находится в заданном диапазоне. При выходе из допуска таймер автоматически ставится на паузу. Auto выполняется телефоном и требует постоянного Bluetooth: старая Arduino при потере связи может сохранить последнюю PID-уставку.",14,false);
         intro.setTextColor(MUTED);
         intro.setPadding(dp(10),dp(8),dp(10),dp(10));
         p.addView(intro);

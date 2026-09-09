@@ -241,8 +241,7 @@ public class ModernHomeSmokeActivity extends MainActivity {
         else if (color == OLD_ORANGE) text.setTextColor(WARNING);
 
         String value = text.getText() == null ? "" : text.getText().toString();
-        if (value.startsWith("HomeSmoke 2.6.") && !"HomeSmoke 2.6.14".equals(value)) {
-            text.setText("HomeSmoke 2.6.14");
+        if (value.startsWith("HomeSmoke 2.6.")) {
             text.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         } else if ("История Auto пока пуста".equals(value)) {
             text.setText("История пока пуста\nПосле запуска Auto-программы здесь появятся записи и графики температуры.");

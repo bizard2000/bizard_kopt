@@ -63,12 +63,12 @@ jobs:
           set -o pipefail
           gradle :remote:testDebugUnitTest --stacktrace 2>&1 | tee remote-test.log
 
-      - name: Verify HomeSmoke 2.6.15 UI polish and field diagnostics
+      - name: Verify HomeSmoke 2.6.16 installed Arduino protocol and UI polish
         shell: bash
         run: |
           grep -q "minSdk 23" app/build.gradle
-          grep -q "versionCode 25" app/build.gradle
-          grep -q "versionName '2.6.15'" app/build.gradle
+          grep -q "versionCode 26" app/build.gradle
+          grep -q "versionName '2.6.16'" app/build.gradle
           grep -q "org.jetbrains.kotlin.android" build.gradle
           grep -q "org.jetbrains.kotlin.android" app/build.gradle
           grep -q "testImplementation 'junit:junit:4.13.2'" app/build.gradle
@@ -92,7 +92,12 @@ jobs:
           grep -q 'controller_ack_timeout' app/src/main/java/com/bizard/homesmokemqtt/CommandAckManager.java
           grep -q 'autoStatus="Команда STOP отправлена"' app/src/main/java/com/bizard/homesmokemqtt/HomeSmokeService.java
           grep -q 'autoStatus="STOP не отправлен"' app/src/main/java/com/bizard/homesmokemqtt/HomeSmokeService.java
-          grep -q 'else if("stop".equals(cmd)){stopHeating();publishAck(requestId,cmd,true,"stop_sent",Double.NaN);}' app/src/main/java/com/bizard/homesmokemqtt/HomeSmokeService.java
+          grep -q 'AUTO_COMMAND_ACK' app/src/main/java/com/bizard/homesmokemqtt/HomeSmokeService.java
+          grep -q 'AUTO_COMMAND_RETRY' app/src/main/java/com/bizard/homesmokemqtt/HomeSmokeService.java
+          grep -q 'new Update(list("a1",setpointCommand' core/src/main/java/com/bizard/homesmokecore/AutoEngine.java
+          ! grep -q 'sendRaw("h")' app/src/main/java/com/bizard/homesmokemqtt/HomeSmokeService.java
+          ! grep -q 'list("x1"' core/src/main/java/com/bizard/homesmokecore/AutoEngine.java
+          ! grep -q '"x0"' core/src/main/java/com/bizard/homesmokecore/AutoEngine.java
           grep -q 'ModernHomeSmokeActivity.class' app/src/main/java/com/bizard/homesmokemqtt/HomeSmokeService.java
           grep -q 'ackTimeoutSweep' app/src/main/java/com/bizard/homesmokemqtt/HomeSmokeService.java
           grep -q 'latest=null' app/src/main/java/com/bizard/homesmokemqtt/HomeSmokeService.java
@@ -102,10 +107,10 @@ jobs:
           grep -q 'expiresWithoutAnyTelemetry' app/src/test/java/com/bizard/homesmokemqtt/CommandAckManagerTest.java
           grep -q 'Android 4 / Legacy is excluded' AUDIT_STABILIZATION_PLAN_2_6.md
           test -f AUDIT_HOMESMOKE_2_6_12.md
-          test -f FIELD_TEST_HOMESMOKE_2_6_13.md
+          test -f FIELD_TEST_HOMESMOKE_2_6_16.md
           grep -E "minSdk|versionCode|versionName" app/build.gradle
 
-      - name: Build HomeSmoke 2.6.15 Android 6+
+      - name: Build HomeSmoke 2.6.16 Android 6+
         shell: bash
         run: |
           set -o pipefail
@@ -160,24 +165,24 @@ jobs:
           rm -f dist/HomeSmoke_Remote_2.*_Android5plus.apk dist/HomeSmoke_Remote_2.*_Android5plus.bin
           # Keep previous Android 6+ Remote APKs available for comparison and rollback.
           rm -f dist/*Android4plus.apk dist/*Android4plus.bin
-          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.15_Android6plus.apk
-          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.15_Android6plus.bin
+          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.16_Android6plus.apk
+          cp app/build/outputs/apk/debug/app-debug.apk dist/HomeSmoke_FULL_2.6.16_Android6plus.bin
           cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_${{ steps.remote_version.outputs.name }}_Android6plus.apk
           cp remote/build/outputs/apk/debug/remote-debug.apk dist/HomeSmoke_Remote_${{ steps.remote_version.outputs.name }}_Android6plus.bin
           git config user.name "github-actions[bot]"
           git config user.email "4189826+github-actions[bot]@users.noreply.github.com"
           git add -A dist remote/src remote/build.gradle ci/apply_remote_246.py ci/fix_remote_246_tests.py
-          git commit -m "CI: publish HomeSmoke 2.6.15 and Remote ${{ steps.remote_version.outputs.name }} Compose [skip ci]" || true
+          git commit -m "CI: publish HomeSmoke 2.6.16 and Remote ${{ steps.remote_version.outputs.name }} Compose [skip ci]" || true
           git pull --rebase origin homesmoke-native
           git push origin homesmoke-native
 
-      - name: Upload HomeSmoke 2.6.15 UI polish build
+      - name: Upload HomeSmoke 2.6.16 installed Arduino protocol build
         uses: actions/upload-artifact@v4
         with:
-          name: HomeSmoke_FULL_2.6.15_Android6plus
+          name: HomeSmoke_FULL_2.6.16_Android6plus
           path: |
-            dist/HomeSmoke_FULL_2.6.15_Android6plus.apk
-            dist/HomeSmoke_FULL_2.6.15_Android6plus.bin
+            dist/HomeSmoke_FULL_2.6.16_Android6plus.apk
+            dist/HomeSmoke_FULL_2.6.16_Android6plus.bin
           if-no-files-found: error
 
       - name: Upload HomeSmoke Remote 2.4.6 Compose
