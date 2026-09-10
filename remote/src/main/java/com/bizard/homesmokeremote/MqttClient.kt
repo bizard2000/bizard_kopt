@@ -26,13 +26,20 @@ internal class MqttClient(
     private var out: OutputStream? = null
     @Volatile private var connected: Boolean = false
     @Volatile private var listener: MessageListener? = null
+    @Volatile private var lastInboundAt: Long = 0L
+    @Volatile private var pingOutstandingAt: Long = 0L
     private var reader: Thread? = null
     private var keepAlive: Thread? = null
 
     val isConnected: Boolean
         get() {
             val s: Socket? = socket
-            return connected && s != null && s!!.isConnected() && !s!!.isClosed()
+            if (!connected || s == null || !s.isConnected || s.isClosed) return false
+            val now = System.currentTimeMillis()
+            val inboundAt = lastInboundAt
+            if (inboundAt > 0L && now - inboundAt > CONNECTION_STALE_MS) return false
+            val pingAt = pingOutstandingAt
+            return pingAt == 0L || now - pingAt <= PINGRESP_TIMEOUT_MS
         }
 
     internal fun interface MessageListener {
@@ -80,6 +87,9 @@ internal class MqttClient(
             throw IOException("CONNACK=" + (if (ack!!.size > 1) ack!![1].toInt() and 255 else -1))
 
         socket!!.setSoTimeout(0)
+        val now = System.currentTimeMillis()
+        lastInboundAt = now
+        pingOutstandingAt = 0L
         connected = true
         startReader()
         startKeepAlive()
@@ -127,7 +137,7 @@ internal class MqttClient(
                             if (h < 0) throw EOFException()
                             val n: Int = readRemaining(`in`)
                             val body: ByteArray? = readFully(`in`, n)
-                            if ((h and 0xF0) == 0x30) handlePublish(h, body)
+                            handlePacket(h, body)
                         }
                     } catch (e: Exception) {
                         close()
@@ -136,6 +146,14 @@ internal class MqttClient(
                 "HomeSmokeRemote-MQTT-reader",
             )
         reader!!.start()
+    }
+
+    private fun handlePacket(header: Int, body: ByteArray?) {
+        lastInboundAt = System.currentTimeMillis()
+        when (header and 0xF0) {
+            0x30 -> handlePublish(header, body)
+            0xD0 -> pingOutstandingAt = 0L
+        }
     }
 
     @Throws(IOException::class)
@@ -172,9 +190,18 @@ internal class MqttClient(
                 {
                     while (connected) {
                         try {
-                            Thread.sleep(20000)
+                            Thread.sleep(KEEPALIVE_CHECK_MS)
                             synchronized(this@MqttClient) {
-                                if (connected) sendPacket(0xC0, ByteArray(0))
+                                if (!connected) return@synchronized
+                                val now = System.currentTimeMillis()
+                                val pingAt = pingOutstandingAt
+                                if (pingAt != 0L) {
+                                    if (now - pingAt > PINGRESP_TIMEOUT_MS)
+                                        throw IOException("PINGRESP timeout")
+                                } else {
+                                    sendPacket(0xC0, ByteArray(0))
+                                    pingOutstandingAt = now
+                                }
                             }
                         } catch (e: Exception) {
                             close()
@@ -200,6 +227,8 @@ internal class MqttClient(
     @Synchronized
     fun close() {
         connected = false
+        lastInboundAt = 0L
+        pingOutstandingAt = 0L
         val s: Socket? = socket
         socket = null
         if (s != null)
@@ -259,5 +288,11 @@ internal class MqttClient(
             p += r
         }
         return b
+    }
+
+    companion object {
+        private const val KEEPALIVE_CHECK_MS = 20_000L
+        private const val PINGRESP_TIMEOUT_MS = 35_000L
+        private const val CONNECTION_STALE_MS = 60_000L
     }
 }

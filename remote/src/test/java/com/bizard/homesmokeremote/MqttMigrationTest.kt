@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.*
 import org.junit.Test
 
-/** Checks exact MQTT bytes; no broker, Arduino or protocol extensions are involved. */
+/** Checks exact MQTT bytes and connection-health rules; no broker, Arduino or protocol extensions are involved. */
 class MqttMigrationTest {
     private fun connectedClient(output: ByteArrayOutputStream): MqttClient {
         val client = MqttClient("localhost", 1883, false, "", "")
@@ -28,6 +28,13 @@ class MqttMigrationTest {
         field("out", output)
         return client
     }
+
+    private fun setField(client: MqttClient, name: String, value: Any) {
+        MqttClient::class.java.getDeclaredField(name).apply { isAccessible = true }.set(client, value)
+    }
+
+    private fun longField(client: MqttClient, name: String): Long =
+        MqttClient::class.java.getDeclaredField(name).apply { isAccessible = true }.getLong(client)
 
     @Test
     fun qosOnePublishAndSubscribeKeepPacketIdsAndUtf8Bytes() {
@@ -128,6 +135,49 @@ class MqttMigrationTest {
                 ),
                 output.toByteArray(),
             )
+        } finally {
+            client.close()
+        }
+    }
+
+    @Test
+    fun pingRespRefreshesHealthAndClearsOutstandingPing() {
+        val output = ByteArrayOutputStream()
+        val client = connectedClient(output)
+        val receive =
+            MqttClient::class
+                .java
+                .getDeclaredMethod(
+                    "handlePacket",
+                    Int::class.javaPrimitiveType,
+                    ByteArray::class.java,
+                )
+                .apply { isAccessible = true }
+        try {
+            setField(client, "pingOutstandingAt", 123L)
+            setField(client, "lastInboundAt", 1L)
+            receive.invoke(client, 0xD0, ByteArray(0))
+            assertEquals(0L, longField(client, "pingOutstandingAt"))
+            assertTrue(longField(client, "lastInboundAt") > 1L)
+            assertTrue(client.isConnected)
+        } finally {
+            client.close()
+        }
+    }
+
+    @Test
+    fun overduePingOrInboundSilenceMakesConnectionUnhealthy() {
+        val output = ByteArrayOutputStream()
+        val client = connectedClient(output)
+        try {
+            val now = System.currentTimeMillis()
+            setField(client, "lastInboundAt", now)
+            setField(client, "pingOutstandingAt", now - 36_000L)
+            assertFalse(client.isConnected)
+
+            setField(client, "pingOutstandingAt", 0L)
+            setField(client, "lastInboundAt", now - 61_000L)
+            assertFalse(client.isConnected)
         } finally {
             client.close()
         }
