@@ -116,12 +116,12 @@ jobs:
           set -o pipefail
           gradle :app:assembleDebug --stacktrace 2>&1 | tee app-build.log
 
-      - name: Verify HomeSmoke Remote 2.4.6 responsive Compose configuration
+      - name: Verify HomeSmoke Remote responsive Compose configuration
         shell: bash
         run: |
           grep -q "minSdk 23" remote/build.gradle
-          grep -q "versionCode 44" remote/build.gradle
-          grep -q "versionName '2.4.6'" remote/build.gradle
+          grep -q "versionCode ${{ steps.remote_version.outputs.code }}" remote/build.gradle
+          grep -q "versionName '${{ steps.remote_version.outputs.name }}'" remote/build.gradle
           ! grep -q "com.google.android.material" remote/build.gradle
           grep -q "android:style/Theme.Material.Light.NoActionBar" remote/src/main/res/values/styles.xml
           grep -q 'android:name=".RemoteApplication"' remote/src/main/AndroidManifest.xml
