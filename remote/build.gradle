@@ -6,7 +6,6 @@ plugins {
 
 def stableDebugKeystore = file('homesmoke-remote-debug.keystore')
 def stableDebugKeystoreB64 = rootProject.file('ci/homesmoke-debug.keystore.b64')
-def stableDebugPassword = System.getenv('HOMESMOKE_DEBUG_PASSWORD') ?: ['home', 'smoke'].join()
 if (!stableDebugKeystore.exists()) {
     if (!stableDebugKeystoreB64.exists()) {
         throw new GradleException('Missing ci/homesmoke-debug.keystore.b64')
@@ -21,9 +20,9 @@ android {
     signingConfigs {
         stableDebug {
             storeFile stableDebugKeystore
-            storePassword stableDebugPassword
+            storePassword 'homesmoke'
             keyAlias 'homesmoke'
-            keyPassword stableDebugPassword
+            keyPassword 'homesmoke'
         }
     }
 
@@ -31,8 +30,8 @@ android {
         applicationId 'com.bizard.homesmokeremote'
         minSdk 23
         targetSdk 35
-        versionCode 44
-        versionName '2.4.6'
+        versionCode 45
+        versionName '2.4.7'
     }
 
     buildTypes {

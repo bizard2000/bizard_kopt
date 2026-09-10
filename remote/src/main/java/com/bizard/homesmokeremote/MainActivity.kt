@@ -34,6 +34,8 @@ import java.util.ArrayList
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -43,6 +45,7 @@ open class MainActivity : ComponentActivity() {
     private var prefs: SharedPreferences? = null
     private var secrets: SecretStore? = null
     private var mqtt: MqttClient? = null
+    private val mqttIo: ExecutorService = Executors.newSingleThreadExecutor { r -> Thread(r, "HomeSmokeRemote-MQTT-io") }
     private var historyStore: TelemetryHistoryStore? = null
     @Volatile private var connecting: Boolean = false
     @Volatile private var wantConnection: Boolean = false
@@ -201,6 +204,7 @@ open class MainActivity : ComponentActivity() {
         wantConnection = false
         handler.removeCallbacks(health)
         disconnectInternal(false)
+        mqttIo.shutdownNow()
         if (historyStore != null) historyStore!!.close()
         super.onDestroy()
     }
@@ -1257,9 +1261,14 @@ open class MainActivity : ComponentActivity() {
             o.put("cmd", "set_temp")
             o.put("value", target)
             o.put("ts", System.currentTimeMillis())
-            c!!.publish(topic(s(commandTopic), "homesmoke/cmd"), o.toString(), false)
-            setAckProgress(1, false)
-            setCommandUi("Remote отправил команду · ожидается HomeSmoke", 1)
+            mqttIo.execute {
+                try {
+                    c.publish(topic(s(commandTopic), "homesmoke/cmd"), o.toString(), false)
+                    runOnUiThread { setAckProgress(1, false); setCommandUi("Remote отправил команду · ожидается HomeSmoke", 1) }
+                } catch (e: Exception) {
+                    runOnUiThread { pendingId = ""; pendingLabel = ""; setAckError(""); toast("Ошибка MQTT: " + safe(e)!!) }
+                }
+            }
         } catch (e: Exception) {
             pendingId = ""
             pendingLabel = ""
@@ -1295,9 +1304,14 @@ open class MainActivity : ComponentActivity() {
             o.put("id", pendingId)
             o.put("cmd", "stop")
             o.put("ts", System.currentTimeMillis())
-            c!!.publish(topic(s(commandTopic), "homesmoke/cmd"), o.toString(), false)
-            setAckProgress(1, false)
-            setCommandUi("Remote отправил STOP · ожидается HomeSmoke", 1)
+            mqttIo.execute {
+                try {
+                    c.publish(topic(s(commandTopic), "homesmoke/cmd"), o.toString(), false)
+                    runOnUiThread { setAckProgress(1, false); setCommandUi("Remote отправил STOP · ожидается HomeSmoke", 1) }
+                } catch (e: Exception) {
+                    runOnUiThread { pendingId = ""; pendingLabel = ""; setAckError(""); toast("Ошибка MQTT: " + safe(e)!!) }
+                }
+            }
         } catch (e: Exception) {
             pendingId = ""
             pendingLabel = ""
