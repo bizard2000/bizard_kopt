@@ -59,6 +59,7 @@
 - Сохранены существующие MQTT publish/subscribe wire-байты; Arduino-команды и протокол не изменялись.
 - Добавлены тесты на `PINGRESP` и просроченное/half-open MQTT-соединение.
 - HomeSmoke Remote получил отдельную launcher-иконку Home Bizard Smoke Remote с индикатором беспроводной связи, включая legacy и adaptive icon ресурсы.
+- Полный GitHub Actions run `34462925296` (#308) завершён `success`: core/app/remote tests, обе Android-сборки и проверка APK прошли; опубликован `HomeSmoke_Remote_2.4.8_Android6plus.apk`, SHA-256 `bf0a6e0f023251dc19bfd87b4b8e6ba8c3b4e09b33e0c52ff2c9172220309703`.
 
 ### [2.4.7] — 2026-09-10
 
