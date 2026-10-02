@@ -4,6 +4,8 @@
 |---|---|
 | [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) | Текущее состояние и следующие задачи |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | История версий обеих программ |
+| [`../AGENTS.md`](../AGENTS.md) | Обязательные правила разработки и границы изменений |
+| [`../HANDOVER.md`](../HANDOVER.md) | Полный документ передачи проекта новому разработчику |
 | [`DECISIONS.md`](DECISIONS.md) | Постоянные архитектурные решения и запреты |
 | [`AUDIT_2026-09-09.md`](AUDIT_2026-09-09.md) | Ревизия HomeSmoke, Remote и GitHub |
 | [`protocol/COMMAND_PROTOCOL_HOMESMOKE.md`](protocol/COMMAND_PROTOCOL_HOMESMOKE.md) | Подтверждённый протокол установленной Arduino |
