@@ -30,8 +30,8 @@ android {
         applicationId 'com.bizard.homesmokemqtt.full'
         minSdk 23
         targetSdk 35
-        versionCode 28
-        versionName '2.6.18'
+        versionCode 29
+        versionName '2.6.19'
     }
 
     buildFeatures {
