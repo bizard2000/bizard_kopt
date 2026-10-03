@@ -39,12 +39,7 @@
         <activity
             android:name=".FieldTestActivity"
             android:exported="true"
-            android:label="HomeSmoke · Полевой тест">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:label="HomeSmoke · Полевой тест" />
         <service
             android:name=".HomeSmokeService"
             android:exported="false"
