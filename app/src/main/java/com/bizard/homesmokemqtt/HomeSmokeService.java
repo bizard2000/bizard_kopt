@@ -82,6 +82,7 @@ public class HomeSmokeService extends Service {
     private SharedPreferences prefs;
     private SecretStore secrets;
     private HistoryStore history;
+    private CookingJournal cookingJournal;
     private volatile BluetoothSocket btSocket;
     private volatile Thread btThread;
     private volatile MqttClient mqtt;
@@ -99,7 +100,7 @@ public class HomeSmokeService extends Service {
     private final Runnable mqttHealth=new Runnable(){@Override public void run(){if(mqttWanted&&!isMqttConnected()&&!mqttConnecting)connectMqtt();main.postDelayed(this,5000L);}};
     private final Runnable ackTimeoutSweep=()->ackManager.expire(SystemClock.elapsedRealtime(),this::publishCommandAck);
 
-    @Override public void onCreate(){super.onCreate();prefs=getSharedPreferences("homesmoke_full",MODE_PRIVATE);secrets=new SecretStore(this);history=new HistoryStore(this);ensureDeviceId();main.postDelayed(mqttHealth,5000L);}
+    @Override public void onCreate(){super.onCreate();prefs=getSharedPreferences("homesmoke_full",MODE_PRIVATE);secrets=new SecretStore(this);history=new HistoryStore(this);cookingJournal=new CookingJournal(this);ensureDeviceId();main.postDelayed(mqttHealth,5000L);}
     @Override public IBinder onBind(Intent intent){hasClient=true;return binder;}
     @Override public boolean onUnbind(Intent intent){hasClient=false;maybeStopSelf();return true;}
     @Override public void onRebind(Intent intent){hasClient=true;super.onRebind(intent);}
@@ -111,6 +112,7 @@ public class HomeSmokeService extends Service {
     public boolean isBluetoothConnected(){BluetoothSocket s=btSocket;return s!=null&&s.isConnected();}
     public boolean isMqttConnected(){MqttClient m=mqtt;return m!=null&&m.isConnected();}
     public boolean isAutoRunning(){return autoEngine.getState()==AutoEngine.State.RUNNING;}
+    public CookingJournal cookingJournal(){return cookingJournal;}
     public String deviceId(){return prefs.getString("device_id","homesmoke");}
     public String mqttPassword(){return secrets.get();}
 
@@ -211,7 +213,7 @@ public class HomeSmokeService extends Service {
     private void extractFrames(){while(true){int end=rx.indexOf("end");if(end<0){if(rx.length()>8192)rx.delete(0,rx.length()-4096);return;}String frame=rx.substring(0,end+3);rx.delete(0,end+3);while(rx.length()>0&&(rx.charAt(0)=='\r'||rx.charAt(0)=='\n'))rx.deleteCharAt(0);processFrame(frame);}}
     private void processFrame(String frame){
         try{
-            Telemetry t=TelemetryParser.parse(frame,System.currentTimeMillis());latest=t;telemetrySequence++;lastError="";long now=SystemClock.elapsedRealtime();ackManager.onTelemetry(t,now,this::publishCommandAck);
+            Telemetry t=TelemetryParser.parse(frame,System.currentTimeMillis());latest=t;try{cookingJournal.sample(t);}catch(Exception e){lastError="Ошибка журнала приготовления: "+e.getMessage();}telemetrySequence++;lastError="";long now=SystemClock.elapsedRealtime();ackManager.onTelemetry(t,now,this::publishCommandAck);
             if(autoEngine.getState()==AutoEngine.State.RUNNING){
                 if(confirmAutoDelivery(t)){
                     int oldStage=autoEngine.getStageIndex();AutoEngine.Update u=autoEngine.onTelemetry(t,now);autoStatus=u.message;
