@@ -29,13 +29,14 @@ final class CookingJournal {
         JSONObject j=new JSONObject();
         if(t!=null){
             j.put("sampleAt",t.receivedAtMs);
-            j.put("chamber",t.chamber);
-            j.put("setpoint",t.chamberSetpoint);
-            j.put("probeK",t.probeK);
-            j.put("probeT",t.probeT);
+            putFinite(j,"chamber",t.chamber);
+            putFinite(j,"setpoint",t.chamberSetpoint);
+            putFinite(j,"probeK",t.probeK);
+            putFinite(j,"probeT",t.probeT);
         } else j.put("missingTelemetry",true);
         return j;
     }
+    private static void putFinite(JSONObject j,String key,double value)throws Exception{if(Double.isNaN(value)||Double.isInfinite(value))j.put(key,JSONObject.NULL);else j.put(key,value);}
     private void begin(String name,Telemetry t)throws Exception{
         session.getJSONArray("stages").put(new JSONObject().put("name",name).put("startedAt",System.currentTimeMillis()).put("start",values(t)).put("samples",new JSONArray()));
     }
