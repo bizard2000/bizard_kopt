@@ -201,6 +201,9 @@ public class MainActivity extends Activity implements HomeSmokeService.Listener 
         cameraActionButton.setOnClickListener(v->cameraControl());
         camera.addView(cameraActionButton,buttonMargins(0,12,0,0));
         p.addView(camera,margins(10,10,10,6));
+        Button journalButton=primary("Журнал приготовления");
+        journalButton.setOnClickListener(v->startActivity(new Intent(this,CookingJournalActivity.class)));
+        p.addView(journalButton,margins(10,4,10,6));
 
         LinearLayout probes=new LinearLayout(this);
         probes.setOrientation(LinearLayout.HORIZONTAL);
