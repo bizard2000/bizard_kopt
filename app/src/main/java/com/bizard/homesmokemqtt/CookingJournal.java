@@ -65,7 +65,8 @@ final class CookingJournal {
         if(file.exists()&&!file.delete())throw new java.io.IOException("Cannot clear active journal");
         return output;
     }
-    private static String read(File f)throws Exception{try(FileInputStream in=new FileInputStream(f)){byte[] bytes=new byte[(int)f.length()];int offset=0,n;while(offset<bytes.length&&(n=in.read(bytes,offset,bytes.length-offset))>0)offset+=n;return new String(bytes,0,offset,StandardCharsets.UTF_8);}}\n    private void save()throws Exception{write(file,session.toString());}
+    private static String read(File f)throws Exception{try(FileInputStream in=new FileInputStream(f)){byte[] bytes=new byte[(int)f.length()];int offset=0,n;while(offset<bytes.length&&(n=in.read(bytes,offset,bytes.length-offset))>0)offset+=n;return new String(bytes,0,offset,StandardCharsets.UTF_8);}}
+    private void save()throws Exception{write(file,session.toString());}
     private static void write(File f,String s)throws Exception{
         File tmp=new File(f.getParentFile(),f.getName()+".tmp");
         try(FileOutputStream out=new FileOutputStream(tmp)){out.write(s.getBytes(StandardCharsets.UTF_8));out.getFD().sync();}
