@@ -17,11 +17,10 @@ public final class CookingJournalActivity extends Activity {
     private TextView status;
     private final Handler handler=new Handler(Looper.getMainLooper());
     private final ServiceConnection connection=new ServiceConnection(){
-        @Override public void onServiceConnected(ComponentName name,IBinder binder){service=((HomeSmokeService.LocalBinder)binder).getService();bound=true;refresh();}
+        @Override public void onServiceConnected(ComponentName name,IBinder binder){service=((HomeSmokeService.LocalBinder)binder).getService();journal=service.cookingJournal();bound=true;refresh();}
         @Override public void onServiceDisconnected(ComponentName name){service=null;bound=false;refresh();}
     };
     private final Runnable ticker=new Runnable(){@Override public void run(){
-        try{if(journal.isActive())journal.sample(telemetry());}catch(Exception e){status.setText("Ошибка записи: "+e.getMessage());}
         refresh();handler.postDelayed(this,5000);
     }};
     private Telemetry telemetry(){HomeSmokeService.State s=service==null?null:service.getState();return s==null?null:s.telemetry;}
