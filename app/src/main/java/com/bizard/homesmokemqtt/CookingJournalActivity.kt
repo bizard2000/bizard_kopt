@@ -21,7 +21,7 @@ class CookingJournalActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, binder: IBinder) {
-            service = (binder as HomeSmokeService.LocalBinder).service
+            service = (binder as HomeSmokeService.LocalBinder).getService()
             journal = service!!.cookingJournal()
             refresh()
         }
@@ -30,7 +30,7 @@ class CookingJournalActivity : Activity() {
     private val ticker = object : Runnable {
         override fun run() { refresh(); handler.postDelayed(this, 5000) }
     }
-    private fun telemetry() = service?.state?.telemetry
+    private fun telemetry() = service?.getState()?.telemetry
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
