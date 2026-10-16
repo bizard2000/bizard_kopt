@@ -1083,7 +1083,7 @@ open class MainActivity : ComponentActivity() {
             if (force) toast("Укажите MQTT broker")
             return
         }
-        val po = s(port).toIntOrNull()
+        val po = s(port)?.toIntOrNull()
         if (po == null || po !in 1..65535) {
             if (force) toast("Неверный port")
             return
