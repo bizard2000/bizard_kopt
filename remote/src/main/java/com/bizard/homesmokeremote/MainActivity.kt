@@ -145,6 +145,8 @@ open class MainActivity : ComponentActivity() {
     private val health: Runnable =
         object : Runnable {
             public override fun run() {
+                mqtt = RemoteMqttService.client()
+                connecting = RemoteMqttService.isConnecting()
                 val mq: Boolean = mqtt != null && mqtt!!.isConnected
                 setBrokerUi(
                     mq,
@@ -161,13 +163,7 @@ open class MainActivity : ComponentActivity() {
                 updateCameraSummaryAndTrend()
                 applyTelemetryFreshness(fresh)
                 if (graphVisible) refreshGraph()
-                if (
-                    wantConnection &&
-                        !mq &&
-                        !connecting &&
-                        !broker!!.getText()!!.toString()!!.trim({ it <= ' ' }).isEmpty()
-                )
-                    connectMqtt(false)
+                // MQTT reconnects run on the foreground service executor, not the UI timer.
                 handler.postDelayed(this, 3000)
             }
         }
@@ -198,12 +194,25 @@ open class MainActivity : ComponentActivity() {
         handler.postDelayed(health, 1500)
     }
 
+    protected override fun onResume() {
+        super.onResume()
+        RemoteMqttService.observe(MqttClient.MessageListener { topic, payload ->
+            message(topic, payload)
+        })
+        mqtt = RemoteMqttService.client()
+    }
+
+    protected override fun onPause() {
+        RemoteMqttService.observe(null)
+        super.onPause()
+    }
+
     protected override fun onDestroy() {
         saveSettings()
         saveCommandHistory()
-        wantConnection = false
         handler.removeCallbacks(health)
-        disconnectInternal(false)
+        // Do not close the service-owned socket when this activity is destroyed.
+        mqtt = null
         mqttIo.shutdownNow()
         if (historyStore != null) historyStore!!.close()
         super.onDestroy()
@@ -1068,52 +1077,26 @@ open class MainActivity : ComponentActivity() {
     }
 
     private fun connectMqtt(force: Boolean) {
-        if (connecting) return
         saveSettings()
-        val h: String? = s(broker)
-        if (h!!.isEmpty()) {
+        val h = s(broker)
+        if (h.isNullOrBlank()) {
             if (force) toast("Укажите MQTT broker")
             return
         }
-        val po: Int
-        try {
-            po = Integer.parseInt(s(port))
-        } catch (e: Exception) {
+        val po = s(port).toIntOrNull()
+        if (po == null || po !in 1..65535) {
             if (force) toast("Неверный port")
             return
         }
-
-        val st: String? = topic(s(statusTopic), "homesmoke/status")
-        val at: String? = topic(s(ackTopic), "homesmoke/ack")
-        disconnectInternal(false)
+        wantConnection = true
         connecting = true
         setBrokerUi(false, "Подключение к брокеру…")
-        val c: MqttClient =
-            MqttClient(h, po, tls!!.isChecked(), user!!.getText()!!.toString(), secrets!!.get())
-        mqtt = c
-        c.setMessageListener(
-            MqttClient.MessageListener { topic, payload -> message(topic, payload) }
-        )
-        Thread(
-                {
-                    try {
-                        c.connect()
-                        c.subscribe(st)
-                        c.subscribe(at)
-                        connecting = false
-                        runOnUiThread({
-                            setBrokerUi(true, "Брокер подключён · " + h.toString() + ":" + po)
-                        })
-                    } catch (e: Exception) {
-                        c.close()
-                        if (mqtt == c) mqtt = null
-                        connecting = false
-                        runOnUiThread({ setBrokerUi(false, "MQTT ошибка: " + safe(e)!!) })
-                    }
-                },
-                "HomeSmokeRemote-connect",
-            )
-            .start()
+        try {
+            RemoteMqttService.start(this, force)
+        } catch (e: Exception) {
+            connecting = false
+            setBrokerUi(false, "MQTT ошибка запуска службы: " + safe(e))
+        }
     }
 
     private fun message(topic: String?, payload: String?) {
@@ -1790,10 +1773,9 @@ open class MainActivity : ComponentActivity() {
     }
 
     private fun disconnectInternal(ui: Boolean) {
-        val c: MqttClient? = mqtt
+        RemoteMqttService.stop(this)
         mqtt = null
         connecting = false
-        if (c != null) c!!.close()
         if (ui) setBrokerUi(false, "MQTT отключён")
     }
 
